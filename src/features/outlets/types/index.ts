@@ -25,7 +25,7 @@ export const outletFormSchema = z.object({
     .string()
     .trim()
     .min(8, 'Phone number must be at least 8 characters.'),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean(),
 });
 
 export type OutletFormValues = z.infer<typeof outletFormSchema>;
