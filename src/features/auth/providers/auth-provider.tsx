@@ -11,6 +11,7 @@ import {
 import { onAuthStateChanged, type User } from 'firebase/auth';
 
 import { auth } from '@/src/lib/firebase';
+import { useAuthStore } from '@/src/stores/authStore';
 import type { AppUser, UserRole } from '@/src/types/auth';
 import {
   mapFirebaseUserToAppUser,
@@ -47,19 +48,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (nextFirebaseUser) => {
       setFirebaseUser(nextFirebaseUser);
+      
+      const { setAuth, setLoading: setStoreLoading } = useAuthStore.getState();
 
       if (!nextFirebaseUser) {
         setUser(null);
         setLoading(false);
+        setAuth(null, null, null);
+        setStoreLoading(false);
         return;
       }
 
       try {
         const nextUser = await mapFirebaseUserToAppUser(nextFirebaseUser);
         setUser(nextUser);
+        setAuth(nextFirebaseUser, nextUser.role, nextUser.tenantId);
+        setStoreLoading(false);
       } catch (error) {
         console.error('[auth] Failed to map firebase user to app user', error);
         setUser(null);
+        setAuth(null, null, null);
+        setStoreLoading(false);
       } finally {
         setLoading(false);
       }

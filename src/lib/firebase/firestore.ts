@@ -1,36 +1,29 @@
-'use client';
+// src/lib/firebase/firestore.ts
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  connectFirestoreEmulator
+} from "firebase/firestore";
+import { app } from "./app";
 
-import { enableIndexedDbPersistence, getFirestore } from 'firebase/firestore';
+// Initialize Firestore with modern persistent cache for offline support (PWA ready)
+// This replaces the deprecated enableIndexedDbPersistence()
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
+});
 
-import { app } from './app';
+// Hubungkan ke Emulator di mode Development
+if (process.env.NODE_ENV === 'development') {
+  const globalWithFirestore = globalThis as typeof globalThis & { _firestoreEmulatorConnected?: boolean };
 
-export const db = getFirestore(app);
-
-let persistenceInitialized = false;
-
-function setupFirestorePersistence(): void {
-  if (typeof window === 'undefined' || persistenceInitialized) {
-    return;
+  if (!globalWithFirestore._firestoreEmulatorConnected) {
+    connectFirestoreEmulator(db, '127.0.0.1', 8085);
+    globalWithFirestore._firestoreEmulatorConnected = true;
+    console.log('Firestore Emulator connected di port 8085');
   }
-
-  persistenceInitialized = true;
-
-  void enableIndexedDbPersistence(db).catch((error: unknown) => {
-    if (
-      typeof error === 'object' &&
-      error !== null &&
-      'code' in error &&
-      (error.code === 'failed-precondition' || error.code === 'unimplemented')
-    ) {
-      console.warn(
-        '[firebase] Firestore persistence unavailable. Continuing without offline persistence.',
-        error,
-      );
-      return;
-    }
-
-    console.warn('[firebase] Failed to enable Firestore persistence.', error);
-  });
 }
 
-setupFirestorePersistence();
+export { db };

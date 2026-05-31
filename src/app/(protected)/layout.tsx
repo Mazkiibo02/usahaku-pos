@@ -3,8 +3,9 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { AppShell } from '@/src/components/layout/app-shell';
 import { AuthGuard } from '@/src/features/auth/components/auth-guard';
-import { useAuth } from '@/src/features/auth/hooks/use-auth';
+import { useAuthStore } from '@/src/stores/authStore';
 
 type ProtectedLayoutProps = {
   children: React.ReactNode;
@@ -20,17 +21,22 @@ function FullScreenSpinner() {
 
 export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
   const router = useRouter();
-  const { loading, isAuthenticated } = useAuth();
+  const { user, isLoading } = useAuthStore();
+  const isAuthenticated = !!user;
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
+    if (!isLoading && !isAuthenticated) {
       router.replace('/login');
     }
-  }, [isAuthenticated, loading, router]);
+  }, [isAuthenticated, isLoading, router]);
 
-  if (loading || !isAuthenticated) {
+  if (isLoading || !isAuthenticated) {
     return <FullScreenSpinner />;
   }
 
-  return <AuthGuard fallback={<FullScreenSpinner />}>{children}</AuthGuard>;
+  return (
+    <AuthGuard fallback={<FullScreenSpinner />}>
+      <AppShell>{children}</AppShell>
+    </AuthGuard>
+  );
 }
