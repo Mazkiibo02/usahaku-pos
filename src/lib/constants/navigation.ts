@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Briefcase, LayoutDashboard, ReceiptText, Store, Users, Wallet } from 'lucide-react';
+import { Briefcase, LayoutDashboard, ReceiptText, Store, Users, Wallet, Settings } from 'lucide-react';
 
 import type { UserRole } from '@/src/types/auth';
 
@@ -29,6 +29,11 @@ export const OWNER_NAV_LINKS: NavigationItem[] = [
     title: 'Cashiers',
     href: '/cashiers',
     icon: Users,
+  },
+  {
+    title: 'Settings',
+    href: '/dashboard/settings',
+    icon: Settings,
   },
 ];
 

@@ -21,6 +21,7 @@ export interface TenantDetails {
   id: string;
   name: string;
   ownerId: string;
+  logoUrl?: string;
   createdAt: Timestamp;
   lastTransactionAt?: Timestamp | null;
 }

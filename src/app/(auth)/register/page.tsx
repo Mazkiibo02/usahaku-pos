@@ -26,7 +26,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-100 to-slate-200 px-4 py-10">
+    <div className="flex min-h-screen items-center justify-center bg-linear-to-b from-slate-100 to-slate-200 px-4 py-10">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-7 shadow-xl">
         <div className="mb-6 space-y-1">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Mulai Usahaku</h1>

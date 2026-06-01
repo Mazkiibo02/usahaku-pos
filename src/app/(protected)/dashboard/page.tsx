@@ -23,13 +23,38 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { format, parseISO } from 'date-fns';
+import { doc, getDoc } from 'firebase/firestore';
 
 import { useAuthStore } from '@/src/stores/authStore';
+import { db } from '@/src/lib/firebase/firebase';
 import { analyticsService, type DashboardStats } from '@/src/features/dashboard/services/analyticsService';
 import { exportDashboardToExcel, printDashboardToPDF } from '@/src/features/dashboard/utils/exportUtils';
 
 export default function DashboardPage() {
   const { tenantId, user } = useAuthStore();
+  const [storeName, setStoreName] = useState<string>('Usahaku POS');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  // Fetch Tenant store details (Store Name & Custom Logo)
+  useEffect(() => {
+    async function fetchTenantDetails() {
+      if (!tenantId) return;
+      try {
+        const docRef = doc(db, 'tenants', tenantId);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setStoreName(data.name || 'Usahaku POS');
+          if (data.logoUrl) {
+            setLogoUrl(data.logoUrl);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch tenant details in dashboard:', err);
+      }
+    }
+    fetchTenantDetails();
+  }, [tenantId]);
 
   // 1. Date Range State: Default to current month (e.g. June 1 to June 30)
   const [startDate, setStartDate] = useState<string>(() => {
@@ -133,6 +158,32 @@ export default function DashboardPage() {
 
   return (
     <div className="print-full-width space-y-6">
+      {/* Print-Only Header */}
+      <div className="hidden print:flex items-center justify-between border-b-2 border-slate-900 pb-4 mb-6">
+        <div className="flex items-center gap-4">
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt="Logo Toko"
+              className="h-16 w-auto object-contain"
+            />
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-slate-900 text-white font-bold text-xl">
+              {storeName.slice(0, 2).toUpperCase()}
+            </div>
+          )}
+          <div>
+            <h2 className="text-2xl font-black tracking-tight text-slate-900">{storeName}</h2>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Laporan Analisis Bisnis</p>
+          </div>
+        </div>
+        <div className="text-right text-xs text-slate-500 font-medium">
+          <p>Dicetak Pada: {format(new Date(), 'dd MMMM yyyy, HH:mm')}</p>
+          <p>Periode: {format(parseISO(startDate), 'dd MMM yyyy')} - {format(parseISO(endDate), 'dd MMM yyyy')}</p>
+        </div>
+      </div>
+
       {/* 1. Header & Filters */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
@@ -157,7 +208,7 @@ export default function DashboardPage() {
                 className="bg-transparent text-sm font-semibold text-slate-700 focus:outline-none cursor-pointer"
               />
             </div>
-            <div className="h-4 w-[1px] bg-slate-200" />
+            <div className="h-4 w-px bg-slate-200" />
             <div className="flex items-center gap-2">
               <input
                 type="date"

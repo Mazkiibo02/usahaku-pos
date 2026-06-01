@@ -22,10 +22,11 @@ export function ReceiptPrint({
   outletName,
 }: ReceiptPrintProps) {
   const [storeName, setStoreName] = useState('Usahaku POS');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [paperWidth, setPaperWidth] = useState<'58mm' | '80mm'>('58mm');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch Tenant store name
+  // Fetch Tenant store name & logo
   useEffect(() => {
     async function fetchTenant() {
       if (!transaction.tenantId) return;
@@ -33,6 +34,11 @@ export function ReceiptPrint({
       try {
         const tenant = await transactionService.getTenantDetails(transaction.tenantId);
         setStoreName(tenant.name);
+        if (tenant.logoUrl) {
+          setLogoUrl(tenant.logoUrl);
+        } else {
+          setLogoUrl(null);
+        }
       } catch (err) {
         console.error('Gagal mengambil nama tenant:', err);
       } finally {
@@ -146,6 +152,14 @@ export function ReceiptPrint({
               >
                 {/* Header Section */}
                 <div className="text-center space-y-1 mb-3">
+                  {logoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={logoUrl}
+                      alt="Logo Toko"
+                      className="grayscale contrast-200 mix-blend-multiply max-w-[40mm] mx-auto mb-2 object-contain"
+                    />
+                  )}
                   <h3 className="text-sm font-black uppercase tracking-tight">{storeName}</h3>
                   <p className="text-[10px] font-sans font-semibold text-slate-500 uppercase">{outletName}</p>
                 </div>
