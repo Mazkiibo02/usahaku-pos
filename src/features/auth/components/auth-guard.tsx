@@ -17,6 +17,8 @@ export function AuthGuard({ children, allowedRoles, fallback }: AuthGuardProps) 
   const { user, role, tenantId, isLoading } = useAuthStore();
 
   const isLoginPage = pathname === '/login';
+  const isRegisterPage = pathname === '/register';
+  const isPublicPage = isLoginPage || isRegisterPage;
   const isOnboardingPage = pathname === '/onboarding' || pathname.startsWith('/onboarding/');
 
   useEffect(() => {
@@ -26,7 +28,7 @@ export function AuthGuard({ children, allowedRoles, fallback }: AuthGuardProps) 
 
     // Logic 2: If no user, redirect to /login
     if (!user) {
-      if (!isLoginPage) {
+      if (!isPublicPage) {
         router.replace('/login');
       }
       return;
@@ -40,11 +42,11 @@ export function AuthGuard({ children, allowedRoles, fallback }: AuthGuardProps) 
       return;
     }
 
-    // If tenantId exists and user is on /onboarding or /login, redirect to /dashboard
-    if (tenantId && (isOnboardingPage || isLoginPage)) {
+    // If tenantId exists and user is on /onboarding or any public page, redirect to /dashboard
+    if (tenantId && (isOnboardingPage || isPublicPage)) {
       router.replace('/dashboard');
     }
-  }, [user, tenantId, isLoading, router, pathname, isLoginPage, isOnboardingPage]);
+  }, [user, tenantId, isLoading, router, pathname, isPublicPage, isOnboardingPage]);
 
   // Logic 1: If isLoading is true, return a loading spinner or null
   if (isLoading) {

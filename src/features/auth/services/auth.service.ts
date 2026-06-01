@@ -2,6 +2,7 @@
 
 import {
   GoogleAuthProvider,
+  createUserWithEmailAndPassword,
   getIdTokenResult,
   signInWithEmailAndPassword,
   signInWithPopup,
@@ -33,6 +34,10 @@ export async function signInWithGoogle() {
 
 export async function signInWithEmail(email: string, password: string) {
   return signInWithEmailAndPassword(auth, email, password);
+}
+
+export async function registerWithEmail(email: string, password: string) {
+  return createUserWithEmailAndPassword(auth, email, password);
 }
 
 export async function signOutUser() {
