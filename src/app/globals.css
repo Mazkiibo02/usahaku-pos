@@ -24,3 +24,42 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* @media print for Thermal Receipts */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Hide everything on the page */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Make sure the receipt container and its descendants are visible */
+  .thermal-receipt-container,
+  .thermal-receipt-container * {
+    visibility: visible;
+  }
+
+  /* Position the receipt at the top left during printing */
+  .thermal-receipt-container {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 58mm !important; /* Constrain to standard 58mm thermal width */
+    margin: 0 !important;
+    padding: 10px !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: white !important;
+  }
+
+  /* Force standard margins to zero on page */
+  @page {
+    margin: 0;
+    size: auto;
+  }
+}
+
