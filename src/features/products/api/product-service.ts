@@ -45,6 +45,7 @@ export const productService = {
       name: data.name,
       description: data.description ?? '',
       price: data.price,
+      stock: data.stock,
       sku: data.sku ?? '',
       category: data.category,
       isAvailable: data.isAvailable ?? true,

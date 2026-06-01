@@ -7,6 +7,7 @@ export interface Product {
   name: string;
   description?: string;
   price: number;
+  stock: number;
   sku?: string;
   category: string;
   isAvailable: boolean;
@@ -23,6 +24,9 @@ export const productFormSchema = z.object({
   price: z
     .number({ message: 'Price must be a valid number.' })
     .min(0, 'Price must be greater than or equal to 0.'),
+  stock: z
+    .number({ message: 'Stock must be a valid number.' })
+    .min(0, 'Stock must be greater than or equal to 0.'),
   sku: z.string().trim().optional(),
   category: z
     .string()

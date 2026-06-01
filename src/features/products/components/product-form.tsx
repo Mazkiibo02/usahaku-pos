@@ -47,6 +47,7 @@ export function ProductForm({
       name: product?.name ?? '',
       description: product?.description ?? '',
       price: product?.price ?? 0,
+      stock: product?.stock ?? 0,
       sku: product?.sku ?? '',
       category: product?.category ?? '',
       isAvailable: product?.isAvailable ?? true,
@@ -66,6 +67,7 @@ export function ProductForm({
       setValue('name', product.name);
       setValue('description', product.description ?? '');
       setValue('price', product.price);
+      setValue('stock', product.stock ?? 0);
       setValue('sku', product.sku ?? '');
       setValue('category', product.category);
       setValue('isAvailable', product.isAvailable);
@@ -74,6 +76,7 @@ export function ProductForm({
       setValue('name', '');
       setValue('description', '');
       setValue('price', 0);
+      setValue('stock', 0);
       setValue('sku', '');
       setValue('category', '');
       setValue('isAvailable', true);
@@ -213,28 +216,50 @@ export function ProductForm({
                 </div>
               </div>
 
-              {/* Price with Masking */}
-              <div className="space-y-1">
-                <label htmlFor="price" className="block text-sm font-semibold text-slate-700">
-                  Unit Price (IDR)
-                </label>
-                <div className="relative flex items-center">
-                  <span className="absolute left-3 text-sm font-semibold text-slate-400 select-none">
-                    Rp
-                  </span>
-                  <input
-                    id="price"
-                    type="text"
-                    placeholder="0"
-                    value={displayPrice}
-                    onChange={handlePriceChange}
-                    disabled={isSubmitting}
-                    className="w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 py-2.5 text-sm text-slate-900 font-medium outline-none transition focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5 disabled:cursor-not-allowed disabled:opacity-70"
-                  />
+              {/* Price & Stock side-by-side */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {/* Price with Masking */}
+                <div className="space-y-1">
+                  <label htmlFor="price" className="block text-sm font-semibold text-slate-700">
+                    Unit Price (IDR)
+                  </label>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-3 text-sm font-semibold text-slate-400 select-none">
+                      Rp
+                    </span>
+                    <input
+                      id="price"
+                      type="text"
+                      placeholder="0"
+                      value={displayPrice}
+                      onChange={handlePriceChange}
+                      disabled={isSubmitting}
+                      className="w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 py-2.5 text-sm text-slate-900 font-medium outline-none transition focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5 disabled:cursor-not-allowed disabled:opacity-70"
+                    />
+                  </div>
+                  {errors.price && (
+                    <p className="text-xs font-medium text-rose-600">{errors.price.message}</p>
+                  )}
                 </div>
-                {errors.price && (
-                  <p className="text-xs font-medium text-rose-600">{errors.price.message}</p>
-                )}
+
+                {/* Stock Level */}
+                <div className="space-y-1">
+                  <label htmlFor="stock" className="block text-sm font-semibold text-slate-700">
+                    Available Stock
+                  </label>
+                  <input
+                    id="stock"
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    {...register('stock', { valueAsNumber: true })}
+                    disabled={isSubmitting}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5 disabled:cursor-not-allowed disabled:opacity-70"
+                  />
+                  {errors.stock && (
+                    <p className="text-xs font-medium text-rose-600">{errors.stock.message}</p>
+                  )}
+                </div>
               </div>
 
               {/* Description */}

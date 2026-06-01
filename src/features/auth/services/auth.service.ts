@@ -22,8 +22,9 @@ function isUserRole(value: unknown): value is UserRole {
 function mapClaimsToAuthClaims(claims: Record<string, unknown>): AuthClaims {
   const tenantId = typeof claims.tenantId === 'string' && claims.tenantId.length > 0 ? claims.tenantId : null;
   const role = isUserRole(claims.role) ? claims.role : null;
+  const outletId = typeof claims.outletId === 'string' && claims.outletId.length > 0 ? claims.outletId : null;
 
-  return { tenantId, role };
+  return { tenantId, role, outletId };
 }
 
 export async function signInWithGoogle() {
@@ -59,6 +60,7 @@ export async function mapFirebaseUserToAppUser(firebaseUser: User): Promise<AppU
     photoURL: firebaseUser.photoURL,
     tenantId: claims.tenantId,
     role: claims.role,
+    outletId: claims.outletId,
     isActive: true,
     claims,
   };

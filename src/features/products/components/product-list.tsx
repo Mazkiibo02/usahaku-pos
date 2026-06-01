@@ -160,6 +160,7 @@ export function ProductList({
                   <th scope="col" className="px-6 py-4">SKU</th>
                   <th scope="col" className="px-6 py-4">Category</th>
                   <th scope="col" className="px-6 py-4">Unit Price</th>
+                  <th scope="col" className="px-6 py-4">Stock</th>
                   <th scope="col" className="px-6 py-4">Status</th>
                   <th scope="col" className="px-6 py-4">Added On</th>
                   <th scope="col" className="px-6 py-4 text-right">Actions</th>
@@ -202,6 +203,22 @@ export function ProductList({
                     {/* Unit Price */}
                     <td className="whitespace-nowrap px-6 py-4 font-semibold text-slate-900">
                       {formatPrice(product.price)}
+                    </td>
+                    {/* Stock level */}
+                    <td className="whitespace-nowrap px-6 py-4">
+                      {product.stock <= 0 ? (
+                        <span className="inline-flex items-center rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-700 border border-rose-200/50">
+                          0 (Out of stock)
+                        </span>
+                      ) : product.stock <= 5 ? (
+                        <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 border border-amber-200/50">
+                          {product.stock} (Low stock)
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center text-slate-900 font-semibold">
+                          {product.stock}
+                        </span>
+                      )}
                     </td>
                     {/* Status Toggle Pill */}
                     <td className="whitespace-nowrap px-6 py-4">

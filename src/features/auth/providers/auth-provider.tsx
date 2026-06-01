@@ -27,6 +27,7 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   role: UserRole | null;
   tenantId: string | null;
+  outletId: string | null;
   isOwner: boolean;
   isCashier: boolean;
   signInWithGoogle: typeof signInWithGoogle;
@@ -54,7 +55,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (!nextFirebaseUser) {
         setUser(null);
         setLoading(false);
-        setAuth(null, null, null);
+        setAuth(null, null, null, null);
         setStoreLoading(false);
         return;
       }
@@ -62,12 +63,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       try {
         const nextUser = await mapFirebaseUserToAppUser(nextFirebaseUser);
         setUser(nextUser);
-        setAuth(nextFirebaseUser, nextUser.role, nextUser.tenantId);
+        setAuth(nextFirebaseUser, nextUser.role, nextUser.tenantId, nextUser.outletId);
         setStoreLoading(false);
       } catch (error) {
         console.error('[auth] Failed to map firebase user to app user', error);
         setUser(null);
-        setAuth(null, null, null);
+        setAuth(null, null, null, null);
         setStoreLoading(false);
       } finally {
         setLoading(false);
@@ -91,6 +92,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       isAuthenticated: Boolean(firebaseUser),
       role,
       tenantId: user?.tenantId ?? null,
+      outletId: user?.outletId ?? null,
       isOwner: role === 'owner',
       isCashier: role === 'cashier',
       signInWithGoogle,

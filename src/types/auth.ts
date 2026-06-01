@@ -5,6 +5,7 @@ export type UserRole = 'owner' | 'cashier';
 export type AuthClaims = {
   tenantId: string | null;
   role: UserRole | null;
+  outletId: string | null;
 };
 
 export type AppUser = {
@@ -14,6 +15,7 @@ export type AppUser = {
   photoURL: string | null;
   tenantId: string | null;
   role: UserRole | null;
+  outletId: string | null;
   isActive: boolean;
   claims: AuthClaims;
 };
