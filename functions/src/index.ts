@@ -305,6 +305,11 @@ export const processTransaction = functions.https.onCall(
         const productRefs = items.map(item => db.collection("products").doc(item.productId));
         const productSnaps = await Promise.all(productRefs.map(ref => transactionDoc.get(ref)));
 
+        // Daily stats rollup document reference: stats/${tenantId}/daily/${YYYY-MM-DD}
+        const YYYY_MM_DD = new Date().toISOString().split('T')[0];
+        const dailyStatRef = db.collection("stats").doc(tenantId).collection("daily").doc(YYYY_MM_DD);
+        const dailyStatSnap = await transactionDoc.get(dailyStatRef);
+
         const productsToUpdate: Array<{
           ref: admin.firestore.DocumentReference;
           name: string;
@@ -400,6 +405,39 @@ export const processTransaction = functions.https.onCall(
         };
 
         transactionDoc.set(txRef, transactionPayload);
+
+        // Daily statistics aggregation rollup
+        if (!dailyStatSnap.exists) {
+          const productsSold: Record<string, number> = {};
+          for (const item of items) {
+            productsSold[item.productId] = (productsSold[item.productId] || 0) + item.quantity;
+          }
+          transactionDoc.set(dailyStatRef, {
+            date: YYYY_MM_DD,
+            totalRevenue: calculatedTotal,
+            totalTransactions: 1,
+            productsSold,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        } else {
+          const currentData = dailyStatSnap.data() as Record<string, any> || {};
+          const currentProductsSold = currentData.productsSold || {};
+          const productsSold = { ...currentProductsSold };
+          for (const item of items) {
+            productsSold[item.productId] = (productsSold[item.productId] || 0) + item.quantity;
+          }
+
+          const currentRevenue = typeof currentData.totalRevenue === 'number' ? currentData.totalRevenue : 0;
+          const currentTransactions = typeof currentData.totalTransactions === 'number' ? currentData.totalTransactions : 0;
+
+          transactionDoc.update(dailyStatRef, {
+            totalRevenue: currentRevenue + calculatedTotal,
+            totalTransactions: currentTransactions + 1,
+            productsSold,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
 
         return {
           transactionId: txRef.id,
