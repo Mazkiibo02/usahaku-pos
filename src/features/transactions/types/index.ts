@@ -27,6 +27,12 @@ export interface Transaction {
   shiftId?: string;
 }
 
+export interface TenantSubscription {
+  status: 'TRIAL' | 'PAID' | 'EXPIRED';
+  trialEndsAt: Timestamp;
+  currentPeriodEnd: Timestamp;
+}
+
 export interface TenantDetails {
   id: string;
   name: string;
@@ -34,4 +40,5 @@ export interface TenantDetails {
   logoUrl?: string;
   createdAt: Timestamp;
   lastTransactionAt?: Timestamp | null;
+  subscription?: TenantSubscription;
 }
