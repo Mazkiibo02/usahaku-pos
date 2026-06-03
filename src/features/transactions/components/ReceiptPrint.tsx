@@ -72,20 +72,22 @@ export function ReceiptPrint({
   };
 
   const handlePrint = () => {
-    window.print();
+    setTimeout(() => {
+      window.print();
+    }, 500);
   };
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 print-receipt-wrapper print:h-auto print:overflow-visible print:max-h-none">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm no-print print:hidden"
           />
 
           {/* Modal Box */}
@@ -94,10 +96,10 @@ export function ReceiptPrint({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
             transition={{ type: 'spring', duration: 0.4 }}
-            className="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl border border-slate-100 bg-white p-6 shadow-2xl flex flex-col max-h-[90vh]"
+            className="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl border border-slate-100 bg-white p-6 shadow-2xl flex flex-col max-h-[90vh] print:h-auto print:overflow-visible print:max-h-none print:shadow-none print:border-none print:rounded-none print:bg-transparent print:m-0 print:p-0"
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-150 pb-4 shrink-0">
+            <div className="flex items-center justify-between border-b border-slate-150 pb-4 shrink-0 no-print print:hidden">
               <div className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-slate-500" />
                 <h2 className="text-lg font-bold text-slate-950">Pratinjau Struk Belanja</h2>
@@ -113,7 +115,7 @@ export function ReceiptPrint({
             </div>
 
             {/* Config & Toggles (Paper Size Selector) */}
-            <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-50 p-3 shrink-0 text-sm">
+            <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-50 p-3 shrink-0 text-sm no-print print:hidden">
               <span className="font-semibold text-slate-650">Ukuran Kertas Thermal:</span>
               <div className="flex gap-2">
                 <button
@@ -140,11 +142,12 @@ export function ReceiptPrint({
             </div>
 
             {/* Scrollable Receipt Area */}
-            <div className="mt-4 flex-1 overflow-y-auto bg-slate-100 rounded-xl p-6 flex justify-center items-start border border-slate-200">
+            <div className="mt-4 flex-1 overflow-y-auto bg-slate-100 rounded-xl p-6 flex justify-center items-start border border-slate-200 print:overflow-visible print:h-auto print:max-h-none print:shadow-none print:border-none print:rounded-none print:bg-transparent print:m-0 print:p-0">
               
               {/* PRINTABLE RECEIPT LAYOUT */}
               <div
-                className={`thermal-receipt-container bg-white p-4 shadow-sm border border-slate-200/50 text-black font-mono text-xs break-all shrink-0`}
+                id="thermal-receipt-container"
+                className={`thermal-receipt-container bg-white p-4 shadow-sm border border-slate-200/50 text-black font-mono text-xs break-all shrink-0 print:mx-auto print:text-black`}
                 style={{
                   width: paperWidth,
                   maxWidth: '100%',
@@ -181,6 +184,12 @@ export function ReceiptPrint({
                     <span className="text-slate-500">KASIR:</span>
                     <span className="text-black truncate max-w-[120px]">{cashierName}</span>
                   </div>
+                  {transaction.customerName && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">PELANGGAN:</span>
+                      <span className="text-black truncate max-w-[120px] font-bold">{transaction.customerName}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Dashed line */}
@@ -222,10 +231,40 @@ export function ReceiptPrint({
                       {transaction.items.reduce((sum, item) => sum + item.quantity, 0)}
                     </span>
                   </div>
-                  <div className="flex justify-between text-xs font-black">
+                  {transaction.subtotal !== undefined && transaction.subtotal !== transaction.totalAmount && (
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-slate-500 font-semibold">SUBTOTAL</span>
+                      <span className="font-bold text-black">{formatPrice(transaction.subtotal)}</span>
+                    </div>
+                  )}
+                  {transaction.discount !== undefined && transaction.discount > 0 && (
+                    <div className="flex justify-between text-[10px] text-rose-600">
+                      <span className="font-bold">DISKON</span>
+                      <span className="font-bold">-{formatPrice(transaction.discount)}</span>
+                    </div>
+                  )}
+                  {transaction.taxAmount !== undefined && transaction.taxAmount > 0 && (
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-slate-550 font-semibold">PAJAK ({transaction.taxRate}%)</span>
+                      <span className="font-bold text-black">+{formatPrice(transaction.taxAmount)}</span>
+                    </div>
+                  )}
+                  {transaction.shippingCost !== undefined && transaction.shippingCost > 0 && (
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-slate-550 font-semibold">ONGKOS KIRIM</span>
+                      <span className="font-bold text-black">+{formatPrice(transaction.shippingCost)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-xs font-black border-t border-dashed border-black/20 pt-1 mt-1">
                     <span className="text-black">TOTAL AKHIR</span>
                     <span className="font-black text-black">{formatPrice(transaction.totalAmount)}</span>
                   </div>
+                  {transaction.paymentMethod && (
+                    <div className="flex justify-between text-[9px] text-slate-500 font-semibold mt-1">
+                      <span>METODE PEMBAYARAN</span>
+                      <span className="text-black font-bold">{transaction.paymentMethod}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Dashed line */}
@@ -241,7 +280,7 @@ export function ReceiptPrint({
             </div>
 
             {/* Print and Close Actions */}
-            <div className="mt-4 flex gap-3 shrink-0">
+            <div className="mt-4 flex gap-3 shrink-0 no-print print:hidden">
               <button
                 type="button"
                 onClick={onClose}

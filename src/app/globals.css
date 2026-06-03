@@ -27,31 +27,55 @@ body {
 
 /* @media print for Thermal Receipts & Dashboard */
 @media print {
-  body {
-    background: white !important;
-    color: black !important;
+  @page {
+    margin: 0;
+    size: auto;
   }
 
-  /* Default receipt printing: when NOT printing the dashboard */
+  /* Strip all heights, backgrounds, and overflows from root elements */
+  html, body {
+    height: max-content !important;
+    overflow: hidden !important;
+  }
+
+  main, div#__next {
+    height: auto !important;
+    min-height: auto !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: white !important;
+    position: static !important;
+    display: block !important;
+  }
+
+  /* Hide EVERYTHING by default during print */
   body:not(.printing-dashboard) * {
     visibility: hidden;
   }
 
-  body:not(.printing-dashboard) .thermal-receipt-container,
-  body:not(.printing-dashboard) .thermal-receipt-container * {
-    visibility: visible;
+  /* ONLY show the receipt container and its children */
+  #thermal-receipt-container, 
+  #thermal-receipt-container * {
+    visibility: visible !important;
   }
 
-  body:not(.printing-dashboard) .thermal-receipt-container {
-    position: absolute !important;
-    left: 0 !important;
+  /* Pin the receipt container to the top and center horizontally */
+  #thermal-receipt-container {
+    position: relative !important;
     top: 0 !important;
-    width: 58mm !important; /* Constrain to standard 58mm thermal width */
-    margin: 0 !important;
-    padding: 10px !important;
-    border: none !important;
-    box-shadow: none !important;
-    background: white !important;
+    left: auto !important;
+    transform: none !important;
+    margin: 0 auto !important;
+    padding-top: 5mm !important;
+    padding-bottom: 5mm !important;
+    page-break-inside: avoid !important;
+    display: block !important;
+  }
+
+  .no-print {
+    display: none !important;
   }
 
   /* Dynamic Dashboard print styling: when printing the dashboard */
@@ -59,6 +83,13 @@ body {
     width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  html:has(body.printing-dashboard) {
+    height: auto !important;
+    overflow: visible !important;
   }
 
   body.printing-dashboard * {
@@ -94,12 +125,6 @@ body {
     max-width: 100% !important;
     box-shadow: none !important;
     border: none !important;
-  }
-
-  /* Force margins for PDF export */
-  @page {
-    margin: 1.5cm;
-    size: A4 portrait;
   }
 }
 

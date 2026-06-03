@@ -1,6 +1,6 @@
 'use client';
 
-import { User, Mail, Store, Shield } from 'lucide-react';
+import { User, Mail, Store, Shield, Edit2, Trash2 } from 'lucide-react';
 import type { Cashier } from '../types';
 import type { Outlet } from '@/src/features/outlets/types';
 import { Timestamp } from 'firebase/firestore';
@@ -9,9 +9,10 @@ type CashierListProps = {
   cashiers: Cashier[];
   outlets: Outlet[];
   onAddTrigger: () => void;
+  onEdit: (cashier: Cashier) => void;
 };
 
-export function CashierList({ cashiers, outlets, onAddTrigger }: CashierListProps) {
+export function CashierList({ cashiers, outlets, onAddTrigger, onEdit }: CashierListProps) {
   const getOutletName = (outletId: string) => {
     const outlet = outlets.find((o) => o.id === outletId);
     return outlet ? outlet.name : 'Unknown Branch';
@@ -59,6 +60,7 @@ export function CashierList({ cashiers, outlets, onAddTrigger }: CashierListProp
               <th scope="col" className="px-6 py-4">Cabang Outlet</th>
               <th scope="col" className="px-6 py-4">Peran</th>
               <th scope="col" className="px-6 py-4">Tanggal Bergabung</th>
+              <th scope="col" className="px-6 py-4 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -88,13 +90,31 @@ export function CashierList({ cashiers, outlets, onAddTrigger }: CashierListProp
                   </div>
                 </td>
                 <td className="whitespace-nowrap px-6 py-4">
-                  <span className="inline-flex items-center rounded-full bg-slate-55 bg-indigo-50 border border-indigo-200/50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
+                  <span className="inline-flex items-center rounded-full bg-indigo-50 border border-indigo-200/50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
                     <Shield className="mr-1 h-3 w-3 text-indigo-500" />
                     Kasir
                   </span>
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-slate-500">
                   {formatDate(cashier.createdAt)}
+                </td>
+                <td className="whitespace-nowrap px-6 py-4 text-right">
+                  <div className="flex items-center justify-end space-x-2">
+                    <button
+                      onClick={() => onEdit(cashier)}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+                      title="Mutasi/Ubah Cabang Kasir"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => alert("Untuk menjaga integritas riwayat transaksi, akun kasir tidak dapat dihapus. Silakan mutasikan kasir ke cabang lain jika diperlukan.")}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-100 bg-white text-rose-500 transition hover:bg-rose-50 hover:text-rose-700"
+                      title="Hapus Kasir (Dinonaktifkan)"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

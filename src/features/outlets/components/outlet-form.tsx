@@ -59,7 +59,7 @@ export function OutletForm({
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('An unexpected error occurred. Please try again.');
+        setError('Terjadi kesalahan yang tidak terduga. Silakan coba lagi.');
       }
     }
   };
@@ -88,12 +88,12 @@ export function OutletForm({
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <h2 className="text-xl font-bold text-slate-900">
-                {isEditMode ? 'Edit Branch Outlet' : 'Add New Branch Outlet'}
+                {isEditMode ? 'Edit Cabang Outlet' : 'Tambah Cabang Outlet Baru'}
               </h2>
               <button
                 onClick={onClose}
                 className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                aria-label="Close dialog"
+                aria-label="Tutup dialog"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -111,12 +111,12 @@ export function OutletForm({
               {/* Name */}
               <div className="space-y-1">
                 <label htmlFor="name" className="block text-sm font-semibold text-slate-700">
-                  Outlet Name
+                  Nama Outlet
                 </label>
                 <input
                   id="name"
                   type="text"
-                  placeholder="e.g. Sudirman Grand Branch"
+                  placeholder="Contoh: Cabang Utama Sudirman"
                   {...register('name')}
                   disabled={isSubmitting}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5 disabled:cursor-not-allowed disabled:opacity-70"
@@ -129,11 +129,11 @@ export function OutletForm({
               {/* Address */}
               <div className="space-y-1">
                 <label htmlFor="address" className="block text-sm font-semibold text-slate-700">
-                  Full Address
+                  Alamat Lengkap
                 </label>
                 <textarea
                   id="address"
-                  placeholder="e.g. Jl. Jenderal Sudirman No. 21, Jakarta Selatan"
+                  placeholder="Contoh: Jl. Jenderal Sudirman No. 21, Jakarta Selatan"
                   rows={3}
                   {...register('address')}
                   disabled={isSubmitting}
@@ -147,12 +147,12 @@ export function OutletForm({
               {/* Phone */}
               <div className="space-y-1">
                 <label htmlFor="phone" className="block text-sm font-semibold text-slate-700">
-                  Phone Number
+                  Nomor Telepon
                 </label>
                 <input
                   id="phone"
                   type="tel"
-                  placeholder="e.g. 08123456789"
+                  placeholder="Contoh: 08123456789"
                   {...register('phone')}
                   disabled={isSubmitting}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5 disabled:cursor-not-allowed disabled:opacity-70"
@@ -165,11 +165,11 @@ export function OutletForm({
               {/* Switch / Status toggle */}
               <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 p-4">
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-800">Operational Status</h4>
+                  <h4 className="text-sm font-semibold text-slate-800">Status Operasional</h4>
                   <p className="text-xs text-slate-500">
                     {isActiveValue
-                      ? 'This outlet is open and active for POS checkout'
-                      : 'This outlet is temporarily deactivated'}
+                      ? 'Outlet ini buka dan aktif untuk transaksi kasir'
+                      : 'Outlet ini dinonaktifkan sementara'}
                   </p>
                 </div>
                 <button
@@ -196,7 +196,7 @@ export function OutletForm({
                   disabled={isSubmitting}
                   className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
                 >
-                  Cancel
+                  Batal
                 </button>
                 <button
                   type="submit"
@@ -206,12 +206,12 @@ export function OutletForm({
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
+                      Menyimpan...
                     </>
                   ) : isEditMode ? (
-                    'Save Changes'
+                    'Simpan Perubahan'
                   ) : (
-                    'Add Outlet'
+                    'Tambah Outlet'
                   )}
                 </button>
               </div>

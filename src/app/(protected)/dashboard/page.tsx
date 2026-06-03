@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   TrendingUp,
   ShoppingCart,
@@ -12,6 +12,8 @@ import {
   Loader2,
   ArrowUpRight,
   RefreshCw,
+  Store,
+  Users,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -29,6 +31,12 @@ import { useAuthStore } from '@/src/stores/authStore';
 import { db } from '@/src/lib/firebase/firebase';
 import { analyticsService, type DashboardStats } from '@/src/features/dashboard/services/analyticsService';
 import { exportDashboardToExcel, printDashboardToPDF } from '@/src/features/dashboard/utils/exportUtils';
+import { transactionService } from '@/src/features/transactions/api/transaction-service';
+import { outletService } from '@/src/features/outlets/api/outlet-service';
+import { cashierService } from '@/src/features/cashiers/api/cashier-service';
+import type { Transaction } from '@/src/features/transactions/types';
+import type { Outlet } from '@/src/features/outlets/types';
+import type { Cashier } from '@/src/features/cashiers/types';
 
 export default function DashboardPage() {
   const { tenantId, user } = useAuthStore();
@@ -68,9 +76,45 @@ export default function DashboardPage() {
   });
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [outlets, setOutlets] = useState<Outlet[]>([]);
+  const [cashiers, setCashiers] = useState<Cashier[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Name Resolution Maps
+  const outletMap = useMemo(() => {
+    return new Map(outlets.map((o) => [o.id, o.name]));
+  }, [outlets]);
+
+  const cashierMap = useMemo(() => {
+    return new Map(cashiers.map((c) => [c.uid, c.name]));
+  }, [cashiers]);
+
+  // Map of transactions with resolved display labels
+  const resolvedTransactions = useMemo(() => {
+    return transactions.map((tx) => {
+      const branchName = tx.outletName || (tx.outletId ? outletMap.get(tx.outletId) : '') || 'Unknown Branch';
+      
+      let staffName = tx.cashierName;
+      if (!staffName && tx.cashierId) {
+        staffName = cashierMap.get(tx.cashierId);
+      }
+      if (!staffName && tx.cashierId && tx.cashierId === user?.uid) {
+        staffName = user.displayName || 'Owner';
+      }
+      if (!staffName) {
+        staffName = 'Staf/Owner';
+      }
+
+      return {
+        ...tx,
+        resolvedOutlet: branchName,
+        resolvedCashier: staffName,
+      };
+    });
+  }, [transactions, outletMap, cashierMap, user]);
 
   // 2. Fetch statistics data
   const fetchStats = useCallback(async (showRefreshing = false) => {
@@ -84,8 +128,16 @@ export default function DashboardPage() {
     setError(null);
 
     try {
-      const data = await analyticsService.getDashboardStats(tenantId, startDate, endDate);
+      const [data, txs, outletsData, cashiersData] = await Promise.all([
+        analyticsService.getDashboardStats(tenantId, startDate, endDate),
+        transactionService.getTransactionsInDateRange(tenantId, startDate, endDate),
+        outletService.getOutlets(tenantId),
+        cashierService.getCashiers(tenantId),
+      ]);
       setStats(data);
+      setTransactions(txs);
+      setOutlets(outletsData);
+      setCashiers(cashiersData);
     } catch (err) {
       console.error('Failed to load dashboard statistics', err);
       setError('Gagal memuat data statistik dashboard. Silakan periksa kembali filter Anda.');
@@ -115,14 +167,30 @@ export default function DashboardPage() {
   };
 
   const handleExportExcel = () => {
-    if (!stats) return;
     const fromDate = parseISO(startDate);
     const toDate = parseISO(endDate);
-    exportDashboardToExcel(stats, { from: fromDate, to: toDate });
+    exportDashboardToExcel(
+      transactions,
+      outlets,
+      cashiers,
+      user?.uid || null,
+      user?.displayName || null,
+      { from: fromDate, to: toDate }
+    );
   };
 
   const handlePrintPDF = () => {
     printDashboardToPDF();
+  };
+
+  // Time formatter
+  const formatTime = (timestamp: any) => {
+    if (!timestamp) return '-';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return new Intl.DateTimeFormat('id-ID', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(date);
   };
 
   // Skeleton Loader Component
@@ -225,7 +293,7 @@ export default function DashboardPage() {
               onClick={() => fetchStats(true)}
               disabled={isRefreshing}
               className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
-              title="Refresh Data"
+              title="Segarkan Data"
             >
               <RefreshCw className={`h-4.5 w-4.5 ${isRefreshing ? 'animate-spin' : ''}`} />
             </button>
@@ -235,7 +303,7 @@ export default function DashboardPage() {
               className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 shadow-sm"
             >
               <FileSpreadsheet className="h-4 w-4" />
-              <span>Export Excel</span>
+              <span>Ekspor Excel</span>
             </button>
 
             <button
@@ -294,7 +362,7 @@ export default function DashboardPage() {
           <div className="mt-4">
             <h3 className="text-2xl font-bold tracking-tight text-slate-900">
               {stats ? stats.aggregateTransactions : 0}{' '}
-              <span className="text-sm font-medium text-slate-500">Sales</span>
+              <span className="text-sm font-medium text-slate-500">Penjualan</span>
             </h3>
             <p className="mt-1 text-xs text-slate-500 font-medium">
               Jumlah struk belanja diselesaikan
@@ -469,6 +537,67 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* 4. Recent Transactions Table */}
+      <div className="rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm">
+        <div className="pb-4 border-b border-slate-100 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-slate-950">Riwayat Transaksi Terbaru</h2>
+            <p className="text-xs text-slate-400 font-medium mt-0.5">
+              Daftar transaksi penjualan terperinci di seluruh outlet operasional.
+            </p>
+          </div>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700">
+            {resolvedTransactions.length} Transaksi
+          </span>
+        </div>
+
+        <div className="mt-4 overflow-x-auto">
+          {resolvedTransactions.length === 0 ? (
+            <div className="flex h-[150px] items-center justify-center text-sm text-slate-400">
+              Belum ada riwayat transaksi dalam rentang tanggal terpilih
+            </div>
+          ) : (
+            <table className="min-w-full divide-y divide-slate-150 text-left text-sm text-slate-650">
+              <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th scope="col" className="px-6 py-3">Waktu</th>
+                  <th scope="col" className="px-6 py-3">Cabang Outlet</th>
+                  <th scope="col" className="px-6 py-3">Nama Kasir</th>
+                  <th scope="col" className="px-6 py-3">Total Belanja</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white text-slate-700 font-sans">
+                {resolvedTransactions.slice(0, 10).map((tx) => (
+                  <tr key={tx.id} className="hover:bg-slate-50/50 transition">
+                    <td className="whitespace-nowrap px-6 py-3.5 text-xs font-semibold text-slate-800">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-3.5 w-3.5 text-slate-455" />
+                        {formatTime(tx.createdAt)}
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-3.5 text-xs font-semibold text-slate-700">
+                      <div className="flex items-center gap-1.5">
+                        <Store className="h-3.5 w-3.5 text-slate-455" />
+                        {tx.resolvedOutlet}
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-3.5 text-xs font-semibold text-slate-700">
+                      <div className="flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5 text-slate-455" />
+                        {tx.resolvedCashier}
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-3.5 text-xs font-extrabold text-slate-900">
+                      {formatCurrency(tx.totalAmount)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>

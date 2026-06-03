@@ -10,6 +10,7 @@ import {
   orderBy,
   serverTimestamp,
   getDoc,
+  arrayUnion,
 } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/firestore';
 import type { Product, ProductFormValues } from '../types';
@@ -52,6 +53,18 @@ export const productService = {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+
+    if (data.category && data.category.trim() !== '') {
+      try {
+        const tenantRef = doc(db, 'tenants', tenantId);
+        await updateDoc(tenantRef, {
+          categories: arrayUnion(data.category.trim()),
+        });
+      } catch (err) {
+        console.error('Error adding category to tenant profile:', err);
+      }
+    }
+
     return docRef.id;
   },
 
@@ -82,6 +95,17 @@ export const productService = {
       ...data,
       updatedAt: serverTimestamp(),
     });
+
+    if (data.category && data.category.trim() !== '') {
+      try {
+        const tenantRef = doc(db, 'tenants', tenantId);
+        await updateDoc(tenantRef, {
+          categories: arrayUnion(data.category.trim()),
+        });
+      } catch (err) {
+        console.error('Error updating category in tenant profile:', err);
+      }
+    }
   },
 
   async deleteProduct(tenantId: string, productId: string): Promise<void> {
@@ -104,5 +128,19 @@ export const productService = {
     }
 
     await deleteDoc(docRef);
+  },
+
+  async getTenantCategories(tenantId: string): Promise<string[]> {
+    if (!tenantId) return [];
+    try {
+      const tenantRef = doc(db, 'tenants', tenantId);
+      const docSnap = await getDoc(tenantRef);
+      if (docSnap.exists()) {
+        return (docSnap.data().categories as string[]) || [];
+      }
+    } catch (err) {
+      console.error('Error fetching tenant categories:', err);
+    }
+    return [];
   },
 };

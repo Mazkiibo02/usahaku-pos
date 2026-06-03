@@ -19,19 +19,19 @@ export const productFormSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(3, 'Product name must be at least 3 characters.'),
+    .min(3, 'Nama produk minimal harus 3 karakter.'),
   description: z.string().trim().optional(),
   price: z
-    .number({ message: 'Price must be a valid number.' })
-    .min(0, 'Price must be greater than or equal to 0.'),
+    .number({ message: 'Harga harus berupa angka yang valid.' })
+    .min(0, 'Harga tidak boleh kurang dari 0.'),
   stock: z
-    .number({ message: 'Stock must be a valid number.' })
-    .min(0, 'Stock must be greater than or equal to 0.'),
+    .number({ message: 'Stok harus berupa angka yang valid.' })
+    .min(0, 'Stok tidak boleh kurang dari 0.'),
   sku: z.string().trim().optional(),
   category: z
     .string()
     .trim()
-    .min(1, 'Category is required.'),
+    .min(1, 'Kategori wajib diisi.'),
   isAvailable: z.boolean(),
 });
 

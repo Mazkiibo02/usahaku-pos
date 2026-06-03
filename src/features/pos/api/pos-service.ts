@@ -9,6 +9,14 @@ export interface TransactionItemPayload {
 export interface ProcessTransactionPayload {
   items: TransactionItemPayload[];
   outletId?: string;
+  customerName?: string;
+  discount?: number;
+  taxRate?: number;
+  paymentMethod?: string;
+  shippingCost?: number;
+  outletName?: string;
+  cashierName?: string;
+  shiftId: string;
 }
 
 export interface ProcessTransactionResponse {
@@ -27,7 +35,7 @@ export const posService = {
       functions,
       'processTransaction',
     );
-    
+
     try {
       const response = await processTransactionFn(payload);
       return response.data;

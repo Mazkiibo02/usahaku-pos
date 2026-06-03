@@ -274,7 +274,7 @@ export default function SettingsPage() {
                 {storeName}
               </h3>
               <span className="mt-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-650 uppercase tracking-wider">
-                {role} Account
+                {role === 'owner' ? 'Akun Pemilik' : 'Akun Kasir'}
               </span>
               
               <div className="mt-6 w-full border-t border-slate-100 pt-4 text-left space-y-3 text-xs text-slate-500">

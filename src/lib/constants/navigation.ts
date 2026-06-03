@@ -16,22 +16,22 @@ export const OWNER_NAV_LINKS: NavigationItem[] = [
     icon: LayoutDashboard,
   },
   {
-    title: 'Outlets',
+    title: 'Cabang Outlet',
     href: '/outlets',
     icon: Store,
   },
   {
-    title: 'Products',
+    title: 'Produk',
     href: '/products',
     icon: Briefcase,
   },
   {
-    title: 'Cashiers',
+    title: 'Kasir',
     href: '/cashiers',
     icon: Users,
   },
   {
-    title: 'Settings',
+    title: 'Pengaturan',
     href: '/dashboard/settings',
     icon: Settings,
   },
@@ -44,7 +44,7 @@ export const CASHIER_NAV_LINKS: NavigationItem[] = [
     icon: Wallet,
   },
   {
-    title: 'Transactions',
+    title: 'Transaksi',
     href: '/transactions',
     icon: ReceiptText,
   },

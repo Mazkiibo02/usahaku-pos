@@ -1,5 +1,6 @@
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
+import { FieldValue } from "firebase-admin/firestore";
 
 if (admin.apps.length === 0) {
   admin.initializeApp({
@@ -201,7 +202,7 @@ export const createStaffAccount = functions.https.onCall(
         role: "cashier",
         tenantId,
         outletId,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
       });
 
       return {
@@ -248,6 +249,14 @@ interface ProcessTransactionItemPayload {
 interface ProcessTransactionPayload {
   items: ProcessTransactionItemPayload[];
   outletId?: string;
+  customerName?: string;
+  discount?: number;
+  taxRate?: number;
+  paymentMethod?: string;
+  shippingCost?: number;
+  outletName?: string;
+  cashierName?: string;
+  shiftId?: string;
 }
 
 export const processTransaction = functions.https.onCall(
@@ -309,6 +318,33 @@ export const processTransaction = functions.https.onCall(
         const YYYY_MM_DD = new Date().toISOString().split('T')[0];
         const dailyStatRef = db.collection("stats").doc(tenantId).collection("daily").doc(YYYY_MM_DD);
         const dailyStatSnap = await transactionDoc.get(dailyStatRef);
+
+        // Fetch and validate active shift
+        const shiftId = data?.shiftId;
+        if (!shiftId) {
+          throw new functions.https.HttpsError(
+            "failed-precondition",
+            "Transaction must be linked to an active shift (shiftId is required)."
+          );
+        }
+
+        const shiftRef = db.collection("tenants").doc(tenantId).collection("shifts").doc(shiftId);
+        const shiftSnap = await transactionDoc.get(shiftRef);
+
+        if (!shiftSnap.exists) {
+          throw new functions.https.HttpsError(
+            "failed-precondition",
+            "The specified shift does not exist."
+          );
+        }
+
+        const shiftData = shiftSnap.data();
+        if (!shiftData || shiftData.status !== "OPEN") {
+          throw new functions.https.HttpsError(
+            "failed-precondition",
+            "The shift is already closed or invalid. Transactions cannot be processed."
+          );
+        }
 
         const productsToUpdate: Array<{
           ref: admin.firestore.DocumentReference;
@@ -383,28 +419,62 @@ export const processTransaction = functions.https.onCall(
         for (const itemUpdate of productsToUpdate) {
           transactionDoc.update(itemUpdate.ref, {
             stock: itemUpdate.newStock,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
           });
         }
 
         // Update tenant's last transaction timestamp
         const tenantRef = db.collection("tenants").doc(tenantId);
         transactionDoc.update(tenantRef, {
-          lastTransactionAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastTransactionAt: FieldValue.serverTimestamp(),
         });
+
+        // Verify and calculate final total
+        const discountVal = typeof data?.discount === "number" ? Math.max(0, data.discount) : 0;
+        const taxRateVal = typeof data?.taxRate === "number" ? Math.max(0, data.taxRate) : 0;
+        const shippingCostVal = typeof data?.shippingCost === "number" ? Math.max(0, data.shippingCost) : 0;
+        
+        const finalDiscount = Math.min(calculatedTotal, discountVal);
+        const afterDiscount = calculatedTotal - finalDiscount;
+        const taxAmount = Math.round(afterDiscount * (taxRateVal / 100));
+        const finalTotalAmount = afterDiscount + taxAmount + shippingCostVal;
 
         // Write Transaction Document
         const txRef = db.collection("transactions").doc();
         const transactionPayload = {
           tenantId,
           outletId: finalOutletId,
+          outletName: data?.outletName || "",
           cashierId: auth.uid,
+          cashierName: data?.cashierName || "Kasir",
           items: productsToUpdate.map(x => x.snapshot),
-          totalAmount: calculatedTotal,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          subtotal: calculatedTotal,
+          discount: finalDiscount,
+          taxRate: taxRateVal,
+          taxAmount: taxAmount,
+          shippingCost: shippingCostVal,
+          paymentMethod: data?.paymentMethod || "Cash",
+          customerName: data?.customerName || "",
+          totalAmount: finalTotalAmount,
+          createdAt: FieldValue.serverTimestamp(),
+          shiftId,
         };
 
         transactionDoc.set(txRef, transactionPayload);
+
+        // Update currently OPEN shift document using increment()
+        const paymentMethodStr = (data?.paymentMethod || "Cash").toUpperCase();
+        const shiftUpdateData: Record<string, any> = {};
+
+        if (paymentMethodStr === "CASH") {
+          shiftUpdateData.totalCashSales = FieldValue.increment(finalTotalAmount);
+        } else if (paymentMethodStr === "QRIS") {
+          shiftUpdateData.totalQrisSales = FieldValue.increment(finalTotalAmount);
+        }
+
+        if (Object.keys(shiftUpdateData).length > 0) {
+          transactionDoc.update(shiftRef, shiftUpdateData);
+        }
 
         // Daily statistics aggregation rollup
         if (!dailyStatSnap.exists) {
@@ -414,11 +484,11 @@ export const processTransaction = functions.https.onCall(
           }
           transactionDoc.set(dailyStatRef, {
             date: YYYY_MM_DD,
-            totalRevenue: calculatedTotal,
+            totalRevenue: finalTotalAmount,
             totalTransactions: 1,
             productsSold,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
           });
         } else {
           const currentData = dailyStatSnap.data() as Record<string, any> || {};
@@ -432,16 +502,16 @@ export const processTransaction = functions.https.onCall(
           const currentTransactions = typeof currentData.totalTransactions === 'number' ? currentData.totalTransactions : 0;
 
           transactionDoc.update(dailyStatRef, {
-            totalRevenue: currentRevenue + calculatedTotal,
+            totalRevenue: currentRevenue + finalTotalAmount,
             totalTransactions: currentTransactions + 1,
             productsSold,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
           });
         }
 
         return {
           transactionId: txRef.id,
-          totalAmount: calculatedTotal,
+          totalAmount: finalTotalAmount,
         };
       });
 

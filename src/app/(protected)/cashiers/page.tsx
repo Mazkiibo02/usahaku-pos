@@ -11,6 +11,7 @@ import type { Cashier } from '@/src/features/cashiers/types';
 import type { Outlet } from '@/src/features/outlets/types';
 import { CashierList } from '@/src/features/cashiers/components/cashier-list';
 import { CashierForm } from '@/src/features/cashiers/components/cashier-form';
+import { CashierEditModal } from '@/src/features/cashiers/components/cashier-edit-modal';
 
 export default function CashiersPage() {
   const { tenantId } = useAuthStore();
@@ -21,6 +22,8 @@ export default function CashiersPage() {
 
   // Modal Control State
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingCashier, setEditingCashier] = useState<Cashier | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!tenantId) return;
@@ -58,6 +61,11 @@ export default function CashiersPage() {
     setIsFormOpen(true);
   };
 
+  const handleEditClick = (cashier: Cashier) => {
+    setEditingCashier(cashier);
+    setIsEditOpen(true);
+  };
+
   // Compute stats
   const totalCashiers = cashiers.length;
   const totalOutlets = outlets.length;
@@ -86,13 +94,15 @@ export default function CashiersPage() {
             Kelola akun staf kasir Anda dan tugaskan mereka ke cabang outlet operasional.
           </p>
         </div>
-        <button
-          onClick={handleAddClick}
-          className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-950/20"
-        >
-          <Plus className="mr-1.5 h-5 w-5" />
-          Tambah Kasir
-        </button>
+        {cashiers.length > 0 && (
+          <button
+            onClick={handleAddClick}
+            className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-950/20"
+          >
+            <Plus className="mr-1.5 h-5 w-5" />
+            Tambah Kasir
+          </button>
+        )}
       </div>
 
       {/* Stats Summary Cards */}
@@ -195,6 +205,7 @@ export default function CashiersPage() {
           cashiers={cashiers}
           outlets={outlets}
           onAddTrigger={handleAddClick}
+          onEdit={handleEditClick}
         />
       )}
 
@@ -203,6 +214,20 @@ export default function CashiersPage() {
         <CashierForm
           isOpen={isFormOpen}
           onClose={() => setIsFormOpen(false)}
+          outlets={outlets}
+          onSuccess={fetchData}
+        />
+      )}
+
+      {/* Edit Modal Overlay */}
+      {isEditOpen && (
+        <CashierEditModal
+          isOpen={isEditOpen}
+          onClose={() => {
+            setIsEditOpen(false);
+            setEditingCashier(null);
+          }}
+          cashier={editingCashier}
           outlets={outlets}
           onSuccess={fetchData}
         />

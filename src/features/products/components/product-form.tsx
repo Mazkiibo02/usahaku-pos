@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,6 +34,9 @@ export function ProductForm({
   const isEditMode = !!product;
   const [error, setError] = useState<string | null>(null);
   const [displayPrice, setDisplayPrice] = useState('');
+  const [categories, setCategories] = useState<string[]>([]);
+  const [isCategoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const {
     register,
@@ -55,6 +58,12 @@ export function ProductForm({
   });
 
   const isAvailableValue = watch('isAvailable');
+  const categoryValue = watch('category') || '';
+
+  // Filter categories case-insensitively based on input value
+  const filteredCategories = categories.filter((cat) =>
+    cat.toLowerCase().includes(categoryValue.toLowerCase())
+  );
 
   // Register the price field programmatically in React Hook Form
   useEffect(() => {
@@ -85,6 +94,37 @@ export function ProductForm({
     setError(null);
   }, [product, setValue]);
 
+  // Fetch tenant categories on open
+  useEffect(() => {
+    const fetchCategories = async () => {
+      if (!tenantId) return;
+      try {
+        console.log('[ProductForm] Memulai penarikan kategori untuk tenantId:', tenantId);
+        const cats = await productService.getTenantCategories(tenantId);
+        console.log('[ProductForm] Kategori berhasil dimuat:', cats);
+        setCategories(cats);
+      } catch (err) {
+        console.error('[ProductForm] Gagal memuat kategori dari Firestore:', err);
+      }
+    };
+    if (isOpen) {
+      fetchCategories();
+    }
+  }, [tenantId, isOpen]);
+
+  // Handle click outside of the category dropdown to close it
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setCategoryDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value.replace(/[^0-9]/g, '');
     const numericValue = rawValue ? parseInt(rawValue, 10) : 0;
@@ -106,7 +146,7 @@ export function ProductForm({
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('An unexpected error occurred. Please try again.');
+        setError('Terjadi kesalahan yang tidak terduga. Silakan coba lagi.');
       }
     }
   };
@@ -135,12 +175,12 @@ export function ProductForm({
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-4 shrink-0">
               <h2 className="text-xl font-bold text-slate-900">
-                {isEditMode ? 'Edit Product Item' : 'Add New Product Item'}
+                {isEditMode ? 'Edit Produk' : 'Tambah Produk Baru'}
               </h2>
               <button
                 onClick={onClose}
                 className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                aria-label="Close dialog"
+                aria-label="Tutup dialog"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -153,21 +193,20 @@ export function ProductForm({
               </div>
             )}
 
-            {/* Form Scroll Area */}
             <form
               onSubmit={handleSubmit(onSubmit)}
-              className="mt-4 space-y-4 overflow-y-auto pr-1 flex-1 pb-4"
+              className="mt-4 space-y-4 overflow-y-auto pr-1 flex-1 pb-32"
               noValidate
             >
               {/* Product Name */}
               <div className="space-y-1">
                 <label htmlFor="name" className="block text-sm font-semibold text-slate-700">
-                  Product Name
+                  Nama Produk
                 </label>
                 <input
                   id="name"
                   type="text"
-                  placeholder="e.g. Nasi Goreng Spesial"
+                  placeholder="Contoh: Nasi Goreng Spesial"
                   {...register('name')}
                   disabled={isSubmitting}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5 disabled:cursor-not-allowed disabled:opacity-70"
@@ -180,18 +219,45 @@ export function ProductForm({
               {/* SKU & Category (Two columns on desktop) */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {/* Category */}
-                <div className="space-y-1">
+                <div ref={dropdownRef} className="relative space-y-1">
                   <label htmlFor="category" className="block text-sm font-semibold text-slate-700">
-                    Category
+                    Kategori
                   </label>
-                  <input
-                    id="category"
-                    type="text"
-                    placeholder="e.g. Food, Beverage, Fashion"
-                    {...register('category')}
-                    disabled={isSubmitting}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5 disabled:cursor-not-allowed disabled:opacity-70"
-                  />
+                  <div className="relative">
+                    <input
+                      id="category"
+                      type="text"
+                      placeholder="Contoh: Makanan, Minuman, Pakaian"
+                      {...register('category')}
+                      onFocus={() => setCategoryDropdownOpen(true)}
+                      disabled={isSubmitting}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5 disabled:cursor-not-allowed disabled:opacity-70"
+                      autoComplete="off"
+                    />
+                    
+                    {isCategoryDropdownOpen && (
+                      <ul className="absolute z-50 left-0 right-0 mt-1 max-h-40 w-full overflow-y-auto rounded-lg bg-white border border-slate-200 shadow-lg py-1">
+                        {filteredCategories.length > 0 ? (
+                          filteredCategories.map((cat) => (
+                            <li
+                              key={cat}
+                              onClick={() => {
+                                setValue('category', cat, { shouldValidate: true });
+                                setCategoryDropdownOpen(false);
+                              }}
+                              className="cursor-pointer px-3.5 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-950 transition-colors font-medium border-b border-slate-50 last:border-0"
+                            >
+                              {cat}
+                            </li>
+                          ))
+                        ) : (
+                          <li className="px-3.5 py-2.5 text-xs text-slate-400 italic">
+                            Buat kategori baru &ldquo;{categoryValue}&rdquo;
+                          </li>
+                        )}
+                      </ul>
+                    )}
+                  </div>
                   {errors.category && (
                     <p className="text-xs font-medium text-rose-600">{errors.category.message}</p>
                   )}
@@ -200,12 +266,12 @@ export function ProductForm({
                 {/* SKU */}
                 <div className="space-y-1">
                   <label htmlFor="sku" className="block text-sm font-semibold text-slate-700">
-                    SKU Code <span className="text-xs font-normal text-slate-400">(Optional)</span>
+                    Kode SKU <span className="text-xs font-normal text-slate-400">(Opsional)</span>
                   </label>
                   <input
                     id="sku"
                     type="text"
-                    placeholder="e.g. NSG-001"
+                    placeholder="Contoh: NSG-001"
                     {...register('sku')}
                     disabled={isSubmitting}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5 disabled:cursor-not-allowed disabled:opacity-70"
@@ -221,7 +287,7 @@ export function ProductForm({
                 {/* Price with Masking */}
                 <div className="space-y-1">
                   <label htmlFor="price" className="block text-sm font-semibold text-slate-700">
-                    Unit Price (IDR)
+                    Harga Satuan (Rp)
                   </label>
                   <div className="relative flex items-center">
                     <span className="absolute left-3 text-sm font-semibold text-slate-400 select-none">
@@ -245,7 +311,7 @@ export function ProductForm({
                 {/* Stock Level */}
                 <div className="space-y-1">
                   <label htmlFor="stock" className="block text-sm font-semibold text-slate-700">
-                    Available Stock
+                    Stok Tersedia
                   </label>
                   <input
                     id="stock"
@@ -265,11 +331,11 @@ export function ProductForm({
               {/* Description */}
               <div className="space-y-1">
                 <label htmlFor="description" className="block text-sm font-semibold text-slate-700">
-                  Description <span className="text-xs font-normal text-slate-400">(Optional)</span>
+                  Deskripsi <span className="text-xs font-normal text-slate-400">(Opsional)</span>
                 </label>
                 <textarea
                   id="description"
-                  placeholder="Provide product details, sizing, or ingredients description..."
+                  placeholder="Masukkan detail produk, ukuran, atau bahan..."
                   rows={3}
                   {...register('description')}
                   disabled={isSubmitting}
@@ -283,11 +349,11 @@ export function ProductForm({
               {/* Switch / Status toggle */}
               <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 p-4 shrink-0">
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-800">Availability Status</h4>
+                  <h4 className="text-sm font-semibold text-slate-800">Status Ketersediaan</h4>
                   <p className="text-xs text-slate-500">
                     {isAvailableValue
-                      ? 'This item is in stock and visible on POS checkout catalog'
-                      : 'This item is out of stock / hidden from POS catalog'}
+                      ? 'Produk ini tersedia dan akan tampil di katalog kasir'
+                      : 'Produk ini habis / disembunyikan dari katalog kasir'}
                   </p>
                 </div>
                 <button
@@ -314,7 +380,7 @@ export function ProductForm({
                   disabled={isSubmitting}
                   className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
                 >
-                  Cancel
+                  Batal
                 </button>
                 <button
                   type="submit"
@@ -324,12 +390,12 @@ export function ProductForm({
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
+                      Menyimpan...
                     </>
                   ) : isEditMode ? (
-                    'Save Changes'
+                    'Simpan Perubahan'
                   ) : (
-                    'Add Product'
+                    'Simpan Produk'
                   )}
                 </button>
               </div>

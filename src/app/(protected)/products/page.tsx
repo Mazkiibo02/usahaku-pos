@@ -33,7 +33,7 @@ export default function ProductsPage() {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('Failed to fetch product catalog. Please try again.');
+        setError('Gagal memuat katalog produk. Silakan coba lagi.');
       }
     } finally {
       setIsLoading(false);
@@ -67,7 +67,7 @@ export default function ProductsPage() {
       <div className="flex min-h-[50vh] items-center justify-center">
         <div className="text-center">
           <Loader2 className="mx-auto h-8 w-8 animate-spin text-slate-400" />
-          <p className="mt-2 text-sm text-slate-500">Syncing authentication state...</p>
+          <p className="mt-2 text-sm text-slate-500">Menyinkronkan status autentikasi...</p>
         </div>
       </div>
     );
@@ -79,10 +79,10 @@ export default function ProductsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between shrink-0">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
-            Product Catalog
+            Katalog Produk
           </h1>
           <p className="text-sm text-slate-500 md:text-base">
-            Manage your physical products, master stock parameters, pricing, and catalog categorizations.
+            Kelola produk fisik, parameter stok utama, harga, dan kategorisasi katalog Anda.
           </p>
         </div>
         <button
@@ -90,7 +90,7 @@ export default function ProductsPage() {
           className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-950/20"
         >
           <Plus className="mr-1.5 h-5 w-5" />
-          Add Product
+          Tambah Produk
         </button>
       </div>
 
@@ -105,7 +105,7 @@ export default function ProductsPage() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Products</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Produk</p>
               <h3 className="mt-1 text-2xl font-bold text-slate-900">
                 {isLoading ? (
                   <div className="h-7 w-12 animate-pulse rounded bg-slate-100" />
@@ -129,7 +129,7 @@ export default function ProductsPage() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Available Items</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Produk Tersedia</p>
               <h3 className="mt-1 text-2xl font-bold text-slate-900">
                 {isLoading ? (
                   <div className="h-7 w-12 animate-pulse rounded bg-slate-100" />
@@ -153,7 +153,7 @@ export default function ProductsPage() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Categories</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Kategori</p>
               <h3 className="mt-1 text-2xl font-bold text-slate-900">
                 {isLoading ? (
                   <div className="h-7 w-12 animate-pulse rounded bg-slate-100" />

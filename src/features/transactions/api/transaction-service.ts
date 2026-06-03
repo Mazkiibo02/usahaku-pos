@@ -16,6 +16,10 @@ export const transactionService = {
    * Mengambil riwayat transaksi penjualan yang terisolasi berdasarkan tenantId.
    * Diurutkan dari transaksi terbaru (createdAt desc) dan dibatasi jumlahnya untuk optimalisasi.
    */
+  /**
+   * Mengambil riwayat transaksi penjualan yang terisolasi berdasarkan tenantId.
+   * Diurutkan dari transaksi terbaru (createdAt desc) dan dibatasi jumlahnya untuk optimalisasi.
+   */
   async getTransactions(tenantId: string, limitCount = 50): Promise<Transaction[]> {
     if (!tenantId) {
       throw new Error('Tenant ID is required');
@@ -27,6 +31,40 @@ export const transactionService = {
       where('tenantId', '==', tenantId),
       orderBy('createdAt', 'desc'),
       limit(limitCount)
+    );
+
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+      } as Transaction;
+    });
+  },
+
+  /**
+   * Mengambil riwayat transaksi penjualan dalam rentang tanggal tertentu.
+   */
+  async getTransactionsInDateRange(
+    tenantId: string,
+    startDateStr: string,
+    endDateStr: string
+  ): Promise<Transaction[]> {
+    if (!tenantId) {
+      throw new Error('Tenant ID is required');
+    }
+
+    const startTimestamp = new Date(startDateStr + 'T00:00:00');
+    const endTimestamp = new Date(endDateStr + 'T23:59:59.999');
+
+    const transactionsRef = collection(db, 'transactions');
+    const q = query(
+      transactionsRef,
+      where('tenantId', '==', tenantId),
+      where('createdAt', '>=', startTimestamp),
+      where('createdAt', '<=', endTimestamp),
+      orderBy('createdAt', 'desc')
     );
 
     const querySnapshot = await getDocs(q);

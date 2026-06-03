@@ -5,6 +5,9 @@ import {
   query,
   where,
   orderBy,
+  doc,
+  updateDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { functions } from '@/src/lib/firebase/functions';
 import { db } from '@/src/lib/firebase/firestore';
@@ -55,6 +58,25 @@ export const cashierService = {
         ...data,
         uid: doc.id,
       } as Cashier;
+    });
+  },
+
+  /**
+   * Memperbarui outlet penugasan (mutasi kasir) di Firestore.
+   * Hanya memperbarui document staff di Firestore, tidak membuat/mengubah Auth user.
+   */
+  async updateCashierOutlet(cashierId: string, outletId: string): Promise<void> {
+    if (!cashierId) {
+      throw new Error('Cashier ID is required');
+    }
+    if (!outletId) {
+      throw new Error('Outlet ID is required');
+    }
+
+    const docRef = doc(db, 'staff', cashierId);
+    await updateDoc(docRef, {
+      outletId,
+      updatedAt: serverTimestamp(),
     });
   },
 };

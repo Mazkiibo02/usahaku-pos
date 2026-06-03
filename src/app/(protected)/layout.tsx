@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { AppShell } from '@/src/components/layout/app-shell';
 import { AuthGuard } from '@/src/features/auth/components/auth-guard';
 import { useAuthStore } from '@/src/stores/authStore';
+import { useShiftStore } from '@/src/stores/shiftStore';
 
 type ProtectedLayoutProps = {
   children: React.ReactNode;
@@ -21,7 +22,8 @@ function FullScreenSpinner() {
 
 export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
   const router = useRouter();
-  const { user, isLoading } = useAuthStore();
+  const { user, tenantId, isLoading } = useAuthStore();
+  const { fetchActiveShift } = useShiftStore();
   const isAuthenticated = !!user;
 
   useEffect(() => {
@@ -29,6 +31,12 @@ export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
       router.replace('/login');
     }
   }, [isAuthenticated, isLoading, router]);
+
+  useEffect(() => {
+    if (isAuthenticated && user?.uid && tenantId) {
+      fetchActiveShift(tenantId, user.uid).catch(console.error);
+    }
+  }, [isAuthenticated, user?.uid, tenantId, fetchActiveShift]);
 
   if (isLoading || !isAuthenticated) {
     return <FullScreenSpinner />;

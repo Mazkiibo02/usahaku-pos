@@ -55,7 +55,7 @@ export function ProductList({
       if (err instanceof Error) {
         setDeleteError(err.message);
       } else {
-        setDeleteError('Failed to delete product. Please try again.');
+        setDeleteError('Gagal menghapus produk. Silakan coba lagi.');
       }
     }
   };
@@ -98,15 +98,15 @@ export function ProductList({
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400">
           <PackageOpen className="h-8 w-8" />
         </div>
-        <h3 className="mt-4 text-lg font-bold text-slate-800">Your Product Catalog is Empty</h3>
+        <h3 className="mt-4 text-lg font-bold text-slate-800">Katalog Produk Anda Kosong</h3>
         <p className="mt-2 max-w-sm text-sm text-slate-500">
-          Start adding menu items, goods, or retail services to your store catalog so cashiers can register transactions.
+          Mulai tambahkan menu, barang, atau jasa retail ke katalog toko Anda agar kasir dapat memproses transaksi.
         </p>
         <button
           onClick={onAddTrigger}
           className="mt-6 inline-flex items-center rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-950/20"
         >
-          Add Your First Product
+          Tambah Produk Pertama Anda
         </button>
       </div>
     );
@@ -120,7 +120,7 @@ export function ProductList({
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search by name, SKU code, or category..."
+            placeholder="Cari berdasarkan nama, kode SKU, atau kategori..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-lg border border-slate-200 bg-slate-50/50 pl-10 pr-4 py-2 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-slate-400 focus:bg-white"
@@ -137,7 +137,7 @@ export function ProductList({
           >
             {categoriesList.map((category) => (
               <option key={category} value={category}>
-                {category === 'ALL' ? 'All Categories' : category}
+                {category === 'ALL' ? 'Semua Kategori' : category}
               </option>
             ))}
           </select>
@@ -149,21 +149,21 @@ export function ProductList({
         {filteredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <PackageOpen className="h-10 w-10 text-slate-300" />
-            <p className="mt-2 text-sm text-slate-500">No products matched your search or filters.</p>
+            <p className="mt-2 text-sm text-slate-500">Tidak ada produk yang cocok dengan pencarian atau filter Anda.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left text-sm text-slate-600">
               <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500">
                 <tr>
-                  <th scope="col" className="px-6 py-4">Product Name</th>
+                  <th scope="col" className="px-6 py-4">Nama Produk</th>
                   <th scope="col" className="px-6 py-4">SKU</th>
-                  <th scope="col" className="px-6 py-4">Category</th>
-                  <th scope="col" className="px-6 py-4">Unit Price</th>
-                  <th scope="col" className="px-6 py-4">Stock</th>
+                  <th scope="col" className="px-6 py-4">Kategori</th>
+                  <th scope="col" className="px-6 py-4">Harga Satuan</th>
+                  <th scope="col" className="px-6 py-4">Stok</th>
                   <th scope="col" className="px-6 py-4">Status</th>
-                  <th scope="col" className="px-6 py-4">Added On</th>
-                  <th scope="col" className="px-6 py-4 text-right">Actions</th>
+                  <th scope="col" className="px-6 py-4">Ditambahkan Pada</th>
+                  <th scope="col" className="px-6 py-4 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -208,11 +208,11 @@ export function ProductList({
                     <td className="whitespace-nowrap px-6 py-4">
                       {product.stock <= 0 ? (
                         <span className="inline-flex items-center rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-700 border border-rose-200/50">
-                          0 (Out of stock)
+                          0 (Habis)
                         </span>
                       ) : product.stock <= 5 ? (
                         <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 border border-amber-200/50">
-                          {product.stock} (Low stock)
+                          {product.stock} (Stok menipis)
                         </span>
                       ) : (
                         <span className="inline-flex items-center text-slate-900 font-semibold">
@@ -234,7 +234,7 @@ export function ProductList({
                             product.isAvailable ? 'bg-emerald-500' : 'bg-rose-500'
                           }`}
                         />
-                        {product.isAvailable ? 'Available' : 'Out of Stock'}
+                        {product.isAvailable ? 'Tersedia' : 'Habis'}
                       </span>
                     </td>
                     {/* Created Date */}
@@ -247,14 +247,14 @@ export function ProductList({
                         <button
                           onClick={() => onEdit(product)}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-                          title="Edit product"
+                          title="Ubah produk"
                         >
                           <Edit2 className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => setDeleteTarget(product)}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-100 bg-white text-rose-500 transition hover:bg-rose-50 hover:text-rose-700"
-                          title="Delete product"
+                          title="Hapus produk"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -294,10 +294,10 @@ export function ProductList({
                   <AlertTriangle className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">Delete Product Item?</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Hapus Item Produk?</h3>
                   <p className="mt-2 text-sm text-slate-500">
-                    Are you sure you want to delete <span className="font-semibold text-slate-800">&quot;{deleteTarget.name}&quot;</span>?
-                    This action is permanent and cannot be undone. Any cashiers currently viewing this item will no longer be able to select it.
+                    Apakah Anda yakin ingin menghapus <span className="font-semibold text-slate-800">&quot;{deleteTarget.name}&quot;</span>?
+                    Tindakan ini permanen dan tidak dapat dibatalkan. Kasir yang saat ini melihat item ini tidak akan dapat memilihnya lagi.
                   </p>
                 </div>
               </div>
@@ -315,7 +315,7 @@ export function ProductList({
                   disabled={isDeleting}
                   className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
                 >
-                  Cancel
+                  Batal
                 </button>
                 <button
                   type="button"
@@ -326,10 +326,10 @@ export function ProductList({
                   {isDeleting ? (
                     <>
                       <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                      Deleting...
+                      Menghapus...
                     </>
                   ) : (
-                    'Delete'
+                    'Hapus'
                   )}
                 </button>
               </div>

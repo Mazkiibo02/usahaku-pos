@@ -41,7 +41,7 @@ export function OutletList({
       if (err instanceof Error) {
         setDeleteError(err.message);
       } else {
-        setDeleteError('Failed to delete outlet. Please try again.');
+        setDeleteError('Gagal menghapus outlet. Silakan coba lagi.');
       }
     }
   };
@@ -63,15 +63,15 @@ export function OutletList({
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400">
           <Store className="h-8 w-8" />
         </div>
-        <h3 className="mt-4 text-lg font-bold text-slate-800">No outlets registered</h3>
+        <h3 className="mt-4 text-lg font-bold text-slate-800">Belum ada outlet terdaftar</h3>
         <p className="mt-2 max-w-sm text-sm text-slate-500">
-          Set up physical outlets or stores under your business so your cashiers can process checkouts.
+          Siapkan outlet atau toko fisik di bawah bisnis Anda agar kasir dapat memproses transaksi.
         </p>
         <button
           onClick={onAddTrigger}
           className="mt-6 inline-flex items-center rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-950/20"
         >
-          Add Your First Outlet
+          Tambah Outlet Pertama Anda
         </button>
       </div>
     );
@@ -84,12 +84,12 @@ export function OutletList({
           <table className="w-full border-collapse text-left text-sm text-slate-600">
             <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500">
               <tr>
-                <th scope="col" className="px-6 py-4">Outlet Name</th>
-                <th scope="col" className="px-6 py-4">Address</th>
-                <th scope="col" className="px-6 py-4">Phone</th>
+                <th scope="col" className="px-6 py-4">Nama Outlet</th>
+                <th scope="col" className="px-6 py-4">Alamat</th>
+                <th scope="col" className="px-6 py-4">Telepon</th>
                 <th scope="col" className="px-6 py-4">Status</th>
-                <th scope="col" className="px-6 py-4">Date Added</th>
-                <th scope="col" className="px-6 py-4 text-right">Actions</th>
+                <th scope="col" className="px-6 py-4">Tanggal Dibuat</th>
+                <th scope="col" className="px-6 py-4 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -131,7 +131,7 @@ export function OutletList({
                           outlet.isActive ? 'bg-emerald-500' : 'bg-slate-400'
                         }`}
                       />
-                      {outlet.isActive ? 'Active' : 'Inactive'}
+                      {outlet.isActive ? 'Aktif' : 'Tidak Aktif'}
                     </span>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-slate-500">
@@ -142,14 +142,14 @@ export function OutletList({
                       <button
                         onClick={() => onEdit(outlet)}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-                        title="Edit outlet"
+                        title="Ubah outlet"
                       >
                         <Edit2 className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={() => setDeleteTarget(outlet)}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-100 bg-white text-rose-500 transition hover:bg-rose-50 hover:text-rose-700"
-                        title="Delete outlet"
+                        title="Hapus outlet"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -188,10 +188,10 @@ export function OutletList({
                   <AlertTriangle className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">Delete Outlet?</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Hapus Outlet?</h3>
                   <p className="mt-2 text-sm text-slate-500">
-                    Are you sure you want to delete <span className="font-semibold text-slate-800">&quot;{deleteTarget.name}&quot;</span>?
-                    This action is permanent and cannot be undone. Any cashiers assigned to this branch will need to be reassigned.
+                    Apakah Anda yakin ingin menghapus <span className="font-semibold text-slate-800">&quot;{deleteTarget.name}&quot;</span>?
+                    Tindakan ini permanen dan tidak dapat dibatalkan. Kasir yang ditugaskan ke cabang ini harus ditugaskan kembali.
                   </p>
                 </div>
               </div>
@@ -209,7 +209,7 @@ export function OutletList({
                   disabled={isDeleting}
                   className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
                 >
-                  Cancel
+                  Batal
                 </button>
                 <button
                   type="button"
@@ -220,10 +220,10 @@ export function OutletList({
                   {isDeleting ? (
                     <>
                       <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                      Deleting...
+                      Menghapus...
                     </>
                   ) : (
-                    'Delete'
+                    'Hapus'
                   )}
                 </button>
               </div>

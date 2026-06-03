@@ -26,7 +26,7 @@ export function Sidebar({ role, className, onNavigate }: SidebarProps) {
     >
       <div className="border-b border-slate-200 px-6 py-5">
         <p className="text-lg font-semibold tracking-tight text-slate-900">Usahaku POS</p>
-        <p className="mt-1 text-xs uppercase tracking-wide text-slate-500">Navigation</p>
+        <p className="mt-1 text-xs uppercase tracking-wide text-slate-500">Navigasi</p>
       </div>
 
       <nav className="flex-1 space-y-1 p-3">
