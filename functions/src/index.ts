@@ -1,6 +1,10 @@
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
 import { FieldValue } from "firebase-admin/firestore";
+import { onRequest } from "firebase-functions/v2/https";
+import { defineSecret } from "firebase-functions/params";
+import * as logger from "firebase-functions/logger";
+import * as crypto from "crypto";
 
 if (admin.apps.length === 0) {
   admin.initializeApp({
@@ -8,8 +12,24 @@ if (admin.apps.length === 0) {
   });
 }
 
+const midtransServerKeySecret = defineSecret("MIDTRANS_SERVER_KEY");
+
 interface OnboardTenantPayload {
   tenantName?: string;
+}
+
+export interface TenantSubscription {
+  status: 'TRIAL' | 'PAID' | 'EXPIRED';
+  trialEndsAt: admin.firestore.Timestamp;
+  currentPeriodEnd: admin.firestore.Timestamp;
+}
+
+export interface Tenant {
+  name: string;
+  ownerId: string;
+  createdAt: Date | admin.firestore.FieldValue;
+  lastTransactionAt: Date | null | admin.firestore.FieldValue;
+  subscription: TenantSubscription;
 }
 
 // Menggunakan format CallableRequest terbaru
@@ -58,6 +78,11 @@ export const onboardTenant = functions.https.onCall(
         ownerId: uid,
         createdAt: new Date(),
         lastTransactionAt: null,
+        subscription: {
+          status: 'TRIAL',
+          trialEndsAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+          currentPeriodEnd: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+        }
       });
       tenantId = tenantRef.id;
 
@@ -537,6 +562,189 @@ export const processTransaction = functions.https.onCall(
         "internal",
         error?.message || "Failed to process transaction. Please try again."
       );
+    }
+  }
+);
+
+interface MidtransNotificationBody {
+  order_id?: string;
+  status_code?: string;
+  gross_amount?: string;
+  signature_key?: string;
+  transaction_status?: string;
+  payment_type?: string;
+  settlement_time?: string;
+  fraud_status?: string;
+}
+
+export const midtransWebhook = onRequest(
+  { secrets: [midtransServerKeySecret] },
+  async (req, res) => {
+    if (req.method !== "POST") {
+      res.status(405).send("Method Not Allowed");
+      return;
+    }
+
+    const {
+      order_id,
+      status_code,
+      gross_amount,
+      signature_key,
+      transaction_status,
+      payment_type,
+      settlement_time,
+      fraud_status,
+    } = req.body as MidtransNotificationBody;
+
+    logger.info("Received Midtrans Webhook Notification", {
+      order_id,
+      status_code,
+      gross_amount,
+      transaction_status,
+      payment_type,
+    });
+
+    if (!order_id || !status_code || !gross_amount || !signature_key || !transaction_status) {
+      logger.warn("Midtrans webhook received invalid or incomplete payload", { body: req.body });
+      res.status(400).send("Bad Payload");
+      return;
+    }
+
+    const serverKey = process.env.MIDTRANS_SERVER_KEY || midtransServerKeySecret.value();
+    if (!serverKey) {
+      logger.error("MIDTRANS_SERVER_KEY environment variable is not defined");
+      res.status(500).send("Internal Server Error");
+      return;
+    }
+
+    // SHA512(order_id + status_code + gross_amount + MIDTRANS_SERVER_KEY)
+    const hashString = order_id + status_code + gross_amount + serverKey;
+    const computedSignature = crypto
+      .createHash("sha512")
+      .update(hashString)
+      .digest("hex");
+
+    if (computedSignature !== signature_key) {
+      logger.warn("Signature verification failed", {
+        order_id,
+        received: signature_key,
+        computed: computedSignature,
+      });
+      res.status(401).send("Unauthorized");
+      return;
+    }
+
+    const db = admin.firestore();
+    const invoiceRef = db.collection("invoices").doc(order_id);
+
+    try {
+      const result = await db.runTransaction(async (transaction) => {
+        const invoiceSnap = await transaction.get(invoiceRef);
+
+        if (!invoiceSnap.exists) {
+          logger.warn(`Invoice document not found in Firestore: ${order_id}`);
+          return { status: 400, message: "Invoice not found" };
+        }
+
+        const invoiceData = invoiceSnap.data();
+        if (invoiceData?.status === "PAID") {
+          logger.info(`Invoice ${order_id} already marked as PAID. Skipping.`);
+          return { status: 200, message: "Transaction already processed" };
+        }
+
+        let newStatus: "PENDING" | "PAID" | "EXPIRED" | "FAILED" = invoiceData?.status || "PENDING";
+        let shouldUnlockTenant = false;
+
+        if (
+          transaction_status === "settlement" ||
+          (transaction_status === "capture" && fraud_status === "accept")
+        ) {
+          newStatus = "PAID";
+          shouldUnlockTenant = true;
+        } else if (transaction_status === "deny" || transaction_status === "cancel") {
+          newStatus = "FAILED";
+        } else if (transaction_status === "expire") {
+          newStatus = "EXPIRED";
+        }
+
+        const invoiceUpdate: any = {
+          status: newStatus,
+          paymentType: payment_type || invoiceData?.paymentType || "unknown",
+          updatedAt: FieldValue.serverTimestamp(),
+        };
+
+        if (settlement_time) {
+          const parsedSettlementTime = new Date(settlement_time);
+          if (!isNaN(parsedSettlementTime.getTime())) {
+            invoiceUpdate.settlementTime = admin.firestore.Timestamp.fromDate(parsedSettlementTime);
+          } else {
+            invoiceUpdate.settlementTime = FieldValue.serverTimestamp();
+          }
+        } else if (newStatus === "PAID") {
+          invoiceUpdate.settlementTime = FieldValue.serverTimestamp();
+        }
+
+        transaction.update(invoiceRef, invoiceUpdate);
+
+        if (shouldUnlockTenant) {
+          const tenantId = invoiceData?.tenantId;
+          if (tenantId) {
+            const tenantRef = db.collection("tenants").doc(tenantId);
+            const tenantSnap = await transaction.get(tenantRef);
+
+            if (tenantSnap.exists) {
+              const tenantData = tenantSnap.data();
+              let currentExpiry: Date | null = null;
+
+              if (tenantData) {
+                const prevValidUntil = tenantData.validUntil;
+                const prevPeriodEnd = tenantData.subscription?.currentPeriodEnd;
+
+                if (prevValidUntil instanceof admin.firestore.Timestamp) {
+                  currentExpiry = prevValidUntil.toDate();
+                } else if (prevPeriodEnd instanceof admin.firestore.Timestamp) {
+                  currentExpiry = prevPeriodEnd.toDate();
+                }
+              }
+
+              const now = new Date();
+              let newExpiry: Date;
+
+              if (currentExpiry && currentExpiry > now) {
+                newExpiry = new Date(currentExpiry.getTime() + 30 * 24 * 60 * 60 * 1000);
+              } else {
+                newExpiry = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+              }
+
+              const newExpiryTimestamp = admin.firestore.Timestamp.fromDate(newExpiry);
+
+              transaction.update(tenantRef, {
+                subscriptionStatus: "PAID",
+                validUntil: newExpiryTimestamp,
+                "subscription.status": "PAID",
+                "subscription.currentPeriodEnd": newExpiryTimestamp,
+              });
+
+              logger.info(`Successfully updated tenant ${tenantId} subscription status to PAID. New expiry: ${newExpiry.toISOString()}`);
+            } else {
+              logger.error(`Tenant document ${tenantId} not found during webhook processing`);
+            }
+          } else {
+            logger.warn(`Invoice ${order_id} does not have a tenantId associated with it`);
+          }
+        }
+
+        return { status: 200, message: "OK" };
+      });
+
+      res.status(result.status).send(result.message);
+    } catch (error: any) {
+      logger.error("Error processing Midtrans webhook transaction", {
+        order_id,
+        errorMessage: error?.message || "Unknown error",
+        errorStack: error?.stack,
+      });
+      res.status(500).send("Internal Database Error");
     }
   }
 );
