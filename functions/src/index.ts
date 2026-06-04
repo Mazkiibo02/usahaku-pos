@@ -1,10 +1,12 @@
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
 import { FieldValue } from "firebase-admin/firestore";
-import { onRequest } from "firebase-functions/v2/https";
+import { onRequest, onCall } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as logger from "firebase-functions/logger";
 import * as crypto from "crypto";
+// @ts-ignore
+import * as midtransClient from "midtrans-client";
 
 if (admin.apps.length === 0) {
   admin.initializeApp({
@@ -745,6 +747,103 @@ export const midtransWebhook = onRequest(
         errorStack: error?.stack,
       });
       res.status(500).send("Internal Database Error");
+    }
+  }
+);
+
+export const createCheckoutSession = onCall(
+  { secrets: [midtransServerKeySecret] },
+  async (request) => {
+    const { auth } = request;
+
+    if (!auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "Authentication is required to create a checkout session."
+      );
+    }
+
+    const role = auth.token.role;
+    if (role !== "owner") {
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        "Only owners are authorized to create subscription checkout sessions."
+      );
+    }
+
+    const tenantId = auth.token.tenantId;
+    if (!tenantId) {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "Owner account is not associated with a tenant ID."
+      );
+    }
+
+    const serverKey = process.env.MIDTRANS_SERVER_KEY || midtransServerKeySecret.value();
+    if (!serverKey) {
+      logger.error("MIDTRANS_SERVER_KEY environment variable is not defined");
+      throw new functions.https.HttpsError(
+        "internal",
+        "Payment gateway server key is not configured."
+      );
+    }
+
+    const invoiceId = `INV-${tenantId}-${Date.now()}`;
+    const amount = 150000;
+
+    // Initialize Midtrans Snap client
+    const snap = new midtransClient.Snap({
+      isProduction: false,
+      serverKey: serverKey,
+    });
+
+    const parameter = {
+      transaction_details: {
+        order_id: invoiceId,
+        gross_amount: amount,
+      },
+      item_details: [
+        {
+          id: "premium_30_days",
+          price: amount,
+          quantity: 1,
+          name: "Usahaku POS Premium - 30 Hari",
+        },
+      ],
+      customer_details: {
+        email: auth.token.email || "",
+        first_name: auth.token.name || "",
+      },
+    };
+
+    try {
+      const transaction = await snap.createTransaction(parameter);
+
+      const db = admin.firestore();
+      await db.collection("invoices").doc(invoiceId).set({
+        tenantId,
+        amount,
+        status: "PENDING",
+        paymentType: "pending",
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+
+      return {
+        token: transaction.token,
+        redirectUrl: transaction.redirect_url,
+        orderId: invoiceId,
+      };
+    } catch (error: any) {
+      logger.error("Error creating Midtrans checkout session", {
+        tenantId,
+        errorMessage: error?.message || "Unknown error",
+        errorStack: error?.stack,
+      });
+      throw new functions.https.HttpsError(
+        "internal",
+        error?.message || "Failed to create checkout session."
+      );
     }
   }
 );
