@@ -2,14 +2,14 @@ import {
   collection,
   doc,
   getDocs,
-  addDoc,
   updateDoc,
-  deleteDoc,
   query,
   where,
   orderBy,
   serverTimestamp,
   getDoc,
+  writeBatch,
+  increment,
 } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/firestore';
 import type { Outlet, OutletFormValues } from '../types';
@@ -39,8 +39,11 @@ export const outletService = {
     if (!tenantId) {
       throw new Error('Tenant ID is required');
     }
+    const batch = writeBatch(db);
     const outletsRef = collection(db, 'outlets');
-    const docRef = await addDoc(outletsRef, {
+    const newOutletRef = doc(outletsRef);
+    
+    batch.set(newOutletRef, {
       tenantId,
       name: data.name,
       address: data.address,
@@ -49,7 +52,14 @@ export const outletService = {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
-    return docRef.id;
+
+    const tenantRef = doc(db, 'tenants', tenantId);
+    batch.update(tenantRef, {
+      outletsCount: increment(1),
+    });
+
+    await batch.commit();
+    return newOutletRef.id;
   },
 
   async updateOutlet(
@@ -100,6 +110,14 @@ export const outletService = {
       throw new Error('Unauthorized: Tenant ID mismatch');
     }
 
-    await deleteDoc(docRef);
+    const batch = writeBatch(db);
+    batch.delete(docRef);
+
+    const tenantRef = doc(db, 'tenants', tenantId);
+    batch.update(tenantRef, {
+      outletsCount: increment(-1),
+    });
+
+    await batch.commit();
   },
 };

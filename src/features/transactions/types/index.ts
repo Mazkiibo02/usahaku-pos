@@ -41,4 +41,6 @@ export interface TenantDetails {
   createdAt: Timestamp;
   lastTransactionAt?: Timestamp | null;
   subscription?: TenantSubscription;
+  maxOutlets?: number;
+  outletsCount?: number;
 }
