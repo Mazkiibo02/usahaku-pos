@@ -32,6 +32,8 @@ export interface Tenant {
   createdAt: Date | admin.firestore.FieldValue;
   lastTransactionAt: Date | null | admin.firestore.FieldValue;
   subscription: TenantSubscription;
+  maxOutlets: number;
+  outletsCount?: number;
 }
 
 // Menggunakan format CallableRequest terbaru
@@ -80,6 +82,8 @@ export const onboardTenant = functions.https.onCall(
         ownerId: uid,
         createdAt: new Date(),
         lastTransactionAt: null,
+        maxOutlets: 2,
+        outletsCount: 0,
         subscription: {
           status: 'TRIAL',
           trialEndsAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
@@ -720,14 +724,23 @@ export const midtransWebhook = onRequest(
 
               const newExpiryTimestamp = admin.firestore.Timestamp.fromDate(newExpiry);
 
+              const planType = invoiceData?.planType;
+              let maxOutlets = 1;
+              if (planType === "2-outlets") {
+                maxOutlets = 2;
+              } else if (planType === "4-outlets") {
+                maxOutlets = 4;
+              }
+
               transaction.update(tenantRef, {
                 subscriptionStatus: "PAID",
                 validUntil: newExpiryTimestamp,
                 "subscription.status": "PAID",
                 "subscription.currentPeriodEnd": newExpiryTimestamp,
+                maxOutlets: maxOutlets,
               });
 
-              logger.info(`Successfully updated tenant ${tenantId} subscription status to PAID. New expiry: ${newExpiry.toISOString()}`);
+              logger.info(`Successfully updated tenant ${tenantId} subscription status to PAID. New expiry: ${newExpiry.toISOString()}, maxOutlets: ${maxOutlets}`);
             } else {
               logger.error(`Tenant document ${tenantId} not found during webhook processing`);
             }
@@ -821,12 +834,14 @@ export const createCheckoutSession = onCall(
 
       const db = admin.firestore();
       await db.collection("invoices").doc(invoiceId).set({
+        invoiceId,
         tenantId,
         amount,
         status: "PENDING",
         paymentType: "pending",
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
+        settlementTime: null,
       });
 
       return {
@@ -843,6 +858,156 @@ export const createCheckoutSession = onCall(
       throw new functions.https.HttpsError(
         "internal",
         error?.message || "Failed to create checkout session."
+      );
+    }
+  }
+);
+
+export const generateSnapToken = onCall(
+  { secrets: [midtransServerKeySecret] },
+  async (request) => {
+    const { auth, data } = request;
+
+    if (!auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "Authentication is required to generate a Snap token."
+      );
+    }
+
+    const role = auth.token.role;
+    if (role !== "owner") {
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        "Only owners are authorized to generate Snap tokens."
+      );
+    }
+
+    const planType = data?.planType;
+    if (planType !== "1-outlet" && planType !== "2-outlets" && planType !== "4-outlets") {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Invalid plan type specified. Must be '1-outlet', '2-outlets', or '4-outlets'."
+      );
+    }
+
+    let amount = 0;
+    if (planType === "1-outlet") {
+      amount = 25000;
+    } else if (planType === "2-outlets") {
+      amount = 50000;
+    } else if (planType === "4-outlets") {
+      amount = 100000;
+    }
+
+    const tenantId = auth.token.tenantId as string | undefined;
+    const finalTenantId = tenantId || null;
+
+    const serverKey = process.env.MIDTRANS_SERVER_KEY || midtransServerKeySecret.value();
+    if (!serverKey) {
+      logger.error("MIDTRANS_SERVER_KEY environment variable is not defined");
+      throw new functions.https.HttpsError(
+        "internal",
+        "Payment gateway server key is not configured."
+      );
+    }
+
+    const db = admin.firestore();
+
+    let businessName = "Usahaku Store";
+    let email = auth.token.email || "";
+    let phone = "";
+
+    if (finalTenantId) {
+      try {
+        const tenantDoc = await db.collection("tenants").doc(finalTenantId).get();
+        if (tenantDoc.exists) {
+          const tenantData = tenantDoc.data();
+          businessName = tenantData?.name || businessName;
+          if (tenantData?.email) email = tenantData.email;
+          if (tenantData?.phone) phone = tenantData.phone;
+        }
+      } catch (e) {
+        logger.error("Error fetching tenant profile", e);
+      }
+    }
+
+    if (!phone) {
+      try {
+        const ownerDoc = await db.collection("users").doc(auth.uid).get();
+        if (ownerDoc.exists) {
+          phone = ownerDoc.data()?.phone || "";
+        }
+      } catch (e) {
+        logger.error("Error fetching owner user profile", e);
+      }
+    }
+
+    if (!email) {
+      email = auth.token.email || "";
+    }
+
+    const orderId = `INV-${auth.uid}-${Date.now()}`;
+
+    // Initialize Midtrans Snap client
+    const snapClient = new midtransClient.Snap({
+      isProduction: false,
+      serverKey: serverKey,
+    });
+
+    const parameter = {
+      transaction_details: {
+        order_id: orderId,
+        gross_amount: amount,
+      },
+      item_details: [
+        {
+          id: planType,
+          price: amount,
+          quantity: 1,
+          name: `Usahaku POS Premium - ${planType}`,
+        },
+      ],
+      customer_details: {
+        email: email || undefined,
+        first_name: businessName,
+        phone: phone || undefined,
+      },
+    };
+
+    try {
+      // Create invoice document in the root 'invoices' collection
+      await db.collection("invoices").doc(orderId).set({
+        invoiceId: orderId,
+        tenantId: finalTenantId,
+        amount,
+        planType,
+        status: "PENDING",
+        paymentType: "pending",
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+        settlementTime: null,
+      });
+
+      const transaction = await snapClient.createTransaction(parameter);
+
+      return {
+        token: transaction.token,
+        redirectUrl: transaction.redirect_url,
+        orderId,
+      };
+    } catch (error: any) {
+      logger.error("Error creating Midtrans Snap token", {
+        tenantId: finalTenantId,
+        errorMessage: error?.message || "Unknown error",
+        errorStack: error?.stack,
+      });
+      // Cleanup invoice if snap creation failed
+      await db.collection("invoices").doc(orderId).delete().catch(() => null);
+
+      throw new functions.https.HttpsError(
+        "internal",
+        error?.message || "Failed to generate Snap token."
       );
     }
   }

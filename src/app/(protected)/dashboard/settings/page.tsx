@@ -11,15 +11,19 @@ import {
   AlertTriangle, 
   Info,
   Store,
-  ArrowLeft
+  ArrowLeft,
+  CreditCard,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { doc, getDoc } from 'firebase/firestore';
+import Script from 'next/script';
+import { httpsCallable } from 'firebase/functions';
 
 import { useAuthStore } from '@/src/stores/authStore';
 import { db } from '@/src/lib/firebase/firebase';
 import { uploadTenantLogo, updateTenantLogoUrl } from '@/src/features/settings/services/storageService';
+import { functions } from '@/src/lib/firebase';
 
 // Custom Toast Notification structure
 interface Toast {
@@ -41,6 +45,14 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const [activeTab, setActiveTab] = useState<'logo' | 'subscription'>('logo');
+  const [maxOutlets, setMaxOutlets] = useState<number>(2);
+  const [subscription, setSubscription] = useState<any>(null);
+  const [isRenewing, setIsRenewing] = useState(false);
+  const [paymentState, setPaymentState] = useState<'idle' | 'token-generation' | 'waiting-payment' | 'success' | 'pending-confirmation' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [activePlanType, setActivePlanType] = useState<'1-outlet' | '2-outlets' | '4-outlets' | null>(null);
 
   // Function to trigger beautiful floating toasts
   const showToast = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info' = 'success') => {
@@ -68,6 +80,8 @@ export default function SettingsPage() {
           setExistingLogoUrl(data.logoUrl);
           setPreviewUrl(data.logoUrl);
         }
+        setMaxOutlets(data.maxOutlets ?? 2);
+        setSubscription(data.subscription ?? null);
       } else {
         showToast('Data usaha tidak ditemukan.', 'error');
       }
@@ -84,6 +98,68 @@ export default function SettingsPage() {
       fetchTenantData();
     }
   }, [tenantId, fetchTenantData]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('tab') === 'subscription') {
+        setActiveTab('subscription');
+      }
+    }
+  }, []);
+
+  const handlePay = async (planType: '1-outlet' | '2-outlets' | '4-outlets') => {
+    setIsRenewing(true);
+    setPaymentState('token-generation');
+    setErrorMessage(null);
+    setActivePlanType(planType);
+
+    try {
+      const generateSnapTokenFn = httpsCallable<{ planType: string }, { token: string; redirectUrl: string; orderId: string }>(
+        functions,
+        'generateSnapToken'
+      );
+
+      const result = await generateSnapTokenFn({ planType });
+      const { token } = result.data;
+
+      if (!window.snap) {
+        throw new Error('Midtrans Snap SDK is not loaded yet. Please wait a moment and try again.');
+      }
+
+      setPaymentState('waiting-payment');
+
+      window.snap.pay(token, {
+        onSuccess: function (res: any) {
+          console.log('Payment Success:', res);
+          setPaymentState('success');
+          setIsRenewing(false);
+          fetchTenantData();
+        },
+        onPending: function (res: any) {
+          console.log('Payment Pending:', res);
+          setPaymentState('pending-confirmation');
+          setIsRenewing(false);
+        },
+        onError: function (res: any) {
+          console.error('Payment Error:', res);
+          setPaymentState('error');
+          setErrorMessage('Terjadi kesalahan saat memproses pembayaran.');
+          setIsRenewing(false);
+        },
+        onClose: function () {
+          console.log('Payment checkout closed');
+          setPaymentState('idle');
+          setIsRenewing(false);
+        }
+      });
+    } catch (err: any) {
+      console.error('Payment initialization failed:', err);
+      setPaymentState('error');
+      setErrorMessage(err?.message || 'Gagal menyiapkan transaksi. Silakan coba lagi.');
+      setIsRenewing(false);
+    }
+  };
 
   // Handle File Selection with validation
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -253,6 +329,30 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex border-b border-slate-200">
+        <button
+          onClick={() => setActiveTab('logo')}
+          className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition ${
+            activeTab === 'logo'
+              ? 'border-indigo-650 text-indigo-600 border-indigo-650'
+              : 'border-transparent text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          Logo Usaha
+        </button>
+        <button
+          onClick={() => setActiveTab('subscription')}
+          className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition ${
+            activeTab === 'subscription'
+              ? 'border-indigo-650 text-indigo-600 border-indigo-650'
+              : 'border-transparent text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          Paket Langganan
+        </button>
+      </div>
+
       {/* Loader for first fetch */}
       {isLoading ? (
         <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
@@ -261,7 +361,7 @@ export default function SettingsPage() {
             <p className="mt-2 text-sm text-slate-500">Memuat informasi usaha Anda...</p>
           </div>
         </div>
-      ) : (
+      ) : activeTab === 'logo' ? (
         <div className="grid gap-6 md:grid-cols-3">
           
           {/* Card left: Store Info Summary */}
@@ -442,6 +542,192 @@ export default function SettingsPage() {
             </form>
           </div>
 
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <Script
+            src="https://app.sandbox.midtrans.com/snap/snap.js"
+            data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+            strategy="afterInteractive"
+          />
+
+          {/* Current Subscription Card */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 className="text-lg font-bold text-slate-900 mb-4">Detail Langganan Aktif</h3>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-xl bg-slate-50 p-4 border border-slate-100">
+                <span className="text-xs text-slate-400 font-semibold block">Paket Saat Ini</span>
+                <span className="text-base font-bold text-slate-800 mt-1 block">
+                  {subscription?.status === 'TRIAL' 
+                    ? 'Trial 30 Hari' 
+                    : subscription?.status === 'PAID' 
+                    ? `Paket ${maxOutlets} Outlet` 
+                    : 'Expired'}
+                </span>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-4 border border-slate-100">
+                <span className="text-xs text-slate-400 font-semibold block">Kapasitas Outlet</span>
+                <span className="text-base font-bold text-slate-800 mt-1 block">
+                  {maxOutlets} Outlet
+                </span>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-4 border border-slate-100">
+                <span className="text-xs text-slate-400 font-semibold block">Berlaku Hingga</span>
+                <span className="text-base font-bold text-slate-800 mt-1 block">
+                  {subscription?.currentPeriodEnd 
+                    ? subscription.currentPeriodEnd.toDate().toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
+                      }) 
+                    : '-'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Pricing Tiers */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 className="text-lg font-bold text-slate-900 mb-2">Upgrade atau Perbarui Paket</h3>
+            <p className="text-sm text-slate-500 mb-6">
+              Pilih paket yang sesuai dengan jumlah cabang usaha Anda. Pembayaran instan & aman via Midtrans.
+            </p>
+
+            {/* Payment Process Overlay Status Banner */}
+            <AnimatePresence>
+              {paymentState !== 'idle' && (
+                <div className={`mb-6 rounded-2xl border p-5 text-left ${
+                  paymentState === 'success'
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                    : paymentState === 'pending-confirmation'
+                    ? 'border-blue-200 bg-blue-50 text-blue-800'
+                    : paymentState === 'error'
+                    ? 'border-rose-200 bg-rose-50 text-rose-800'
+                    : 'border-slate-200 bg-slate-50 text-slate-800'
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 shrink-0">
+                      {paymentState === 'success' && <CheckCircle className="h-5 w-5 text-emerald-600" />}
+                      {paymentState === 'pending-confirmation' && <Info className="h-5 w-5 text-blue-600" />}
+                      {paymentState === 'error' && <AlertTriangle className="h-5 w-5 text-rose-600" />}
+                      {(paymentState === 'token-generation' || paymentState === 'waiting-payment') && (
+                        <span className="block h-5 w-5 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-xs font-black uppercase tracking-wider">
+                        {paymentState === 'token-generation' && 'Menyiapkan Pembayaran'}
+                        {paymentState === 'waiting-payment' && 'Menunggu Pembayaran'}
+                        {paymentState === 'success' && 'Pembayaran Berhasil'}
+                        {paymentState === 'pending-confirmation' && 'Menunggu Konfirmasi'}
+                        {paymentState === 'error' && 'Transaksi Gagal'}
+                      </h4>
+                      <p className="mt-1 text-xs leading-relaxed opacity-90">
+                        {paymentState === 'token-generation' && 'Kami sedang menghubungi server pembayaran untuk membuat invoice Anda...'}
+                        {paymentState === 'waiting-payment' && 'Silakan selesaikan pembayaran Anda di jendela Midtrans Snap yang terbuka.'}
+                        {paymentState === 'success' && 'Terima kasih! Langganan Anda berhasil diperbarui.'}
+                        {paymentState === 'pending-confirmation' && 'Pembayaran Anda tertunda atau sedang diproses. Akses akan terbuka otomatis begitu dana diterima.'}
+                        {paymentState === 'error' && (errorMessage || 'Terjadi kesalahan. Silakan coba beberapa saat lagi.')}
+                      </p>
+                      {paymentState === 'error' && (
+                        <button
+                          onClick={() => {
+                            setPaymentState('idle');
+                            setIsRenewing(false);
+                          }}
+                          className="mt-2 text-[10px] font-bold underline cursor-pointer text-rose-600 hover:text-rose-500"
+                        >
+                          Tutup & Coba Lagi
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </AnimatePresence>
+
+            <div className="grid gap-6 sm:grid-cols-3">
+              {[
+                {
+                  type: '1-outlet' as const,
+                  name: 'Paket 1 Outlet',
+                  price: 'Rp 25.000',
+                  period: '/ bln',
+                  description: 'Ideal untuk toko tunggal/usaha kecil.',
+                  features: ['1 Outlet Aktif', 'Pencatatan Transaksi Tanpa Batas', 'Laporan Penjualan Harian & Bulanan'],
+                },
+                {
+                  type: '2-outlets' as const,
+                  name: 'Paket 2 Outlets',
+                  price: 'Rp 50.000',
+                  period: '/ bln',
+                  description: 'Cocok untuk pemilik usaha dengan 1 cabang tambahan.',
+                  features: ['Hingga 2 Outlet Aktif', 'Manajemen Shift Kasir', 'Laporan Real-time Cabang'],
+                  popular: true,
+                },
+                {
+                  type: '4-outlets' as const,
+                  name: 'Paket 4 Outlets',
+                  price: 'Rp 100.000',
+                  period: '/ bln',
+                  description: 'Solusi lengkap untuk multi-cabang skala menengah.',
+                  features: ['Hingga 4 Outlet Aktif', 'Multi-Kasir Tanpa Batas', 'Analisis Bisnis Mendalam'],
+                }
+              ].map((tier) => {
+                const isSelected = activePlanType === tier.type;
+                const isLoadingThis = isRenewing && isSelected;
+                return (
+                  <div
+                    key={tier.type}
+                    className={`relative flex flex-col justify-between overflow-hidden rounded-2xl border p-6 transition-all duration-300 ${
+                      tier.popular
+                        ? 'border-indigo-500 bg-indigo-50/10 shadow-indigo-100/40'
+                        : 'border-slate-200 bg-white'
+                    } hover:-translate-y-1 hover:shadow-lg`}
+                  >
+                    <div>
+                      <h3 className="text-base font-extrabold text-slate-900">{tier.name}</h3>
+                      <div className="mt-4 flex items-baseline">
+                        <span className="text-2xl font-black text-slate-900">{tier.price}</span>
+                        <span className="ml-1 text-xs font-semibold text-slate-500">{tier.period}</span>
+                      </div>
+                      <p className="mt-3 text-xs leading-relaxed text-slate-500">{tier.description}</p>
+                      <ul className="mt-5 space-y-2 border-t border-slate-100 pt-4">
+                        {tier.features.map((feature, idx) => (
+                          <li key={idx} className="flex items-center gap-2 text-[11px] text-slate-600">
+                            <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 shrink-0" />
+                            <span>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <button
+                      onClick={() => handlePay(tier.type)}
+                      disabled={isRenewing}
+                      className={`mt-6 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        tier.popular
+                          ? 'bg-indigo-600 text-white hover:bg-indigo-500'
+                          : 'bg-slate-900 text-white hover:bg-slate-800'
+                      }`}
+                    >
+                      {isLoadingThis ? (
+                        <>
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                          <span>Memuat...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="h-4 w-4" />
+                          <span>Pilih Paket</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 
