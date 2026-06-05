@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CreditCard,
@@ -14,8 +14,9 @@ import {
 } from 'lucide-react';
 import Script from 'next/script';
 import { httpsCallable } from 'firebase/functions';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '@/src/features/auth/hooks/use-auth';
-import { functions } from '@/src/lib/firebase';
+import { auth, db, functions } from '@/src/lib/firebase';
 
 declare global {
   interface Window {
@@ -26,11 +27,16 @@ declare global {
 type PaymentState = 'idle' | 'token-generation' | 'waiting-payment' | 'success' | 'pending-confirmation' | 'error';
 
 export function SubscriptionLock() {
-  const { role, signOut } = useAuth();
+  const { role, signOut, tenantId } = useAuth();
   const [isRenewing, setIsRenewing] = useState(false);
   const [paymentState, setPaymentState] = useState<PaymentState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activePlanType, setActivePlanType] = useState<'1-outlet' | '2-outlets' | '4-outlets' | null>(null);
+
+  // States for manual sync and throttling
+  const [pendingInvoiceId, setPendingInvoiceId] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncCooldown, setSyncCooldown] = useState<number>(0);
 
   const isOwner = role === 'owner';
 
@@ -95,7 +101,8 @@ export function SubscriptionLock() {
       );
 
       const result = await generateSnapTokenFn({ planType });
-      const { token } = result.data;
+      const { token, orderId } = result.data;
+      setPendingInvoiceId(orderId);
 
       if (!window.snap) {
         throw new Error('Midtrans Snap SDK is not loaded yet. Please wait a moment and try again.');
@@ -134,6 +141,137 @@ export function SubscriptionLock() {
       setPaymentState('error');
       setErrorMessage(err?.message || 'Gagal menyiapkan transaksi. Silakan coba lagi.');
       setIsRenewing(false);
+    }
+  };
+
+  // Fetch pending invoice on mount/render
+  useEffect(() => {
+    if (!tenantId || !isOwner) return;
+
+    const fetchPendingInvoice = async () => {
+      try {
+        const q = query(
+          collection(db, 'invoices'),
+          where('tenantId', '==', tenantId),
+          where('status', '==', 'PENDING')
+        );
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          const docs = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          } as { id: string; createdAt?: any }));
+          
+          // Sort by createdAt descending in-memory to get the latest
+          docs.sort((a, b) => {
+            const timeA = a.createdAt?.seconds || 0;
+            const timeB = b.createdAt?.seconds || 0;
+            return timeB - timeA;
+          });
+
+          setPendingInvoiceId(docs[0].id);
+        } else {
+          setPendingInvoiceId(null);
+        }
+      } catch (err) {
+        console.error('Error fetching pending invoices:', err);
+      }
+    };
+
+    fetchPendingInvoice();
+  }, [tenantId, isOwner]);
+
+  // LocalStorage unix-timestamp cooldown logic
+  useEffect(() => {
+    if (!pendingInvoiceId) {
+      setSyncCooldown(0);
+      return;
+    }
+
+    const key = `sync_lock_${pendingInvoiceId}`;
+
+    const checkCooldown = () => {
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        const boundary = parseInt(stored, 10);
+        const remaining = Math.max(0, Math.ceil((boundary - Date.now()) / 1000));
+        setSyncCooldown(remaining);
+        return remaining;
+      }
+      setSyncCooldown(0);
+      return 0;
+    };
+
+    const remaining = checkCooldown();
+    if (remaining <= 0) return;
+
+    const interval = setInterval(() => {
+      const rem = checkCooldown();
+      if (rem <= 0) {
+        clearInterval(interval);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [pendingInvoiceId]);
+
+  // Call checkPaymentStatus callable Cloud Function
+  const handleManualSync = async () => {
+    if (!pendingInvoiceId) return;
+
+    // Local Storage Cooldown Boundary check
+    const key = `sync_lock_${pendingInvoiceId}`;
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      const boundary = parseInt(stored, 10);
+      if (Date.now() < boundary) {
+        const remaining = Math.max(0, Math.ceil((boundary - Date.now()) / 1000));
+        alert(`Mohon tunggu ${remaining} detik sebelum menyinkronkan kembali.`);
+        return;
+      }
+    }
+
+    // Set cooldown in LocalStorage and state
+    const newBoundary = Date.now() + 15000;
+    localStorage.setItem(key, newBoundary.toString());
+    setSyncCooldown(15);
+
+    setIsSyncing(true);
+    setPaymentState('pending-confirmation');
+    setErrorMessage(null);
+
+    try {
+      const checkPaymentStatusFn = httpsCallable<{ invoiceId: string }, { status: string; message: string }>(
+        functions,
+        'checkPaymentStatus'
+      );
+
+      const result = await checkPaymentStatusFn({ invoiceId: pendingInvoiceId });
+      const { status, message } = result.data;
+
+      if (status === 'PAID') {
+        setPaymentState('success');
+        // Force refresh the session token to get updated claims
+        await auth.currentUser?.getIdToken(true);
+      } else {
+        if (status === 'PENDING') {
+          // Keep as pending-confirmation but show alert
+          setPaymentState('pending-confirmation');
+          alert(message);
+        } else {
+          setPaymentState('error');
+          setErrorMessage(message);
+        }
+      }
+    } catch (err: any) {
+      console.error('Manual sync failed:', err);
+      // Handle the case where backend throttling guard blocks it (resource-exhausted)
+      const errMessage = err?.message || 'Gagal menyinkronkan status pembayaran.';
+      setPaymentState('error');
+      setErrorMessage(errMessage);
+      alert(errMessage);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -344,6 +482,25 @@ export function SubscriptionLock() {
 
         {/* Action Buttons */}
         <div className="mt-8 flex flex-col gap-3 sm:flex-row justify-center items-center">
+          {isOwner && pendingInvoiceId && (
+            <button
+              onClick={handleManualSync}
+              disabled={isSyncing || syncCooldown > 0}
+              className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3.5 text-sm font-bold text-white hover:bg-indigo-500 transition active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-indigo-500 dark:hover:bg-indigo-400 cursor-pointer"
+            >
+              {isSyncing ? (
+                <>
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  <span>Menyinkronkan...</span>
+                </>
+              ) : syncCooldown > 0 ? (
+                <span>Cek Status ({syncCooldown}s)</span>
+              ) : (
+                <span>Cek Status Pembayaran</span>
+              )}
+            </button>
+          )}
+
           {!isOwner && (
             <a
               href="https://wa.me/6285117821129"
@@ -358,7 +515,7 @@ export function SubscriptionLock() {
 
           <button
             onClick={() => signOut()}
-            className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-semibold text-slate-650 transition hover:bg-slate-50 active:scale-98 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/50"
+            className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-semibold text-slate-650 transition hover:bg-slate-50 active:scale-98 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/50 cursor-pointer"
           >
             <LogOut className="h-4.5 w-4.5" />
             Keluar Akun

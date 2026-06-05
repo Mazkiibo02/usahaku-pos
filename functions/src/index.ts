@@ -1012,3 +1012,257 @@ export const generateSnapToken = onCall(
     }
   }
 );
+
+interface CheckPaymentStatusPayload {
+  invoiceId?: string;
+}
+
+export const checkPaymentStatus = onCall(
+  { secrets: [midtransServerKeySecret] },
+  async (request: functions.https.CallableRequest<CheckPaymentStatusPayload>) => {
+    const { auth, data } = request;
+
+    // 1. Auth Guard
+    if (!auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "Authentication is required."
+      );
+    }
+
+    const tenantId = auth.token.tenantId;
+    if (!tenantId) {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "Owner account is not associated with a tenant ID."
+      );
+    }
+
+    const invoiceId = data?.invoiceId;
+    if (typeof invoiceId !== "string" || !invoiceId) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "A valid invoiceId is required."
+      );
+    }
+
+    const db = admin.firestore();
+    const invoiceRef = db.collection("invoices").doc(invoiceId);
+    const invoiceSnap = await invoiceRef.get();
+
+    // 2. Invoice Existence & Tenant Security Guard
+    if (!invoiceSnap.exists) {
+      throw new functions.https.HttpsError(
+        "not-found",
+        "Invoice not found."
+      );
+    }
+
+    const invoiceData = invoiceSnap.data();
+    if (!invoiceData) {
+      throw new functions.https.HttpsError(
+        "internal",
+        "Invoice data is empty."
+      );
+    }
+
+    if (invoiceData.tenantId !== tenantId) {
+      logger.warn("Security check failed: Tenant mismatch", {
+        callerTenantId: tenantId,
+        invoiceTenantId: invoiceData.tenantId,
+        invoiceId,
+      });
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        "Access denied: Invoice does not belong to your store."
+      );
+    }
+
+    // 3. Backend Throttling Guard (15 seconds)
+    const lastCheckedAt = invoiceData.lastCheckedAt;
+    if (lastCheckedAt instanceof admin.firestore.Timestamp) {
+      const diff = Date.now() - lastCheckedAt.toMillis();
+      if (diff < 15000) {
+        throw new functions.https.HttpsError(
+          "resource-exhausted",
+          "Anda terlalu cepat melakukan sinkronisasi. Mohon tunggu beberapa saat."
+        );
+      }
+    }
+
+    // Update lastCheckedAt immediately to block parallel requests
+    await invoiceRef.update({
+      lastCheckedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // 4. Secure Midtrans status check
+    const serverKey = process.env.MIDTRANS_SERVER_KEY || midtransServerKeySecret.value();
+    if (!serverKey) {
+      logger.error("MIDTRANS_SERVER_KEY environment variable is not defined");
+      throw new functions.https.HttpsError(
+        "internal",
+        "Payment gateway server key is not configured."
+      );
+    }
+
+    const authHeader = "Basic " + Buffer.from(serverKey + ":").toString("base64");
+    
+    try {
+      const statusUrl = `https://api.sandbox.midtrans.com/v2/${invoiceId}/status`;
+      const response = await (globalThis as any).fetch(statusUrl, {
+        headers: {
+          Authorization: authHeader,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        logger.error("Failed to query Midtrans status API", {
+          status: response.status,
+          statusText: response.statusText,
+          invoiceId,
+        });
+        throw new functions.https.HttpsError(
+          "internal",
+          "Gagal menghubungi server Midtrans."
+        );
+      }
+
+      const statusData = await response.json();
+      const transactionStatus = statusData.transaction_status;
+      const fraudStatus = statusData.fraud_status;
+
+      logger.info("Midtrans Status Query Response", {
+        invoiceId,
+        transactionStatus,
+        fraudStatus,
+      });
+
+      // 5. Strict Firestore Transaction for Settlement
+      if (
+        transactionStatus === "settlement" ||
+        (transactionStatus === "capture" && fraudStatus === "accept")
+      ) {
+        const result = await db.runTransaction(async (transaction) => {
+          const freshInvoiceSnap = await transaction.get(invoiceRef);
+          if (!freshInvoiceSnap.exists) {
+            throw new functions.https.HttpsError("not-found", "Invoice not found during transaction.");
+          }
+
+          const freshInvoiceData = freshInvoiceSnap.data();
+          if (freshInvoiceData?.status === "PAID") {
+            // Already paid (e.g. by Webhook), early clean return
+            return {
+              status: "PAID",
+              message: "Pembayaran sudah diproses.",
+            };
+          }
+
+          // Mutate status to PAID
+          transaction.update(invoiceRef, {
+            status: "PAID",
+            paymentType: statusData.payment_type || freshInvoiceData?.paymentType || "unknown",
+            settlementTime: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          // Fetch related tenant
+          const tenantRef = db.collection("tenants").doc(tenantId);
+          const tenantSnap = await transaction.get(tenantRef);
+
+          if (tenantSnap.exists) {
+            const tenantData = tenantSnap.data();
+            let currentExpiry: Date | null = null;
+
+            if (tenantData) {
+              const prevValidUntil = tenantData.validUntil;
+              const prevPeriodEnd = tenantData.subscription?.currentPeriodEnd;
+
+              if (prevValidUntil instanceof admin.firestore.Timestamp) {
+                currentExpiry = prevValidUntil.toDate();
+              } else if (prevPeriodEnd instanceof admin.firestore.Timestamp) {
+                currentExpiry = prevPeriodEnd.toDate();
+              }
+            }
+
+            const now = new Date();
+            let newExpiry: Date;
+
+            if (currentExpiry && currentExpiry > now) {
+              newExpiry = new Date(currentExpiry.getTime() + 30 * 24 * 60 * 60 * 1000);
+            } else {
+              newExpiry = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+            }
+
+            const newExpiryTimestamp = admin.firestore.Timestamp.fromDate(newExpiry);
+            const planType = freshInvoiceData?.planType;
+            let maxOutlets = 1;
+            if (planType === "2-outlets") {
+              maxOutlets = 2;
+            } else if (planType === "4-outlets") {
+              maxOutlets = 4;
+            }
+
+            transaction.update(tenantRef, {
+              subscriptionStatus: "PAID",
+              validUntil: newExpiryTimestamp,
+              "subscription.status": "PAID",
+              "subscription.currentPeriodEnd": newExpiryTimestamp,
+              maxOutlets: maxOutlets,
+            });
+
+            logger.info(`Updated tenant ${tenantId} subscription status to PAID. New expiry: ${newExpiry.toISOString()}, maxOutlets: ${maxOutlets}`);
+          } else {
+            logger.error(`Tenant document ${tenantId} not found during checkPaymentStatus transaction.`);
+          }
+
+          return {
+            status: "PAID",
+            message: "Pembayaran berhasil disinkronisasi.",
+          };
+        });
+
+        return result;
+      } else {
+        // If not settled, check if payment failed or expired
+        let updatedStatus: "PENDING" | "EXPIRED" | "FAILED" | null = null;
+        if (transactionStatus === "deny" || transactionStatus === "cancel") {
+          updatedStatus = "FAILED";
+        } else if (transactionStatus === "expire") {
+          updatedStatus = "EXPIRED";
+        }
+
+        if (updatedStatus) {
+          await invoiceRef.update({
+            status: updatedStatus,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          return {
+            status: updatedStatus,
+            message: `Pembayaran gagal dengan status: ${transactionStatus}`,
+          };
+        }
+
+        return {
+          status: "PENDING",
+          message: "Pembayaran belum diterima. Silakan selesaikan pembayaran Anda di Midtrans.",
+        };
+      }
+    } catch (error: any) {
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      logger.error("Error executing checkPaymentStatus", {
+        invoiceId,
+        errorMessage: error?.message || "Unknown error",
+        errorStack: error?.stack,
+      });
+      throw new functions.https.HttpsError(
+        "internal",
+        "Terjadi kesalahan saat menyinkronkan pembayaran."
+      );
+    }
+  }
+);
