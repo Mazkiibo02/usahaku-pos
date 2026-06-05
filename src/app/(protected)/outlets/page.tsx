@@ -110,7 +110,7 @@ export default function OutletsPage() {
   const isLimitReached = outlets.length >= maxOutlets;
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <div className="mx-auto w-full max-w-full lg:max-w-7xl overflow-x-hidden space-y-6 p-0.5">
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
