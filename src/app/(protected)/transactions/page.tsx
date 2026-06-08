@@ -24,7 +24,7 @@ import type { Cashier } from '@/src/features/cashiers/types';
 import { ReceiptPrint } from '@/src/features/transactions/components/ReceiptPrint';
 
 export default function TransactionsPage() {
-  const { tenantId, user: currentUser } = useAuthStore();
+  const { tenantId, user: currentUser, role, outletId: cashierOutletId } = useAuthStore();
 
   // Core records state
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -52,15 +52,37 @@ export default function TransactionsPage() {
     setError(null);
 
     try {
-      const [txData, outletsData, cashiersData] = await Promise.all([
-        transactionService.getTransactions(tenantId, 100), // pull last 100 records
-        outletService.getOutlets(tenantId),
-        cashierService.getCashiers(tenantId),
-      ]);
-
-      setTransactions(txData);
-      setOutlets(outletsData);
-      setCashiers(cashiersData);
+      if (role === 'cashier') {
+        const targetOutletId = cashierOutletId || undefined;
+        const [txData, outletsData] = await Promise.all([
+          transactionService.getTransactions(tenantId, 100, targetOutletId),
+          outletService.getOutlets(tenantId),
+        ]);
+        setTransactions(txData);
+        setOutlets(outletsData);
+        if (currentUser) {
+          setCashiers([{
+            uid: currentUser.uid,
+            name: currentUser.displayName || 'Kasir',
+            email: currentUser.email || '',
+            role: 'cashier',
+            tenantId,
+            outletId: cashierOutletId || '',
+            createdAt: new Date(),
+          }]);
+        } else {
+          setCashiers([]);
+        }
+      } else {
+        const [txData, outletsData, cashiersData] = await Promise.all([
+          transactionService.getTransactions(tenantId, 100), // pull last 100 records
+          outletService.getOutlets(tenantId),
+          cashierService.getCashiers(tenantId),
+        ]);
+        setTransactions(txData);
+        setOutlets(outletsData);
+        setCashiers(cashiersData);
+      }
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -70,13 +92,19 @@ export default function TransactionsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [tenantId]);
+  }, [tenantId, role, cashierOutletId, currentUser]);
 
   useEffect(() => {
     if (tenantId) {
       fetchData();
     }
   }, [tenantId, fetchData]);
+
+  useEffect(() => {
+    if (role === 'cashier' && cashierOutletId) {
+      setSelectedOutletId(cashierOutletId);
+    }
+  }, [role, cashierOutletId]);
 
   // Name Resolution Maps
   const outletMap = useMemo(() => {
@@ -280,14 +308,23 @@ export default function TransactionsPage() {
           <select
             value={selectedOutletId}
             onChange={(e) => setSelectedOutletId(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 outline-none transition hover:border-slate-350 cursor-pointer font-semibold text-slate-650"
+            disabled={role === 'cashier'}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 outline-none transition hover:border-slate-350 cursor-pointer font-semibold text-slate-650 disabled:opacity-55 disabled:cursor-not-allowed"
           >
-            <option value="ALL">Semua Cabang Outlet</option>
-            {outlets.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
+            {role === 'cashier' ? (
+              <option value={cashierOutletId || 'ALL'}>
+                {outlets.find((o) => o.id === cashierOutletId)?.name || 'Cabang Ditugaskan'}
               </option>
-            ))}
+            ) : (
+              <>
+                <option value="ALL">Semua Cabang Outlet</option>
+                {outlets.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </>
+            )}
           </select>
         </div>
       </div>

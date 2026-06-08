@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Users, Store, Activity, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -14,7 +15,8 @@ import { CashierForm } from '@/src/features/cashiers/components/cashier-form';
 import { CashierEditModal } from '@/src/features/cashiers/components/cashier-edit-modal';
 
 export default function CashiersPage() {
-  const { tenantId } = useAuthStore();
+  const { tenantId, role } = useAuthStore();
+  const router = useRouter();
   const [cashiers, setCashiers] = useState<Cashier[]>([]);
   const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -25,8 +27,15 @@ export default function CashiersPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingCashier, setEditingCashier] = useState<Cashier | null>(null);
 
+  // Redirect cashier users
+  useEffect(() => {
+    if (role === 'cashier') {
+      router.replace('/pos');
+    }
+  }, [role, router]);
+
   const fetchData = useCallback(async () => {
-    if (!tenantId) return;
+    if (!tenantId || role === 'cashier') return;
     
     // Defer state updates to avoid synchronous setState inside useEffect hook
     await Promise.resolve();
@@ -49,13 +58,13 @@ export default function CashiersPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [tenantId]);
+  }, [tenantId, role]);
 
   useEffect(() => {
-    if (tenantId) {
+    if (tenantId && role !== 'cashier') {
       fetchData();
     }
-  }, [tenantId, fetchData]);
+  }, [tenantId, role, fetchData]);
 
   const handleAddClick = () => {
     setIsFormOpen(true);
@@ -70,6 +79,10 @@ export default function CashiersPage() {
   const totalCashiers = cashiers.length;
   const totalOutlets = outlets.length;
   const activeOutlets = outlets.filter((o) => o.isActive).length;
+
+  if (role === 'cashier') {
+    return null;
+  }
 
   if (!tenantId) {
     return (

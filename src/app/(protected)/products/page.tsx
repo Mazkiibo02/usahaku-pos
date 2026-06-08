@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Tag, Layers, ClipboardCheck, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -11,7 +12,8 @@ import { ProductList } from '@/src/features/products/components/product-list';
 import { ProductForm } from '@/src/features/products/components/product-form';
 
 export default function ProductsPage() {
-  const { tenantId } = useAuthStore();
+  const { tenantId, role } = useAuthStore();
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,8 +22,15 @@ export default function ProductsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
+  // Redirect cashier users
+  useEffect(() => {
+    if (role === 'cashier') {
+      router.replace('/pos');
+    }
+  }, [role, router]);
+
   const fetchProducts = useCallback(async () => {
-    if (!tenantId) return;
+    if (!tenantId || role === 'cashier') return;
     // Defer state updates to avoid synchronous setState inside useEffect hook
     await Promise.resolve();
     setIsLoading(true);
@@ -38,14 +47,14 @@ export default function ProductsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [tenantId]);
+  }, [tenantId, role]);
 
   useEffect(() => {
-    if (tenantId) {
+    if (tenantId && role !== 'cashier') {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchProducts();
     }
-  }, [tenantId, fetchProducts]);
+  }, [tenantId, role, fetchProducts]);
 
   const handleAddClick = () => {
     setSelectedProduct(null);
@@ -61,6 +70,10 @@ export default function ProductsPage() {
   const totalProducts = products.length;
   const availableProducts = products.filter((p) => p.isAvailable).length;
   const uniqueCategories = new Set(products.map((p) => p.category.trim()).filter(Boolean)).size;
+
+  if (role === 'cashier') {
+    return null;
+  }
 
   if (!tenantId) {
     return (

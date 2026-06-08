@@ -1,6 +1,12 @@
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
 import { FieldValue } from "firebase-admin/firestore";
+import { onRequest, onCall } from "firebase-functions/v2/https";
+import { defineSecret } from "firebase-functions/params";
+import * as logger from "firebase-functions/logger";
+import * as crypto from "crypto";
+// @ts-ignore
+import * as midtransClient from "midtrans-client";
 
 if (admin.apps.length === 0) {
   admin.initializeApp({
@@ -8,8 +14,26 @@ if (admin.apps.length === 0) {
   });
 }
 
+const midtransServerKeySecret = defineSecret("MIDTRANS_SERVER_KEY");
+
 interface OnboardTenantPayload {
   tenantName?: string;
+}
+
+export interface TenantSubscription {
+  status: 'TRIAL' | 'PAID' | 'EXPIRED';
+  trialEndsAt: admin.firestore.Timestamp;
+  currentPeriodEnd: admin.firestore.Timestamp;
+}
+
+export interface Tenant {
+  name: string;
+  ownerId: string;
+  createdAt: Date | admin.firestore.FieldValue;
+  lastTransactionAt: Date | null | admin.firestore.FieldValue;
+  subscription: TenantSubscription;
+  maxOutlets: number;
+  outletsCount?: number;
 }
 
 // Menggunakan format CallableRequest terbaru
@@ -58,6 +82,13 @@ export const onboardTenant = functions.https.onCall(
         ownerId: uid,
         createdAt: new Date(),
         lastTransactionAt: null,
+        maxOutlets: 2,
+        outletsCount: 0,
+        subscription: {
+          status: 'TRIAL',
+          trialEndsAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+          currentPeriodEnd: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+        }
       });
       tenantId = tenantRef.id;
 
@@ -202,7 +233,7 @@ export const createStaffAccount = functions.https.onCall(
         role: "cashier",
         tenantId,
         outletId,
-        createdAt: FieldValue.serverTimestamp(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
       return {
@@ -536,6 +567,701 @@ export const processTransaction = functions.https.onCall(
       throw new functions.https.HttpsError(
         "internal",
         error?.message || "Failed to process transaction. Please try again."
+      );
+    }
+  }
+);
+
+interface MidtransNotificationBody {
+  order_id?: string;
+  status_code?: string;
+  gross_amount?: string;
+  signature_key?: string;
+  transaction_status?: string;
+  payment_type?: string;
+  settlement_time?: string;
+  fraud_status?: string;
+}
+
+export const midtransWebhook = onRequest(
+  { secrets: [midtransServerKeySecret] },
+  async (req, res) => {
+    if (req.method !== "POST") {
+      res.status(405).send("Method Not Allowed");
+      return;
+    }
+
+    const {
+      order_id,
+      status_code,
+      gross_amount,
+      signature_key,
+      transaction_status,
+      payment_type,
+      settlement_time,
+      fraud_status,
+    } = req.body as MidtransNotificationBody;
+
+    logger.info("Received Midtrans Webhook Notification", {
+      order_id,
+      status_code,
+      gross_amount,
+      transaction_status,
+      payment_type,
+    });
+
+    if (!order_id || !status_code || !gross_amount || !signature_key || !transaction_status) {
+      logger.warn("Midtrans webhook received invalid or incomplete payload", { body: req.body });
+      res.status(400).send("Bad Payload");
+      return;
+    }
+
+    const serverKey = process.env.MIDTRANS_SERVER_KEY || midtransServerKeySecret.value();
+    if (!serverKey) {
+      logger.error("MIDTRANS_SERVER_KEY environment variable is not defined");
+      res.status(500).send("Internal Server Error");
+      return;
+    }
+
+    // SHA512(order_id + status_code + gross_amount + MIDTRANS_SERVER_KEY)
+    const hashString = order_id + status_code + gross_amount + serverKey;
+    const computedSignature = crypto
+      .createHash("sha512")
+      .update(hashString)
+      .digest("hex");
+
+    if (computedSignature !== signature_key) {
+      logger.warn("Signature verification failed", {
+        order_id,
+        received: signature_key,
+        computed: computedSignature,
+      });
+      res.status(401).send("Unauthorized");
+      return;
+    }
+
+    const db = admin.firestore();
+    const invoiceRef = db.collection("invoices").doc(order_id);
+
+    try {
+      const result = await db.runTransaction(async (transaction) => {
+        const invoiceSnap = await transaction.get(invoiceRef);
+
+        if (!invoiceSnap.exists) {
+          logger.warn(`Invoice document not found in Firestore: ${order_id}`);
+          return { status: 400, message: "Invoice not found" };
+        }
+
+        const invoiceData = invoiceSnap.data();
+        if (invoiceData?.status === "PAID") {
+          logger.info(`Invoice ${order_id} already marked as PAID. Skipping.`);
+          return { status: 200, message: "Transaction already processed" };
+        }
+
+        let newStatus: "PENDING" | "PAID" | "EXPIRED" | "FAILED" = invoiceData?.status || "PENDING";
+        let shouldUnlockTenant = false;
+
+        if (
+          transaction_status === "settlement" ||
+          (transaction_status === "capture" && fraud_status === "accept")
+        ) {
+          newStatus = "PAID";
+          shouldUnlockTenant = true;
+        } else if (transaction_status === "deny" || transaction_status === "cancel") {
+          newStatus = "FAILED";
+        } else if (transaction_status === "expire") {
+          newStatus = "EXPIRED";
+        }
+
+        const invoiceUpdate: any = {
+          status: newStatus,
+          paymentType: payment_type || invoiceData?.paymentType || "unknown",
+          updatedAt: FieldValue.serverTimestamp(),
+        };
+
+        if (settlement_time) {
+          const parsedSettlementTime = new Date(settlement_time);
+          if (!isNaN(parsedSettlementTime.getTime())) {
+            invoiceUpdate.settlementTime = admin.firestore.Timestamp.fromDate(parsedSettlementTime);
+          } else {
+            invoiceUpdate.settlementTime = FieldValue.serverTimestamp();
+          }
+        } else if (newStatus === "PAID") {
+          invoiceUpdate.settlementTime = FieldValue.serverTimestamp();
+        }
+
+        transaction.update(invoiceRef, invoiceUpdate);
+
+        if (shouldUnlockTenant) {
+          const tenantId = invoiceData?.tenantId;
+          if (tenantId) {
+            const tenantRef = db.collection("tenants").doc(tenantId);
+            const tenantSnap = await transaction.get(tenantRef);
+
+            if (tenantSnap.exists) {
+              const tenantData = tenantSnap.data();
+              let currentExpiry: Date | null = null;
+
+              if (tenantData) {
+                const prevValidUntil = tenantData.validUntil;
+                const prevPeriodEnd = tenantData.subscription?.currentPeriodEnd;
+
+                if (prevValidUntil instanceof admin.firestore.Timestamp) {
+                  currentExpiry = prevValidUntil.toDate();
+                } else if (prevPeriodEnd instanceof admin.firestore.Timestamp) {
+                  currentExpiry = prevPeriodEnd.toDate();
+                }
+              }
+
+              const now = new Date();
+              let newExpiry: Date;
+
+              if (currentExpiry && currentExpiry > now) {
+                newExpiry = new Date(currentExpiry.getTime() + 30 * 24 * 60 * 60 * 1000);
+              } else {
+                newExpiry = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+              }
+
+              const newExpiryTimestamp = admin.firestore.Timestamp.fromDate(newExpiry);
+
+              const planType = invoiceData?.planType;
+              let maxOutlets = 1;
+              if (planType === "2-outlets") {
+                maxOutlets = 2;
+              } else if (planType === "4-outlets") {
+                maxOutlets = 4;
+              }
+
+              transaction.update(tenantRef, {
+                subscriptionStatus: "PAID",
+                validUntil: newExpiryTimestamp,
+                "subscription.status": "PAID",
+                "subscription.currentPeriodEnd": newExpiryTimestamp,
+                maxOutlets: maxOutlets,
+              });
+
+              logger.info(`Successfully updated tenant ${tenantId} subscription status to PAID. New expiry: ${newExpiry.toISOString()}, maxOutlets: ${maxOutlets}`);
+            } else {
+              logger.error(`Tenant document ${tenantId} not found during webhook processing`);
+            }
+          } else {
+            logger.warn(`Invoice ${order_id} does not have a tenantId associated with it`);
+          }
+        }
+
+        return { status: 200, message: "OK" };
+      });
+
+      res.status(result.status).send(result.message);
+    } catch (error: any) {
+      logger.error("Error processing Midtrans webhook transaction", {
+        order_id,
+        errorMessage: error?.message || "Unknown error",
+        errorStack: error?.stack,
+      });
+      res.status(500).send("Internal Database Error");
+    }
+  }
+);
+
+export const createCheckoutSession = onCall(
+  { secrets: [midtransServerKeySecret] },
+  async (request) => {
+    const { auth } = request;
+
+    if (!auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "Authentication is required to create a checkout session."
+      );
+    }
+
+    const role = auth.token.role;
+    if (role !== "owner") {
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        "Only owners are authorized to create subscription checkout sessions."
+      );
+    }
+
+    const tenantId = auth.token.tenantId;
+    if (!tenantId) {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "Owner account is not associated with a tenant ID."
+      );
+    }
+
+    const serverKey = process.env.MIDTRANS_SERVER_KEY || midtransServerKeySecret.value();
+    if (!serverKey) {
+      logger.error("MIDTRANS_SERVER_KEY environment variable is not defined");
+      throw new functions.https.HttpsError(
+        "internal",
+        "Payment gateway server key is not configured."
+      );
+    }
+
+    const invoiceId = `INV-${tenantId}-${Date.now()}`;
+    const amount = 150000;
+
+    // Initialize Midtrans Snap client
+    const snap = new midtransClient.Snap({
+      isProduction: false,
+      serverKey: serverKey,
+    });
+
+    const parameter = {
+      transaction_details: {
+        order_id: invoiceId,
+        gross_amount: amount,
+      },
+      item_details: [
+        {
+          id: "premium_30_days",
+          price: amount,
+          quantity: 1,
+          name: "Usahaku POS Premium - 30 Hari",
+        },
+      ],
+      customer_details: {
+        email: auth.token.email || "",
+        first_name: auth.token.name || "",
+      },
+    };
+
+    try {
+      const transaction = await snap.createTransaction(parameter);
+
+      const db = admin.firestore();
+      await db.collection("invoices").doc(invoiceId).set({
+        invoiceId,
+        tenantId,
+        amount,
+        status: "PENDING",
+        paymentType: "pending",
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+        settlementTime: null,
+      });
+
+      return {
+        token: transaction.token,
+        redirectUrl: transaction.redirect_url,
+        orderId: invoiceId,
+      };
+    } catch (error: any) {
+      logger.error("Error creating Midtrans checkout session", {
+        tenantId,
+        errorMessage: error?.message || "Unknown error",
+        errorStack: error?.stack,
+      });
+      throw new functions.https.HttpsError(
+        "internal",
+        error?.message || "Failed to create checkout session."
+      );
+    }
+  }
+);
+
+export const generateSnapToken = onCall(
+  { secrets: [midtransServerKeySecret] },
+  async (request) => {
+    const { auth, data } = request;
+
+    if (!auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "Authentication is required to generate a Snap token."
+      );
+    }
+
+    const role = auth.token.role;
+    if (role !== "owner") {
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        "Only owners are authorized to generate Snap tokens."
+      );
+    }
+
+    const planType = data?.planType;
+    if (planType !== "1-outlet" && planType !== "2-outlets" && planType !== "4-outlets") {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Invalid plan type specified. Must be '1-outlet', '2-outlets', or '4-outlets'."
+      );
+    }
+
+    let amount = 0;
+    if (planType === "1-outlet") {
+      amount = 25000;
+    } else if (planType === "2-outlets") {
+      amount = 50000;
+    } else if (planType === "4-outlets") {
+      amount = 100000;
+    }
+
+    const tenantId = auth.token.tenantId as string | undefined;
+    const finalTenantId = tenantId || null;
+
+    const serverKey = process.env.MIDTRANS_SERVER_KEY || midtransServerKeySecret.value();
+    if (!serverKey) {
+      logger.error("MIDTRANS_SERVER_KEY environment variable is not defined");
+      throw new functions.https.HttpsError(
+        "internal",
+        "Payment gateway server key is not configured."
+      );
+    }
+
+    const db = admin.firestore();
+
+    let businessName = "Usahaku Store";
+    let email = auth.token.email || "";
+    let phone = "";
+
+    if (finalTenantId) {
+      try {
+        const tenantDoc = await db.collection("tenants").doc(finalTenantId).get();
+        if (tenantDoc.exists) {
+          const tenantData = tenantDoc.data();
+          businessName = tenantData?.name || businessName;
+          if (tenantData?.email) email = tenantData.email;
+          if (tenantData?.phone) phone = tenantData.phone;
+        }
+      } catch (e) {
+        logger.error("Error fetching tenant profile", e);
+      }
+    }
+
+    if (!phone) {
+      try {
+        const ownerDoc = await db.collection("users").doc(auth.uid).get();
+        if (ownerDoc.exists) {
+          phone = ownerDoc.data()?.phone || "";
+        }
+      } catch (e) {
+        logger.error("Error fetching owner user profile", e);
+      }
+    }
+
+    if (!email) {
+      email = auth.token.email || "";
+    }
+
+    const orderId = `INV-${auth.uid}-${Date.now()}`;
+
+    // Initialize Midtrans Snap client
+    const snapClient = new midtransClient.Snap({
+      isProduction: false,
+      serverKey: serverKey,
+    });
+
+    const parameter = {
+      transaction_details: {
+        order_id: orderId,
+        gross_amount: amount,
+      },
+      item_details: [
+        {
+          id: planType,
+          price: amount,
+          quantity: 1,
+          name: `Usahaku POS Premium - ${planType}`,
+        },
+      ],
+      customer_details: {
+        email: email || undefined,
+        first_name: businessName,
+        phone: phone || undefined,
+      },
+    };
+
+    try {
+      // Create invoice document in the root 'invoices' collection
+      await db.collection("invoices").doc(orderId).set({
+        invoiceId: orderId,
+        tenantId: finalTenantId,
+        amount,
+        planType,
+        status: "PENDING",
+        paymentType: "pending",
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+        settlementTime: null,
+      });
+
+      const transaction = await snapClient.createTransaction(parameter);
+
+      return {
+        token: transaction.token,
+        redirectUrl: transaction.redirect_url,
+        orderId,
+      };
+    } catch (error: any) {
+      logger.error("Error creating Midtrans Snap token", {
+        tenantId: finalTenantId,
+        errorMessage: error?.message || "Unknown error",
+        errorStack: error?.stack,
+      });
+      // Cleanup invoice if snap creation failed
+      await db.collection("invoices").doc(orderId).delete().catch(() => null);
+
+      throw new functions.https.HttpsError(
+        "internal",
+        error?.message || "Failed to generate Snap token."
+      );
+    }
+  }
+);
+
+interface CheckPaymentStatusPayload {
+  invoiceId?: string;
+}
+
+export const checkPaymentStatus = onCall(
+  { secrets: [midtransServerKeySecret] },
+  async (request: functions.https.CallableRequest<CheckPaymentStatusPayload>) => {
+    const { auth, data } = request;
+
+    // 1. Auth Guard
+    if (!auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "Authentication is required."
+      );
+    }
+
+    const tenantId = auth.token.tenantId;
+    if (!tenantId) {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "Owner account is not associated with a tenant ID."
+      );
+    }
+
+    const invoiceId = data?.invoiceId;
+    if (typeof invoiceId !== "string" || !invoiceId) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "A valid invoiceId is required."
+      );
+    }
+
+    const db = admin.firestore();
+    const invoiceRef = db.collection("invoices").doc(invoiceId);
+    const invoiceSnap = await invoiceRef.get();
+
+    // 2. Invoice Existence & Tenant Security Guard
+    if (!invoiceSnap.exists) {
+      throw new functions.https.HttpsError(
+        "not-found",
+        "Invoice not found."
+      );
+    }
+
+    const invoiceData = invoiceSnap.data();
+    if (!invoiceData) {
+      throw new functions.https.HttpsError(
+        "internal",
+        "Invoice data is empty."
+      );
+    }
+
+    if (invoiceData.tenantId !== tenantId) {
+      logger.warn("Security check failed: Tenant mismatch", {
+        callerTenantId: tenantId,
+        invoiceTenantId: invoiceData.tenantId,
+        invoiceId,
+      });
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        "Access denied: Invoice does not belong to your store."
+      );
+    }
+
+    // 3. Backend Throttling Guard (15 seconds)
+    const lastCheckedAt = invoiceData.lastCheckedAt;
+    if (lastCheckedAt instanceof admin.firestore.Timestamp) {
+      const diff = Date.now() - lastCheckedAt.toMillis();
+      if (diff < 15000) {
+        throw new functions.https.HttpsError(
+          "resource-exhausted",
+          "Anda terlalu cepat melakukan sinkronisasi. Mohon tunggu beberapa saat."
+        );
+      }
+    }
+
+    // Update lastCheckedAt immediately to block parallel requests
+    await invoiceRef.update({
+      lastCheckedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // 4. Secure Midtrans status check
+    const serverKey = process.env.MIDTRANS_SERVER_KEY || midtransServerKeySecret.value();
+    if (!serverKey) {
+      logger.error("MIDTRANS_SERVER_KEY environment variable is not defined");
+      throw new functions.https.HttpsError(
+        "internal",
+        "Payment gateway server key is not configured."
+      );
+    }
+
+    const authHeader = "Basic " + Buffer.from(serverKey + ":").toString("base64");
+    
+    try {
+      const statusUrl = `https://api.sandbox.midtrans.com/v2/${invoiceId}/status`;
+      const response = await (globalThis as any).fetch(statusUrl, {
+        headers: {
+          Authorization: authHeader,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        logger.error("Failed to query Midtrans status API", {
+          status: response.status,
+          statusText: response.statusText,
+          invoiceId,
+        });
+        throw new functions.https.HttpsError(
+          "internal",
+          "Gagal menghubungi server Midtrans."
+        );
+      }
+
+      const statusData = await response.json();
+      const transactionStatus = statusData.transaction_status;
+      const fraudStatus = statusData.fraud_status;
+
+      logger.info("Midtrans Status Query Response", {
+        invoiceId,
+        transactionStatus,
+        fraudStatus,
+      });
+
+      // 5. Strict Firestore Transaction for Settlement
+      if (
+        transactionStatus === "settlement" ||
+        (transactionStatus === "capture" && fraudStatus === "accept")
+      ) {
+        const result = await db.runTransaction(async (transaction) => {
+          const freshInvoiceSnap = await transaction.get(invoiceRef);
+          if (!freshInvoiceSnap.exists) {
+            throw new functions.https.HttpsError("not-found", "Invoice not found during transaction.");
+          }
+
+          const freshInvoiceData = freshInvoiceSnap.data();
+          if (freshInvoiceData?.status === "PAID") {
+            // Already paid (e.g. by Webhook), early clean return
+            return {
+              status: "PAID",
+              message: "Pembayaran sudah diproses.",
+            };
+          }
+
+          // Mutate status to PAID
+          transaction.update(invoiceRef, {
+            status: "PAID",
+            paymentType: statusData.payment_type || freshInvoiceData?.paymentType || "unknown",
+            settlementTime: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          // Fetch related tenant
+          const tenantRef = db.collection("tenants").doc(tenantId);
+          const tenantSnap = await transaction.get(tenantRef);
+
+          if (tenantSnap.exists) {
+            const tenantData = tenantSnap.data();
+            let currentExpiry: Date | null = null;
+
+            if (tenantData) {
+              const prevValidUntil = tenantData.validUntil;
+              const prevPeriodEnd = tenantData.subscription?.currentPeriodEnd;
+
+              if (prevValidUntil instanceof admin.firestore.Timestamp) {
+                currentExpiry = prevValidUntil.toDate();
+              } else if (prevPeriodEnd instanceof admin.firestore.Timestamp) {
+                currentExpiry = prevPeriodEnd.toDate();
+              }
+            }
+
+            const now = new Date();
+            let newExpiry: Date;
+
+            if (currentExpiry && currentExpiry > now) {
+              newExpiry = new Date(currentExpiry.getTime() + 30 * 24 * 60 * 60 * 1000);
+            } else {
+              newExpiry = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+            }
+
+            const newExpiryTimestamp = admin.firestore.Timestamp.fromDate(newExpiry);
+            const planType = freshInvoiceData?.planType;
+            let maxOutlets = 1;
+            if (planType === "2-outlets") {
+              maxOutlets = 2;
+            } else if (planType === "4-outlets") {
+              maxOutlets = 4;
+            }
+
+            transaction.update(tenantRef, {
+              subscriptionStatus: "PAID",
+              validUntil: newExpiryTimestamp,
+              "subscription.status": "PAID",
+              "subscription.currentPeriodEnd": newExpiryTimestamp,
+              maxOutlets: maxOutlets,
+            });
+
+            logger.info(`Updated tenant ${tenantId} subscription status to PAID. New expiry: ${newExpiry.toISOString()}, maxOutlets: ${maxOutlets}`);
+          } else {
+            logger.error(`Tenant document ${tenantId} not found during checkPaymentStatus transaction.`);
+          }
+
+          return {
+            status: "PAID",
+            message: "Pembayaran berhasil disinkronisasi.",
+          };
+        });
+
+        return result;
+      } else {
+        // If not settled, check if payment failed or expired
+        let updatedStatus: "PENDING" | "EXPIRED" | "FAILED" | null = null;
+        if (transactionStatus === "deny" || transactionStatus === "cancel") {
+          updatedStatus = "FAILED";
+        } else if (transactionStatus === "expire") {
+          updatedStatus = "EXPIRED";
+        }
+
+        if (updatedStatus) {
+          await invoiceRef.update({
+            status: updatedStatus,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          return {
+            status: updatedStatus,
+            message: `Pembayaran gagal dengan status: ${transactionStatus}`,
+          };
+        }
+
+        return {
+          status: "PENDING",
+          message: "Pembayaran belum diterima. Silakan selesaikan pembayaran Anda di Midtrans.",
+        };
+      }
+    } catch (error: any) {
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      logger.error("Error executing checkPaymentStatus", {
+        invoiceId,
+        errorMessage: error?.message || "Unknown error",
+        errorStack: error?.stack,
+      });
+      throw new functions.https.HttpsError(
+        "internal",
+        "Terjadi kesalahan saat menyinkronkan pembayaran."
       );
     }
   }

@@ -57,3 +57,6 @@ firestore-debug.log
 ui-debug.log
 
 *.log
+
+# Local Firestore schemas and secret notes
+firestore-docs/

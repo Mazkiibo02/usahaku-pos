@@ -44,10 +44,11 @@ export const cashierService = {
       throw new Error('Tenant ID is required');
     }
     
-    const staffRef = collection(db, 'staff');
+    const staffRef = collection(db, 'users');
     const q = query(
       staffRef,
       where('tenantId', '==', tenantId),
+      where('role', '==', 'cashier'),
       orderBy('createdAt', 'desc')
     );
     
@@ -73,7 +74,7 @@ export const cashierService = {
       throw new Error('Outlet ID is required');
     }
 
-    const docRef = doc(db, 'staff', cashierId);
+    const docRef = doc(db, 'users', cashierId);
     await updateDoc(docRef, {
       outletId,
       updatedAt: serverTimestamp(),
