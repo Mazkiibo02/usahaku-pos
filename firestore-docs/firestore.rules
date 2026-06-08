@@ -1,0 +1,304 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================
+    // HELPER FUNCTIONS
+    // =========================================================
+
+    // Cek apakah user sudah login
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Ambil tenantId dari Custom Claims (0 read cost)
+    function myTenantId() {
+      return request.auth.token.tenantId;
+    }
+
+    // Ambil role dari Custom Claims (0 read cost)
+    function myRole() {
+      return request.auth.token.role;
+    }
+
+    // Cek apakah user adalah owner
+    function isOwner() {
+      return isAuthenticated() && myRole() == 'owner';
+    }
+
+    // Cek apakah user adalah kasir
+    function isCashier() {
+      return isAuthenticated() && myRole() == 'cashier';
+    }
+
+    // Cek apakah user adalah owner ATAU kasir (authenticated tenant member)
+    function isTenantMember() {
+      return isAuthenticated() && (myRole() == 'owner' || myRole() == 'cashier');
+    }
+
+    // Cek apakah resource milik tenant yang sama
+    function isSameTenant() {
+      return resource.data.tenantId == myTenantId();
+    }
+
+    // Cek apakah data yang akan ditulis milik tenant yang sama
+    function isWritingToMyTenant() {
+      return request.resource.data.tenantId == myTenantId();
+    }
+
+    // Cek apakah kasir ditugaskan di outlet ini (1 read — hanya untuk kasir)
+    function isCashierAssignedToOutlet(outletId) {
+      return get(/databases/$(database)/documents/outlets/$(outletId))
+               .data.assignedCashiers.hasAny([request.auth.uid]);
+    }
+
+    // Pastikan tenant aktif (tidak expired/suspended) — baca dari tenants doc
+    // Digunakan untuk operasi kritis seperti buat transaksi
+    function isTenantActive() {
+      let tenant = get(/databases/$(database)/documents/tenants/$(myTenantId()));
+      return tenant.data.subscriptionStatus == 'trial'
+          || tenant.data.subscriptionStatus == 'active';
+    }
+
+    // Cek apakah owner masih diperbolehkan menambah outlet berdasarkan plan (maxOutlets)
+    function canCreateOutlet() {
+      let tenant = get(/databases/$(database)/documents/tenants/$(myTenantId())).data;
+      let count = ('outletsCount' in tenant) ? tenant.outletsCount : 0;
+      let max = ('maxOutlets' in tenant) ? tenant.maxOutlets : 2;
+      return count < max;
+    }
+
+
+    // =========================================================
+    // COLLECTION: tenants/{tenantId}
+    // =========================================================
+    // Owner & Kasir (Tenant Member): read
+    // Owner: update (edit profil bisnis, receiptFooter, dll)
+    // Create/delete: hanya via Cloud Function (Admin SDK), bukan dari client
+    // =========================================================
+
+    match /tenants/{tenantId} {
+      allow read: if isTenantMember()
+                  && request.auth.token.tenantId == tenantId;
+
+      allow update: if isOwner()
+                    && request.auth.token.tenantId == tenantId
+                    // Proteksi field kritis — tidak boleh diubah dari client
+                    && !request.resource.data.diff(resource.data).affectedKeys()
+                        .hasAny([
+                          'tenantId',
+                          'ownerUid',
+                          'subscriptionStatus',
+                          'subscriptionPlan',
+                          'trialEndsAt',
+                          'subscriptionEndsAt',
+                          'createdAt',
+                          'maxOutlets'
+                        ]);
+
+      allow create, delete: if false; // Hanya Cloud Function
+    }
+
+    // =========================================================
+    // COLLECTION: tenants/{tenantId}/shifts/{shiftId}
+    // =========================================================
+    // Owner & Kasir (Tenant Member): read, create, update
+    // Membuka shift baru (create) dan menutup/mencatat modal (update)
+    // Dibatasi ketat berdasarkan tenantId dari Custom Claims user
+    // =========================================================
+
+    match /tenants/{tenantId}/shifts/{shiftId} {
+      allow read, create, update: if isTenantMember()
+                                  && request.auth.token.tenantId == tenantId;
+    }
+
+
+    // =========================================================
+    // COLLECTION: users/{uid}
+    // =========================================================
+    // Owner: read semua user dalam tenantnya, update profil kasir (isActive, name)
+    // Kasir: read dokumen dirinya sendiri saja
+    // Create/delete: hanya via Cloud Function (Admin SDK)
+    // =========================================================
+
+    match /users/{uid} {
+      allow read: if isAuthenticated()
+                  && (
+                    // Owner bisa baca semua user di tenantnya
+                    (isOwner() && resource.data.tenantId == myTenantId())
+                    ||
+                    // Kasir hanya bisa baca dokumen dirinya sendiri
+                    (isCashier() && request.auth.uid == uid)
+                  );
+
+      allow update: if isOwner()
+                    && resource.data.tenantId == myTenantId()
+                    // Owner hanya boleh update: name, phone, isActive
+                    // Tidak boleh ubah role, tenantId, uid, email
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                        .hasOnly(['name', 'phone', 'isActive', 'lastLoginAt']);
+
+      allow create, delete: if false; // Hanya Cloud Function
+    }
+
+
+    // =========================================================
+    // COLLECTION: outlets/{outletId}
+    // =========================================================
+    // Owner: full CRUD semua outlet miliknya
+    // Kasir: read outlet yang dia ditugaskan saja
+    // =========================================================
+
+    match /outlets/{outletId} {
+      allow read: if isTenantMember()
+                  && isSameTenant();
+
+      allow create: if isOwner()
+                    && isWritingToMyTenant()
+                    // Proteksi: tenantId tidak boleh berbeda dari claims
+                    && request.resource.data.tenantId == myTenantId()
+                    && canCreateOutlet();
+
+      allow update: if isOwner()
+                    && isSameTenant()
+                    // Proteksi: tenantId tidak boleh diubah
+                    && request.resource.data.tenantId == resource.data.tenantId;
+
+      allow delete: if isOwner()
+                    && isSameTenant();
+    }
+
+
+    // =========================================================
+    // COLLECTION: products/{productId}
+    // =========================================================
+    // Owner: full CRUD
+    // Kasir: read only (untuk search di POS), tidak bisa write apapun
+    // Stok decrement dilakukan via batch write transaksi (bukan direct update di sini)
+    // =========================================================
+
+    match /products/{productId} {
+      allow read: if isTenantMember()
+                  && isSameTenant();
+
+      allow create: if isOwner()
+                    && isWritingToMyTenant();
+
+      allow update: if isOwner()
+                    && isSameTenant()
+                    // Proteksi: tenantId tidak boleh diubah
+                    && request.resource.data.tenantId == resource.data.tenantId
+                    // Proteksi: productId (di dalam dokumen) tidak boleh diubah
+                    && request.resource.data.productId == resource.data.productId;
+
+      allow delete: if isOwner()
+                    && isSameTenant();
+    }
+
+
+    // =========================================================
+    // COLLECTION: transactions/{transactionId}
+    // =========================================================
+    // Owner: create + read semua transaksi di tenantnya
+    // Kasir: create + read transaksi di outlet yang dia tugaskan saja
+    // Update & Delete: DIBLOKIR TOTAL untuk semua role (no refund/retur)
+    // =========================================================
+
+    match /transactions/{transactionId} {
+
+      // READ — Owner baca semua, Kasir baca outlet sendiri
+      allow read: if isOwner()
+                  && isSameTenant()
+                  ||
+                  isCashier()
+                  && isSameTenant()
+                  && isCashierAssignedToOutlet(resource.data.outletId);
+
+      // CREATE — Owner & Kasir boleh buat transaksi, tenant harus aktif
+      allow create: if isTenantMember()
+                    && isWritingToMyTenant()
+                    && isTenantActive()
+                    // Kasir hanya bisa buat transaksi di outlet yang ditugaskan
+                    && (
+                      isOwner()
+                      ||
+                      (isCashier() && isCashierAssignedToOutlet(request.resource.data.outletId))
+                    )
+                    // Validasi field wajib ada
+                    && request.resource.data.keys().hasAll([
+                      'transactionId', 'tenantId', 'outletId', 'cashierId',
+                      'items', 'grandTotal', 'paymentMethod', 'paymentStatus',
+                      'createdAt', 'receiptNumber'
+                    ])
+                    // Validasi paymentStatus selalu "paid"
+                    && request.resource.data.paymentStatus == 'paid'
+                    // Validasi cashierId harus UID user yang sedang login
+                    && request.resource.data.cashierId == request.auth.uid;
+
+      // UPDATE & DELETE — DIBLOKIR TOTAL
+      allow update, delete: if false;
+    }
+
+
+    // =========================================================
+    // COLLECTION: dashboards/{docId}
+    // =========================================================
+    // Owner: read only (dokumen tenantnya)
+    // Kasir: tidak bisa akses sama sekali
+    // Write: hanya Cloud Function (Admin SDK)
+    // =========================================================
+
+    match /dashboards/{docId} {
+      allow read: if isOwner() && docId == myTenantId();
+
+      allow write: if false; // Hanya Cloud Function
+    }
+
+
+    // =========================================================
+    // COLLECTION: invoices/{invoiceId}
+    // =========================================================
+    // Owner: read only (untuk cek status pembayaran)
+    // Write: hanya via Cloud Function (Admin SDK)
+    // =========================================================
+
+    match /invoices/{invoiceId} {
+      allow read: if isOwner()
+                  && resource.data.tenantId == myTenantId();
+
+      allow write: if false; // Hanya Cloud Function
+    }
+
+
+
+    // =========================================================
+    // COLLECTION: barcodeIndex/{barcode}
+    // =========================================================
+    // Flat lookup index untuk barcode scan (2 reads: index + product doc)
+    // Owner & Kasir: read only
+    // Write: hanya saat create/update produk (via Cloud Function atau owner)
+    // =========================================================
+
+    match /barcodeIndex/{barcode} {
+      allow read: if isTenantMember()
+                  && resource.data.tenantId == myTenantId();
+
+      allow write: if isOwner()
+                   && (
+                     !exists(/databases/$(database)/documents/barcodeIndex/$(barcode))
+                     || resource.data.tenantId == myTenantId()
+                   );
+    }
+
+
+    // =========================================================
+    // DEFAULT: Tolak semua akses yang tidak didefinisikan
+    // =========================================================
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+  }
+}

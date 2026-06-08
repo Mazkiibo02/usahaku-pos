@@ -1,0 +1,479 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+.root { padding: 1rem 0; font-family: var(--font-sans); }
+.tree { background: var(--color-background-secondary); border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; margin-bottom: 14px; }
+.tree-header { padding: 10px 16px; background: var(--color-background-tertiary); border-bottom: 1px solid var(--color-border-tertiary); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.path { font-size: 13px; color: var(--color-text-secondary); font-family: var(--font-mono); }
+.badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
+.badge-col { background: #EEEDFE; color: #3C3489; }
+.badge-doc { background: #E1F5EE; color: #085041; }
+.badge-idx { background: #FCEBEB; color: #791F1F; }
+.node { display: flex; align-items: flex-start; cursor: pointer; border-bottom: 1px solid var(--color-border-tertiary); transition: background 0.12s; }
+.node:last-child { border-bottom: none; }
+.node:hover { background: var(--color-background-tertiary); }
+.node.open { background: var(--color-background-tertiary); }
+.toggle { width: 36px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--color-text-tertiary); font-size: 10px; padding-top: 12px; }
+.nc { flex: 1; padding: 9px 16px 9px 0; }
+.nr { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.key { font-family: var(--font-mono); font-size: 12px; color: var(--color-text-primary); font-weight: 500; }
+.type { font-size: 10px; color: var(--color-text-tertiary); background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: 4px; padding: 1px 5px; font-family: var(--font-mono); }
+.val-s { font-family: var(--font-mono); font-size: 12px; color: #1D9E75; }
+.val-n { font-family: var(--font-mono); font-size: 12px; color: #185FA5; }
+.val-b { font-family: var(--font-mono); font-size: 12px; color: #D85A30; }
+.val-null { font-family: var(--font-mono); font-size: 12px; color: #888780; }
+.desc { font-size: 11px; color: var(--color-text-secondary); margin-top: 3px; line-height: 1.45; }
+.children { display: none; }
+.children.open { display: block; }
+.detail { padding: 8px 16px 12px 36px; border-bottom: 1px solid var(--color-border-tertiary); }
+.detail-body { font-size: 12px; color: var(--color-text-secondary); line-height: 1.6; }
+.detail-body code { font-family: var(--font-mono); font-size: 11px; background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: 4px; padding: 1px 5px; color: var(--color-text-primary); }
+.note { font-size: 11px; margin-top: 6px; line-height: 1.5; }
+.note-warn { color: #BA7517; }
+.note-good { color: #3B6D11; }
+.note-info { color: #185FA5; }
+.mono-block { font-family: var(--font-mono); font-size: 11px; line-height: 1.8; color: var(--color-text-primary); background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: 6px; padding: 10px 12px; margin-top: 8px; }
+.sec { padding: 6px 16px; background: var(--color-background-tertiary); border-bottom: 1px solid var(--color-border-tertiary); font-size: 11px; color: var(--color-text-secondary); font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.col-title { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.tabs { display: flex; gap: 4px; margin-top: 12px; flex-wrap: wrap; }
+.tab { padding: 6px 14px; border-radius: 20px; font-size: 12px; cursor: pointer; border: 1px solid var(--color-border-tertiary); background: var(--color-background-secondary); color: var(--color-text-secondary); transition: all 0.15s; }
+.tab.active { background: #EEEDFE; color: #3C3489; border-color: #AFA9EC; }
+.panel { margin-top: 10px; border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; display: none; }
+.panel.active { display: block; }
+.panel-header { padding: 10px 16px; background: var(--color-background-tertiary); border-bottom: 1px solid var(--color-border-tertiary); font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+.panel-body { padding: 12px 16px; }
+.card { border: 1px solid var(--color-border-tertiary); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; }
+.card:last-child { margin-bottom: 0; }
+.card-title { font-size: 12px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.card-body { font-size: 12px; color: var(--color-text-secondary); line-height: 1.6; }
+.card-body code { font-family: var(--font-mono); font-size: 11px; background: var(--color-background-tertiary); border: 1px solid var(--color-border-tertiary); border-radius: 4px; padding: 1px 5px; color: var(--color-text-primary); }
+.pill { font-size: 10px; padding: 2px 7px; border-radius: 10px; }
+.pill-green { background: #EAF3DE; color: #27500A; }
+.pill-amber { background: #FAEEDA; color: #633806; }
+.pill-blue { background: #E6F1FB; color: #0C447C; }
+.pill-purple { background: #EEEDFE; color: #3C3489; }
+.pill-red { background: #FCEBEB; color: #791F1F; }
+.access-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
+.access-table th { text-align: left; padding: 6px 10px; background: var(--color-background-tertiary); color: var(--color-text-secondary); font-weight: 500; border-bottom: 1px solid var(--color-border-tertiary); }
+.access-table td { padding: 7px 10px; border-bottom: 1px solid var(--color-border-tertiary); color: var(--color-text-secondary); vertical-align: top; }
+.access-table tr:last-child td { border-bottom: none; }
+.check { color: #3B6D11; font-size: 13px; }
+.cross { color: #A32D2D; font-size: 13px; }
+</style>
+
+<div class="root">
+
+  <!-- TENANTS -->
+  <div class="col-title"><span class="badge badge-col">COL 1</span> tenants / {tenantId}</div>
+  <div class="tree">
+    <div class="tree-header">
+      <span class="badge badge-col">COL</span>
+      <span class="path">tenants / {tenantId}</span>
+      <span style="font-size:11px;color:var(--color-text-tertiary);margin-left:auto">1 dokumen per pemilik usaha</span>
+    </div>
+
+    <div class="sec"><span class="dot" style="background:#7F77DD"></span>Identitas bisnis</div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">tenantId</span><span class="type">string</span><span class="val-s">"tenant_A7bR3k"</span></div>
+        <div class="desc">Sama dengan document ID. Root dari semua data bisnis ini.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Dibuat otomatis saat owner pertama kali registrasi. Semua koleksi lain (products, transactions, outlets, users) akan menyimpan field ini sebagai pengikat data multi-tenancy.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">businessName</span><span class="type">string</span><span class="val-s">"Toko Berkah Jaya"</span></div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Nama usaha yang ditampilkan di header nota, dashboard, dan halaman pengaturan. Bisa diubah oleh owner kapan saja.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">businessType</span><span class="type">enum</span><span class="val-s">"retail" | "fnb" | "fashion" | "workshop" | "other"</span></div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Tipe usaha dipilih saat onboarding. Digunakan untuk menyesuaikan template nota dan label default (misal: workshop menampilkan field nomor plat di form kasir secara otomatis).</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">logoUrl</span><span class="type">string | null</span><span class="val-null">null</span></div>
+        <div class="desc">URL logo usaha dari Firebase Storage — tampil di nota cetak.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Opsional. Jika diisi, logo ditampilkan di header nota thermal maupun A4. Disimpan di <code>Firebase Storage</code> path: <code>tenants/{tenantId}/logo.webp</code>.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">ownerUid</span><span class="type">string</span><span class="val-s">"uid_firebase_auth_owner"</span></div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">UID Firebase Auth dari pemilik utama. Digunakan Security Rules untuk memberikan akses penuh ke semua data tenant ini. Tidak bisa diubah setelah dibuat.</div><div class="note note-warn">⚠ Satu UID hanya boleh jadi owner di satu tenant. Validasi ini penting untuk mencegah abuse free trial.</div></div></div>
+
+    <div class="sec"><span class="dot" style="background:#1D9E75"></span>Subscription & billing</div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">subscriptionStatus</span><span class="type">enum</span><span class="val-s">"trial" | "active" | "expired" | "suspended"</span></div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body"><code>trial</code>: masa uji coba 28 hari. <code>active</code>: sudah bayar, langganan berjalan. <code>expired</code>: masa langganan habis, akses read-only. <code>suspended</code>: akun trial mati (tidak ada transaksi 7 hari), menunggu penghapusan.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">subscriptionPlan</span><span class="type">enum</span><span class="val-s">"trial" | "plan_1" | "plan_2" | "plan_4"</span></div>
+        <div class="desc">plan_1 = 1 cabang, plan_2 = 2 cabang, plan_4 = 4 cabang.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Menentukan berapa maksimal outlet yang boleh dibuat. Security Rules + Cloud Function memvalidasi ini saat owner mencoba menambah outlet baru.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">trialEndsAt</span><span class="type">timestamp | null</span></div>
+        <div class="desc">Waktu berakhirnya masa trial — 28 hari dari registrasi.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Cloud Function scheduler cek field ini setiap hari. Jika <code>trialEndsAt &lt; now</code> dan status masih <code>trial</code>, otomatis ubah ke <code>expired</code>. Juga dipakai untuk trigger peringatan hari ke-5 sebelum berakhir.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">subscriptionEndsAt</span><span class="type">timestamp | null</span></div>
+        <div class="desc">Waktu berakhir langganan berbayar.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Diupdate otomatis oleh webhook Midtrans setiap pembayaran sukses. Jika pembayaran bulanan, tambah 30 hari dari tanggal bayar.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">lastTransactionAt</span><span class="type">timestamp | null</span></div>
+        <div class="desc">Waktu transaksi POS terakhir — untuk deteksi akun trial mati.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Diupdate setiap ada transaksi baru. Cloud Function scheduler cek: jika <code>subscriptionStatus == "trial"</code> dan <code>lastTransactionAt</code> lebih dari 7 hari lalu (atau null), tandai sebagai <code>suspended</code> dan kirim peringatan.</div><div class="note note-good">✓ Field ini yang jadi penjaga otomatis pembersihan database trial mati.</div></div></div>
+
+    <div class="sec"><span class="dot" style="background:#BA7517"></span>Metadata</div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">createdAt</span><span class="type">timestamp</span></div>
+        <div class="desc">Waktu registrasi pertama.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Server timestamp saat dokumen tenant pertama dibuat. Tidak bisa diubah. Digunakan untuk hitung umur akun dan analitik cohort.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">receiptFooter</span><span class="type">string | null</span><span class="val-null">null</span></div>
+        <div class="desc">Teks footer nota — misal: "Terima kasih, barang tidak bisa dikembalikan".</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Dikustomisasi oleh owner di halaman pengaturan. Tampil di baris paling bawah setiap nota cetak.</div></div></div>
+  </div>
+
+  <!-- OUTLETS -->
+  <div class="col-title" style="margin-top:4px"><span class="badge badge-col">COL 2</span> outlets / {outletId}</div>
+  <div class="tree">
+    <div class="tree-header">
+      <span class="badge badge-col">COL</span>
+      <span class="path">outlets / {outletId}</span>
+      <span style="font-size:11px;color:var(--color-text-tertiary);margin-left:auto">1 dokumen per cabang</span>
+    </div>
+
+    <div class="sec"><span class="dot" style="background:#D85A30"></span>Identitas outlet</div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">tenantId</span><span class="type">string</span><span class="val-s">"tenant_A7bR3k"</span><span class="badge badge-idx" style="margin-left:auto;font-size:10px">indexed</span></div>
+        <div class="desc">Pengikat ke tenant — wajib di setiap query outlet.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Security Rules memastikan hanya owner dengan <code>tenantId</code> yang sama yang bisa membuat, membaca, dan mengubah outlet ini.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">outletName</span><span class="type">string</span><span class="val-s">"Cabang Jakarta Pusat"</span></div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Nama cabang yang ditampilkan di dashboard, header nota, dan pilihan outlet saat kasir login.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">address</span><span class="type">string | null</span><span class="val-s">"Jl. Sudirman No. 12, Jakarta Pusat"</span></div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Alamat lengkap cabang — tampil di nota cetak bagian header. Opsional tapi sangat disarankan diisi untuk nota yang profesional.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">phone</span><span class="type">string | null</span><span class="val-s">"0812-3456-7890"</span></div>
+        <div class="desc">Nomor telepon cabang — tampil di nota cetak.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Opsional. Jika diisi, tampil di nota cetak agar pelanggan bisa menghubungi cabang yang bersangkutan.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">isActive</span><span class="type">boolean</span><span class="val-b">true</span></div>
+        <div class="desc">Soft delete — false berarti cabang dinonaktifkan sementara.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Outlet yang dinonaktifkan tidak muncul di pilihan kasir dan tidak bisa menerima transaksi baru. Data historis tetap tersimpan dan bisa dilihat owner.</div></div></div>
+
+    <div class="sec"><span class="dot" style="background:#378ADD"></span>Kasir yang bertugas</div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">assignedCashiers</span><span class="type">array&lt;string&gt;</span><span style="font-family:var(--font-mono);font-size:12px;color:#1D9E75">["uid_kasir_1", "uid_kasir_2"]</span></div>
+        <div class="desc">Daftar UID kasir yang ditugaskan di cabang ini oleh owner.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Owner mengatur array ini untuk memindah kasir antar cabang. Kasir hanya bisa login ke outlet yang UID-nya ada di array ini. Security Rules cek: <code>request.auth.uid in resource.data.assignedCashiers</code>.</div><div class="note note-good">✓ Satu kasir bisa ada di banyak outlet sekaligus — cukup tambahkan UID-nya ke beberapa dokumen outlet.</div><div class="note note-info">ℹ Max realistis: 10–20 kasir per outlet. Aman dalam limit Firestore document size.</div></div></div>
+
+    <div class="sec"><span class="dot" style="background:#639922"></span>Counter & metadata</div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">receiptCounter</span><span class="type">number</span><span class="val-n">42</span></div>
+        <div class="desc">Counter untuk nomor nota INV/YYYY/MM/XXXX.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Di-increment menggunakan <code>FieldValue.increment(1)</code> setiap transaksi baru dalam Firestore Transaction (atomic). Ini yang menghasilkan nomor nota berurutan dan unik per outlet. Reset ke 0 setiap awal bulan via Cloud Function scheduler.</div><div class="note note-warn">⚠ Wajib pakai Firestore Transaction saat increment — bukan batch biasa — untuk cegah race condition saat dua kasir transaksi bersamaan.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">createdAt</span><span class="type">timestamp</span></div>
+        <div class="desc">Waktu outlet dibuat oleh owner.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Server timestamp. Tidak bisa diubah setelah dibuat.</div></div></div>
+  </div>
+
+  <!-- USERS -->
+  <div class="col-title" style="margin-top:4px"><span class="badge badge-col">COL 3</span> users / {uid}</div>
+  <div class="tree">
+    <div class="tree-header">
+      <span class="badge badge-col">COL</span>
+      <span class="path">users / {uid}</span>
+      <span style="font-size:11px;color:var(--color-text-tertiary);margin-left:auto">1 dokumen per pengguna (owner & kasir)</span>
+    </div>
+
+    <div class="sec"><span class="dot" style="background:#7F77DD"></span>Identitas pengguna</div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">uid</span><span class="type">string</span><span class="val-s">"uid_firebase_auth_xxx"</span></div>
+        <div class="desc">Sama dengan Firebase Auth UID dan document ID.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Primary key yang menghubungkan Firebase Auth dengan data profil di Firestore. Dibuat otomatis saat user pertama kali login via Google atau Email/Password.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">tenantId</span><span class="type">string</span><span class="val-s">"tenant_A7bR3k"</span><span class="badge badge-idx" style="margin-left:auto;font-size:10px">indexed</span></div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Pengikat ke bisnis mana user ini bekerja. Owner di-assign saat registrasi bisnis. Kasir di-assign oleh owner saat menambah karyawan baru.</div><div class="note note-warn">⚠ Field ini juga disimpan di Firebase Auth Custom Claims agar Security Rules bisa cek tanpa baca Firestore tambahan.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">role</span><span class="type">enum</span><span class="val-s">"owner" | "cashier"</span></div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Role menentukan seluruh hak akses. Disimpan juga di Firebase Auth Custom Claims: <code>{ tenantId: "...", role: "owner" }</code>. Security Rules membaca dari Custom Claims — bukan dari Firestore — agar tidak ada biaya read tambahan setiap validasi akses.</div><div class="note note-good">✓ Custom Claims = akses kontrol tanpa baca database. Gratis dan cepat.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">name</span><span class="type">string</span><span class="val-s">"Budi Santoso"</span></div>
+        <div class="desc">Nama lengkap — tampil di dashboard dan snapshot nota.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Nama ini yang di-snapshot ke field <code>cashierName</code> saat transaksi dibuat. Jika owner ubah nama kasir, nota lama tidak terpengaruh karena sudah tersimpan sebagai snapshot.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">email</span><span class="type">string</span><span class="val-s">"budi@email.com"</span></div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Email login. Untuk owner: email registrasi Google/Email-Password. Untuk kasir: email yang diinput owner saat menambah karyawan — kasir login dengan email ini.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">phone</span><span class="type">string | null</span><span class="val-null">null</span></div>
+        <div class="desc">Nomor HP — opsional, untuk keperluan kontak internal.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Tidak ditampilkan di nota. Hanya untuk keperluan owner menghubungi kasir jika dibutuhkan.</div></div></div>
+
+    <div class="sec"><span class="dot" style="background:#1D9E75"></span>Status & aktivitas</div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">isActive</span><span class="type">boolean</span><span class="val-b">true</span></div>
+        <div class="desc">false = kasir dinonaktifkan oleh owner, tidak bisa login.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Ketika owner set <code>isActive: false</code>, Cloud Function otomatis revoke Firebase Auth token kasir tersebut. Kasir yang sedang login akan ter-logout otomatis dalam hitungan menit.</div><div class="note note-good">✓ Ini mekanisme penonaktifan karyawan yang aman — tidak cukup hanya update Firestore, token Auth juga harus di-revoke.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">createdAt</span><span class="type">timestamp</span></div>
+        <div class="desc">Waktu akun dibuat.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Untuk owner: waktu registrasi bisnis. Untuk kasir: waktu owner menambahkan mereka ke sistem.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">lastLoginAt</span><span class="type">timestamp | null</span><span class="val-null">null</span></div>
+        <div class="desc">Waktu login terakhir — untuk monitoring aktivitas kasir.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Diupdate setiap kasir berhasil login. Owner bisa lihat kasir mana yang aktif atau sudah lama tidak login. Bisa juga dipakai untuk deteksi akun tidak digunakan.</div></div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="showPanel('access', this)">Matriks akses role</div>
+    <div class="tab" onclick="showPanel('flow', this)">Alur onboarding owner</div>
+    <div class="tab" onclick="showPanel('kasir', this)">Alur tambah kasir</div>
+    <div class="tab" onclick="showPanel('claims', this)">Custom Claims</div>
+  </div>
+
+  <div class="panel active" id="panel-access">
+    <div class="panel-header">Matriks akses: owner vs kasir</div>
+    <div class="panel-body">
+      <table class="access-table">
+        <tr><th>Fitur</th><th>Owner</th><th>Kasir</th></tr>
+        <tr><td>Buat & edit produk</td><td><span class="check">✓</span></td><td><span class="cross">✗</span></td></tr>
+        <tr><td>Lihat & kelola stok</td><td><span class="check">✓</span> semua outlet</td><td><span class="check">✓</span> outlet sendiri</td></tr>
+        <tr><td>Buat transaksi</td><td><span class="check">✓</span></td><td><span class="check">✓</span></td></tr>
+        <tr><td>Lihat riwayat transaksi</td><td><span class="check">✓</span> semua outlet</td><td><span class="check">✓</span> semua riwayat outlet sendiri</td></tr>
+        <tr><td>Lihat dashboard laporan</td><td><span class="check">✓</span> semua outlet</td><td><span class="cross">✗</span></td></tr>
+        <tr><td>Kelola outlet (tambah/edit)</td><td><span class="check">✓</span></td><td><span class="cross">✗</span></td></tr>
+        <tr><td>Tambah & nonaktifkan kasir</td><td><span class="check">✓</span></td><td><span class="cross">✗</span></td></tr>
+        <tr><td>Pindah kasir antar outlet</td><td><span class="check">✓</span></td><td><span class="cross">✗</span></td></tr>
+        <tr><td>Pengaturan bisnis & nota</td><td><span class="check">✓</span></td><td><span class="cross">✗</span></td></tr>
+        <tr><td>Kelola langganan & billing</td><td><span class="check">✓</span></td><td><span class="cross">✗</span></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-flow">
+    <div class="panel-header">Alur onboarding owner baru</div>
+    <div class="panel-body">
+      <div class="card">
+        <div class="card-title"><span class="pill pill-blue">1</span> Registrasi via Google / Email</div>
+        <div class="card-body">Firebase Auth buat akun. Cloud Function <code>onUserCreated</code> trigger otomatis.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="pill pill-blue">2</span> Cloud Function buat dokumen</div>
+        <div class="card-body">Auto-create: <code>tenants/{tenantId}</code> dengan status <code>trial</code>, <code>trialEndsAt</code> = now + 28 hari. Auto-create: <code>users/{uid}</code> dengan role <code>owner</code>.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="pill pill-blue">3</span> Set Custom Claims</div>
+        <div class="card-body">Cloud Function set: <code>{ tenantId, role: "owner" }</code> ke Firebase Auth token owner. Security Rules langsung aktif.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="pill pill-blue">4</span> Onboarding form</div>
+        <div class="card-body">Owner isi nama bisnis, tipe usaha, buat outlet pertama. Minimal 1 outlet wajib dibuat sebelum bisa mulai transaksi.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="pill pill-green">5</span> Siap digunakan</div>
+        <div class="card-body">Owner langsung bisa tambah produk dan mulai transaksi. Timer trial 28 hari berjalan sejak step 1.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-kasir">
+    <div class="panel-header">Alur owner menambah kasir baru</div>
+    <div class="panel-body">
+      <div class="card">
+        <div class="card-title"><span class="pill pill-purple">1</span> Owner input data kasir</div>
+        <div class="card-body">Owner isi nama, email, dan pilih outlet penugasan di halaman manajemen karyawan.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="pill pill-purple">2</span> Cloud Function buat akun kasir</div>
+        <div class="card-body">Menggunakan Firebase Admin SDK: buat akun Auth dengan email kasir, set password sementara, buat dokumen <code>users/{uid}</code> dengan role <code>cashier</code> dan <code>tenantId</code> yang sama dengan owner.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="pill pill-purple">3</span> Set Custom Claims kasir</div>
+        <div class="card-body">Cloud Function set: <code>{ tenantId, role: "cashier" }</code>. Kasir sekarang punya akses terbatas sesuai matriks akses.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="pill pill-purple">4</span> Tambahkan ke outlet</div>
+        <div class="card-body">UID kasir ditambahkan ke <code>outlets/{outletId}.assignedCashiers</code> outlet yang dipilih owner. Kasir bisa langsung login dan mulai transaksi di outlet tersebut.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="pill pill-amber">Pindah outlet</span></div>
+        <div class="card-body">Owner hapus UID dari outlet lama, tambahkan ke outlet baru. Cukup update 2 dokumen outlet — tidak perlu ubah dokumen user sama sekali.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-claims">
+    <div class="panel-header">Firebase Auth Custom Claims — kenapa penting</div>
+    <div class="panel-body">
+      <div class="card">
+        <div class="card-title">Apa itu Custom Claims?</div>
+        <div class="card-body">Data kecil yang disimpan langsung di JWT token Firebase Auth. Bisa dibaca Security Rules tanpa membaca Firestore sama sekali. Contoh: <code>{ tenantId: "tenant_A7bR3k", role: "owner" }</code>.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Kenapa tidak cukup pakai Firestore saja?</div>
+        <div class="card-body">Jika role disimpan hanya di Firestore, Security Rules harus baca dokumen <code>users/{uid}</code> dulu sebelum memvalidasi setiap request. Itu 1 read berbayar per operasi. Custom Claims = 0 read, 0 biaya, lebih cepat.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Security Rules contoh penggunaannya</div>
+        <div class="card-body"><code>request.auth.token.role == "owner"</code> — cek role<br><code>request.auth.token.tenantId == resource.data.tenantId</code> — cek isolasi tenant<br>Keduanya dibaca dari token, bukan dari database.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function tog(node) {
+  const ch = node.nextElementSibling;
+  if (!ch || !ch.classList.contains('children')) return;
+  const isOpen = ch.classList.contains('open');
+  ch.classList.toggle('open', !isOpen);
+  node.querySelector('.toggle').textContent = isOpen ? '▶' : '▼';
+  node.classList.toggle('open', !isOpen);
+}
+function showPanel(id, tab) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  tab.classList.add('active');
+}
+</script>

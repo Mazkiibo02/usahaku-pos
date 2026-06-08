@@ -1,0 +1,369 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+.root { padding: 1rem 0; font-family: var(--font-sans); }
+.tree { background: var(--color-background-secondary); border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; }
+.tree-header { padding: 10px 16px; background: var(--color-background-tertiary); border-bottom: 1px solid var(--color-border-tertiary); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.path { font-size: 13px; color: var(--color-text-secondary); font-family: var(--font-mono); }
+.badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
+.badge-col { background: #EEEDFE; color: #3C3489; }
+.badge-doc { background: #E1F5EE; color: #085041; }
+.badge-idx { background: #FCEBEB; color: #791F1F; }
+.node { display: flex; align-items: flex-start; cursor: pointer; border-bottom: 1px solid var(--color-border-tertiary); transition: background 0.12s; }
+.node:last-child { border-bottom: none; }
+.node:hover { background: var(--color-background-tertiary); }
+.node.open { background: var(--color-background-tertiary); }
+.toggle { width: 36px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--color-text-tertiary); font-size: 10px; padding-top: 12px; }
+.nc { flex: 1; padding: 9px 16px 9px 0; }
+.nr { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.key { font-family: var(--font-mono); font-size: 12px; color: var(--color-text-primary); font-weight: 500; }
+.type { font-size: 10px; color: var(--color-text-tertiary); background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: 4px; padding: 1px 5px; font-family: var(--font-mono); }
+.val-s { font-family: var(--font-mono); font-size: 12px; color: #1D9E75; }
+.val-n { font-family: var(--font-mono); font-size: 12px; color: #185FA5; }
+.val-b { font-family: var(--font-mono); font-size: 12px; color: #D85A30; }
+.val-null { font-family: var(--font-mono); font-size: 12px; color: #888780; }
+.desc { font-size: 11px; color: var(--color-text-secondary); margin-top: 3px; line-height: 1.45; }
+.children { display: none; }
+.children.open { display: block; }
+.detail { padding: 8px 16px 12px 36px; border-bottom: 1px solid var(--color-border-tertiary); }
+.detail-body { font-size: 12px; color: var(--color-text-secondary); line-height: 1.6; }
+.detail-body code { font-family: var(--font-mono); font-size: 11px; background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: 4px; padding: 1px 5px; color: var(--color-text-primary); }
+.note { font-size: 11px; margin-top: 6px; line-height: 1.5; }
+.note-warn { color: #BA7517; }
+.note-good { color: #3B6D11; }
+.note-info { color: #185FA5; }
+.mono-block { font-family: var(--font-mono); font-size: 11px; line-height: 1.8; color: var(--color-text-primary); background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: 6px; padding: 10px 12px; margin-top: 8px; overflow-x: auto; }
+.sec { padding: 6px 16px; background: var(--color-background-tertiary); border-bottom: 1px solid var(--color-border-tertiary); font-size: 11px; color: var(--color-text-secondary); font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.tabs { display: flex; gap: 4px; margin-top: 12px; flex-wrap: wrap; }
+.tab { padding: 6px 14px; border-radius: 20px; font-size: 12px; cursor: pointer; border: 1px solid var(--color-border-tertiary); background: var(--color-background-secondary); color: var(--color-text-secondary); transition: all 0.15s; }
+.tab.active { background: #EEEDFE; color: #3C3489; border-color: #AFA9EC; }
+.panel { margin-top: 10px; border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; display: none; }
+.panel.active { display: block; }
+.panel-header { padding: 10px 16px; background: var(--color-background-tertiary); border-bottom: 1px solid var(--color-border-tertiary); font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+.panel-body { padding: 12px 16px; }
+.card { border: 1px solid var(--color-border-tertiary); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; }
+.card:last-child { margin-bottom: 0; }
+.card-title { font-size: 12px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 5px; display: flex; align-items: center; gap: 8px; }
+.card-body { font-size: 12px; color: var(--color-text-secondary); line-height: 1.55; }
+.pill { font-size: 10px; padding: 2px 7px; border-radius: 10px; }
+.pill-green { background: #EAF3DE; color: #27500A; }
+.pill-amber { background: #FAEEDA; color: #633806; }
+.pill-blue { background: #E6F1FB; color: #0C447C; }
+</style>
+
+<div class="root">
+  <div style="display:flex;gap:8px;margin-bottom:10px;font-size:12px;align-items:center;flex-wrap:wrap;">
+    <span style="color:var(--color-text-secondary)">Klik field untuk expand detail</span>
+    <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;">
+      <span class="badge badge-col">Collection</span>
+      <span class="badge badge-doc">Document</span>
+      <span class="badge badge-idx">Index required</span>
+    </span>
+  </div>
+
+  <div class="tree">
+    <div class="tree-header">
+      <span class="badge badge-col">COL</span>
+      <span class="path">transactions / {transactionId}</span>
+      <span class="badge badge-idx" style="margin-left:auto">3 composite indexes</span>
+    </div>
+
+    <!-- SECTION: Identity -->
+    <div class="sec"><span class="dot" style="background:#7F77DD"></span>Identity & multi-tenancy</div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">transactionId</span><span class="type">string</span><span class="val-s">"trx_8Bm2nQxZ"</span><span class="badge badge-idx" style="margin-left:auto;font-size:10px">auto ID</span></div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Auto-generated Firestore document ID. Juga berfungsi sebagai nomor nota unik yang ditampilkan di receipt.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">tenantId</span><span class="type">string</span><span class="val-s">"tenant_A7bR3k"</span><span class="badge badge-idx" style="margin-left:auto;font-size:10px">indexed</span></div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Wajib ada di setiap query. Security Rules memastikan tenant hanya bisa baca transaksi miliknya sendiri.</div><div class="note note-warn">⚠ Selalu filter by tenantId terlebih dahulu untuk efisiensi index.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">outletId</span><span class="type">string</span><span class="val-s">"outlet_JKTPST"</span><span class="badge badge-idx" style="margin-left:auto;font-size:10px">indexed</span></div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Cabang mana transaksi ini terjadi. Owner bisa filter laporan per cabang menggunakan field ini. Kasir hanya bisa lihat transaksi outlet-nya sendiri.</div></div></div>
+
+    <!-- SECTION: Time -->
+    <div class="sec"><span class="dot" style="background:#1D9E75"></span>Waktu transaksi</div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">createdAt</span><span class="type">timestamp</span><span class="val-s">2025-07-14T10:32:05Z</span><span class="badge badge-idx" style="margin-left:auto;font-size:10px">indexed</span></div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Server timestamp otomatis dari <code>FieldValue.serverTimestamp()</code>. Digunakan untuk sort riwayat transaksi dan filter laporan by date range. Tidak bisa dimanipulasi klien.</div><div class="note note-good">✓ Gunakan ini untuk semua filter tanggal, bukan field lain.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">dateKey</span><span class="type">string</span><span class="val-s">"2025-07-14"</span></div>
+        <div class="desc">Format YYYY-MM-DD — untuk agregasi dashboard harian.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Field string tanggal untuk query agregasi dashboard. Lebih efisien daripada range query timestamp saat butuh data "hari ini". Contoh: <code>where('dateKey','==','2025-07-14')</code>.</div><div class="note note-info">ℹ Di-generate dari createdAt saat write, bukan dari klien.</div></div></div>
+
+    <!-- SECTION: Actors -->
+    <div class="sec"><span class="dot" style="background:#BA7517"></span>Pelaku transaksi</div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">cashierId</span><span class="type">string</span><span class="val-s">"user_KpR9mX"</span></div>
+        <div class="desc">UID Firebase Auth kasir yang login saat transaksi.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Referensi ke koleksi <code>users</code>. Digunakan untuk laporan performa kasir per shift. Tidak menyimpan nama kasir langsung — ambil dari koleksi users saat dibutuhkan.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">cashierName</span><span class="type">string</span><span class="val-s">"Budi Santoso"</span></div>
+        <div class="desc">Snapshot nama kasir saat transaksi terjadi.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Disimpan sebagai snapshot agar nama di nota tetap akurat meski nama kasir diganti di kemudian hari. Ini pola penting di Firestore — <strong>denormalisasi untuk immutability</strong>.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">customerName</span><span class="type">string | null</span><span class="val-null">null</span></div>
+        <div class="desc">Nama pembeli — opsional, bisa dikosongkan.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Untuk toko retail biasa bisa dikosongkan. Untuk bengkel wajib diisi (nama pemilik kendaraan). Untuk F&B bisa diisi nama meja atau nomor antrian.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">customerNote</span><span class="type">string | null</span><span class="val-null">null</span></div>
+        <div class="desc">Catatan tambahan — misal: nomor plat kendaraan.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Field bebas untuk catatan kontekstual. Bengkel: <code>"B 1234 XYZ - Honda Vario"</code>. F&B: <code>"meja 5, tidak pakai sambel"</code>. Retail: bisa dikosongkan.</div></div></div>
+
+    <!-- SECTION: Items -->
+    <div class="sec"><span class="dot" style="background:#D85A30"></span>Item yang dibeli (snapshot produk)</div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">items</span><span class="type">array&lt;object&gt;</span><span style="font-family:var(--font-mono);font-size:12px;color:var(--color-text-secondary)">[ ... ]</span></div>
+        <div class="desc">Daftar produk yang dibeli. Setiap item adalah snapshot lengkap.</div>
+      </div>
+    </div>
+    <div class="children">
+      <div class="detail">
+        <div class="detail-body">Setiap elemen array menyimpan snapshot lengkap produk saat transaksi. Ini krusial — jika harga produk diubah owner besok, nota lama tetap menampilkan harga yang benar.</div>
+        <div class="mono-block">
+items: [<br>
+&nbsp;&nbsp;{<br>
+&nbsp;&nbsp;&nbsp;&nbsp;productId: <span class="val-s">"prod_9xK2mLqP"</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;skuId: <span class="val-s">"sku_KO_M"</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;productName: <span class="val-s">"Kaos Polos Oversize"</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;variantLabel: <span class="val-s">"Hitam / M"</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;skuCode: <span class="val-s">"KPS-HIT-M"</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;qty: <span class="val-n">3</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;unitPrice: <span class="val-n">85000</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;discountType: <span class="val-s">"percent"</span>, <span style="color:var(--color-text-tertiary)">// "percent" | "fixed" | null</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;discountValue: <span class="val-n">10</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;discountedPrice: <span class="val-n">76500</span>, <span style="color:var(--color-text-tertiary)">// harga setelah diskon per unit</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;subtotal: <span class="val-n">229500</span>, <span style="color:var(--color-text-tertiary)">// discountedPrice × qty</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;productType: <span class="val-s">"physical"</span> <span style="color:var(--color-text-tertiary)">// "physical" | "service"</span><br>
+&nbsp;&nbsp;}<br>
+]
+        </div>
+        <div class="note note-good" style="margin-top:8px;">✓ variantLabel disimpan sebagai string siap tampil: "Hitam / M" — tidak perlu rekonstruksi dari groupId saat cetak nota.</div>
+        <div class="note note-info">ℹ productType disimpan untuk keperluan logika stok — physical = kurangi stok, service = tidak.</div>
+      </div>
+    </div>
+
+    <!-- SECTION: Payment -->
+    <div class="sec"><span class="dot" style="background:#378ADD"></span>Pembayaran</div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">subtotal</span><span class="type">number</span><span class="val-n">229500</span></div>
+        <div class="desc">Total sebelum diskon level transaksi (jika ada).</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Jumlah seluruh <code>items[].subtotal</code>. Dihitung di frontend sebelum write, divalidasi di Cloud Function jika perlu.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">grandTotal</span><span class="type">number</span><span class="val-n">229500</span></div>
+        <div class="desc">Total akhir yang harus dibayar pelanggan.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Untuk versi awal ini sama dengan subtotal karena tidak ada diskon level transaksi. Field ini dipisahkan agar mudah menambahkan pajak atau diskon global di masa depan tanpa mengubah struktur.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">paymentMethod</span><span class="type">enum</span><span class="val-s">"cash" | "qris" | "transfer"</span></div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Metode pembayaran yang digunakan. Digunakan untuk filter laporan dan rekonsiliasi kas harian per metode pembayaran.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">amountPaid</span><span class="type">number</span><span class="val-n">250000</span></div>
+        <div class="desc">Uang yang diberikan pelanggan (relevan untuk cash).</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Untuk QRIS dan transfer, nilainya sama dengan <code>grandTotal</code>. Untuk cash, bisa lebih besar — kasir input nominal uang yang diterima, sistem hitung kembalian otomatis.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">changeAmount</span><span class="type">number</span><span class="val-n">20500</span></div>
+        <div class="desc">Kembalian = amountPaid - grandTotal.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Untuk QRIS dan transfer selalu <code>0</code>. Ditampilkan di layar kasir dan bisa dicetak di nota. Dihitung di frontend, disimpan sebagai snapshot.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">paymentStatus</span><span class="type">enum</span><span class="val-s">"paid"</span></div>
+        <div class="desc">Status pembayaran — selalu "paid" untuk versi ini.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Karena semua transaksi lunas di tempat, nilainya selalu <code>"paid"</code>. Field ini tetap disimpan untuk fleksibilitas masa depan jika ada fitur hutang/cicilan.</div></div></div>
+
+    <!-- SECTION: Meta -->
+    <div class="sec"><span class="dot" style="background:#639922"></span>Metadata</div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">receiptNumber</span><span class="type">string</span><span class="val-s">"INV/2025/07/0042"</span></div>
+        <div class="desc">Nomor nota human-readable untuk ditampilkan di receipt.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Format: <code>INV/{YYYY}/{MM}/{sequence}</code>. Sequence di-generate dari counter di dokumen outlet. Berbeda dari transactionId yang acak — ini yang tercetak di nota fisik dan mudah dikomunikasikan pelanggan ke toko jika ada pertanyaan.</div><div class="note note-warn">⚠ Counter sequence perlu Firestore Transaction (atomic) untuk mencegah nomor duplikat saat transaksi bersamaan.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">isOfflineTrx</span><span class="type">boolean</span><span class="val-b">false</span></div>
+        <div class="desc">true jika transaksi dibuat saat offline, sync belakangan.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Firestore offline persistence menyimpan transaksi di IndexedDB dan sync otomatis saat online. Field ini membantu owner mengidentifikasi transaksi yang mungkin perlu verifikasi manual stok.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">notes</span><span class="type">string | null</span><span class="val-null">null</span></div>
+        <div class="desc">Catatan bebas di level transaksi (opsional).</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Berbeda dari <code>customerNote</code> yang tentang pelanggan, ini catatan tentang transaksinya. Contoh: "pembayaran via transfer BCA", "titip kembalian besok".</div></div></div>
+
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="showPanel('logic', this)">Logika diskon</div>
+    <div class="tab" onclick="showPanel('index', this)">Composite indexes</div>
+    <div class="tab" onclick="showPanel('flow', this)">Alur write transaksi</div>
+  </div>
+
+  <div class="panel active" id="panel-logic">
+    <div class="panel-header">Logika resolusi diskon di item</div>
+    <div class="panel-body">
+      <div class="card">
+        <div class="card-title"><span class="pill pill-blue">Step 1</span> Cek wholesale pricing</div>
+        <div class="card-body">Jika qty yang dibeli memenuhi syarat tier grosir di <code>sku.wholesalePricing</code> atau <code>product.wholesalePricing</code>, gunakan harga tier tersebut sebagai <code>unitPrice</code>.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="pill pill-blue">Step 2</span> Cek diskon quantity</div>
+        <div class="card-body">Jika owner mengatur diskon berbasis quantity (misal: beli 10 diskon 10%), sistem cek apakah qty memenuhi syarat. Diskon bisa berupa <code>"percent"</code> (nilai 0–100) atau <code>"fixed"</code> (potongan Rupiah per unit).</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="pill pill-green">Simpan snapshot</span> Harga final di item</div>
+        <div class="card-body">
+          Semua kalkulasi dilakukan di frontend sebelum write. Yang disimpan ke Firestore adalah hasil akhir:<br>
+          <code>unitPrice</code> → harga sebelum diskon<br>
+          <code>discountType</code> + <code>discountValue</code> → detail diskon untuk ditampilkan di nota<br>
+          <code>discountedPrice</code> → harga per unit setelah diskon<br>
+          <code>subtotal</code> → discountedPrice × qty
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-index">
+    <div class="panel-header">Composite indexes yang dibutuhkan</div>
+    <div class="panel-body">
+      <div class="card">
+        <div class="card-title">Riwayat transaksi per outlet <span class="pill pill-green" style="margin-left:auto">wajib</span></div>
+        <div class="card-body"><code>tenantId ASC, outletId ASC, createdAt DESC</code><br>Untuk: kasir lihat riwayat transaksi hari ini di outletnya.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Laporan owner semua outlet <span class="pill pill-green" style="margin-left:auto">wajib</span></div>
+        <div class="card-body"><code>tenantId ASC, createdAt DESC</code><br>Untuk: owner lihat semua transaksi dari semua cabang, diurutkan terbaru.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Filter by dateKey <span class="pill pill-amber" style="margin-left:auto">opsional</span></div>
+        <div class="card-body"><code>tenantId ASC, outletId ASC, dateKey ASC</code><br>Untuk: agregasi dashboard harian tanpa range query timestamp.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-flow">
+    <div class="panel-header">Urutan operasi saat kasir klik "bayar"</div>
+    <div class="panel-body">
+      <div class="card">
+        <div class="card-title"><span class="pill pill-blue">1</span> Validasi di frontend</div>
+        <div class="card-body">Hitung semua subtotal, diskon, grandTotal, changeAmount. Pastikan semua item masih <code>isActive: true</code>.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="pill pill-blue">2</span> Firestore batch write (atomic)</div>
+        <div class="card-body">Dalam satu batch: (a) create dokumen transaksi baru, (b) kurangi stok setiap SKU fisik di <code>products/{id}.skus[i].stock.{outletId}</code> menggunakan <code>FieldValue.increment(-qty)</code>.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="pill pill-blue">3</span> Update aggregation (async)</div>
+        <div class="card-body">Setelah batch sukses, update dokumen <code>dashboards</code> secara async — tambah revenue harian, tambah qty produk terlaris. Ini tidak blocking — boleh gagal dan di-retry.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="pill pill-green">4</span> Tampilkan nota & cetak</div>
+        <div class="card-body">Frontend render nota dari data lokal (tidak perlu re-read Firestore). Trigger print via Web Bluetooth/USB jika tersedia.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function tog(node) {
+  const ch = node.nextElementSibling;
+  if (!ch || !ch.classList.contains('children')) return;
+  const isOpen = ch.classList.contains('open');
+  ch.classList.toggle('open', !isOpen);
+  node.querySelector('.toggle').textContent = isOpen ? '▶' : '▼';
+  node.classList.toggle('open', !isOpen);
+}
+function showPanel(id, tab) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  tab.classList.add('active');
+}
+</script>

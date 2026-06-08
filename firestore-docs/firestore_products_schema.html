@@ -1,0 +1,525 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-mono, monospace); }
+.root { padding: 1rem 0; }
+.tree { background: var(--color-background-secondary); border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; }
+.tree-header { padding: 10px 16px; background: var(--color-background-tertiary); border-bottom: 1px solid var(--color-border-tertiary); display: flex; align-items: center; gap: 8px; }
+.tree-header .path { font-size: 13px; color: var(--color-text-secondary); font-family: var(--font-mono); }
+.tree-header .badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; font-family: var(--font-sans); font-weight: 500; }
+.badge-col { background: #EEEDFE; color: #3C3489; }
+.badge-doc { background: #E1F5EE; color: #085041; }
+.badge-sub { background: #FAEEDA; color: #633806; }
+.badge-idx { background: #FCEBEB; color: #791F1F; }
+.dark .badge-col { background: #3C3489; color: #CECBF6; }
+.dark .badge-doc { background: #085041; color: #9FE1CB; }
+.dark .badge-sub { background: #633806; color: #FAC775; }
+.dark .badge-idx { background: #791F1F; color: #F7C1C1; }
+.node { display: flex; align-items: flex-start; gap: 0; cursor: pointer; border-bottom: 1px solid var(--color-border-tertiary); transition: background 0.15s; }
+.node:last-child { border-bottom: none; }
+.node:hover { background: var(--color-background-tertiary); }
+.node.active { background: var(--color-background-tertiary); }
+.indent { width: 20px; flex-shrink: 0; }
+.toggle-btn { width: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--color-text-tertiary); font-size: 10px; padding-top: 11px; }
+.node-content { flex: 1; padding: 8px 16px 8px 4px; }
+.node-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.key { font-family: var(--font-mono); font-size: 12px; color: var(--color-text-primary); font-weight: 500; }
+.type-tag { font-size: 10px; color: var(--color-text-tertiary); font-family: var(--font-sans); background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: 4px; padding: 1px 5px; }
+.val { font-family: var(--font-mono); font-size: 12px; }
+.val-str { color: #1D9E75; }
+.val-num { color: #185FA5; }
+.val-bool { color: #D85A30; }
+.val-null { color: #888780; }
+.val-arr { color: #534AB7; }
+.desc { font-size: 11px; color: var(--color-text-tertiary); font-family: var(--font-sans); margin-top: 3px; line-height: 1.4; }
+.note { font-size: 11px; font-family: var(--font-sans); }
+.note-warn { color: #BA7517; }
+.note-info { color: #185FA5; }
+.note-good { color: #3B6D11; }
+.children { display: none; }
+.children.open { display: block; }
+.obj-open { font-family: var(--font-mono); font-size: 12px; color: var(--color-text-secondary); }
+.section-divider { padding: 6px 16px; background: var(--color-background-tertiary); border-bottom: 1px solid var(--color-border-tertiary); font-size: 11px; color: var(--color-text-secondary); font-family: var(--font-sans); font-weight: 500; letter-spacing: 0.05em; display: flex; align-items: center; gap: 8px; }
+.dot { width: 6px; height: 6px; border-radius: 50%; }
+.dot-purple { background: #7F77DD; }
+.dot-teal { background: #1D9E75; }
+.dot-amber { background: #BA7517; }
+.dot-red { background: #E24B4A; }
+.dot-blue { background: #378ADD; }
+.dot-coral { background: #D85A30; }
+.panel { margin-top: 12px; border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; display: none; }
+.panel.active { display: block; }
+.panel-header { padding: 10px 16px; background: var(--color-background-tertiary); border-bottom: 1px solid var(--color-border-tertiary); font-size: 13px; font-weight: 500; color: var(--color-text-primary); font-family: var(--font-sans); }
+.panel-body { padding: 12px 16px; }
+.search-strategy { display: grid; gap: 8px; }
+.strategy-card { border: 1px solid var(--color-border-tertiary); border-radius: 8px; padding: 12px 14px; }
+.strategy-title { font-size: 12px; font-weight: 500; color: var(--color-text-primary); font-family: var(--font-sans); display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.strategy-body { font-size: 12px; color: var(--color-text-secondary); font-family: var(--font-sans); line-height: 1.55; }
+code { font-family: var(--font-mono); font-size: 11px; background: var(--color-background-tertiary); border: 1px solid var(--color-border-tertiary); border-radius: 4px; padding: 1px 5px; color: var(--color-text-primary); }
+.tabs { display: flex; gap: 4px; margin-top: 12px; flex-wrap: wrap; }
+.tab { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-family: var(--font-sans); cursor: pointer; border: 1px solid var(--color-border-tertiary); background: var(--color-background-secondary); color: var(--color-text-secondary); transition: all 0.15s; }
+.tab.active { background: #EEEDFE; color: #3C3489; border-color: #AFA9EC; }
+.dark .tab.active { background: #26215C; color: #CECBF6; border-color: #534AB7; }
+.cost-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-family: var(--font-sans); padding: 2px 7px; border-radius: 10px; margin-left: auto; }
+.cost-low { background: #EAF3DE; color: #27500A; }
+.cost-med { background: #FAEEDA; color: #633806; }
+.cost-high { background: #FCEBEB; color: #791F1F; }
+.dark .cost-low { background: #173404; color: #C0DD97; }
+.dark .cost-med { background: #412402; color: #FAC775; }
+.dark .cost-high { background: #501313; color: #F7C1C1; }
+</style>
+
+<div class="root">
+  <div style="display:flex;gap:8px;margin-bottom:10px;font-family:var(--font-sans);font-size:12px;align-items:center;">
+    <span style="color:var(--color-text-secondary)">Klik field untuk expand detail</span>
+    <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;">
+      <span class="badge badge-col">Collection</span>
+      <span class="badge badge-doc">Document</span>
+      <span class="badge badge-sub">Subcollection</span>
+      <span class="badge badge-idx">Index required</span>
+    </span>
+  </div>
+
+  <div class="tree">
+    <div class="tree-header">
+      <span class="badge badge-col">COL</span>
+      <span class="path">products / {productId}</span>
+    </div>
+
+    <!-- SECTION: Identity -->
+    <div class="section-divider"><span class="dot dot-purple"></span>Identity & Multi-tenancy</div>
+
+    <div class="node" onclick="toggle(this)">
+      <div class="indent"></div><div class="toggle-btn">▶</div>
+      <div class="node-content">
+        <div class="node-row">
+          <span class="key">productId</span><span class="type-tag">string</span>
+          <span class="val val-str">"prod_9xK2mLqP"</span>
+          <span class="badge badge-idx" style="margin-left:auto;font-size:10px">indexed</span>
+        </div>
+      </div>
+    </div>
+    <div class="children">
+      <div style="padding:8px 16px 10px 40px;border-bottom:1px solid var(--color-border-tertiary);">
+        <div class="desc">Auto-generated document ID. Digunakan sebagai primary key.</div>
+      </div>
+    </div>
+
+    <div class="node" onclick="toggle(this)">
+      <div class="indent"></div><div class="toggle-btn">▶</div>
+      <div class="node-content">
+        <div class="node-row">
+          <span class="key">tenantId</span><span class="type-tag">string</span>
+          <span class="val val-str">"tenant_A7bR3k"</span>
+          <span class="badge badge-idx" style="margin-left:auto;font-size:10px">indexed</span>
+        </div>
+      </div>
+    </div>
+    <div class="children">
+      <div style="padding:8px 16px 10px 40px;border-bottom:1px solid var(--color-border-tertiary);">
+        <div class="desc">Root identifier multi-tenancy. <strong>SETIAP query wajib filter by tenantId</strong> menggunakan Firestore Security Rules untuk isolasi data antar tenant.</div>
+        <div class="note note-warn" style="margin-top:5px;">⚠ Security Rules: <code>allow read: if request.auth.token.tenantId == resource.data.tenantId</code></div>
+      </div>
+    </div>
+
+    <!-- SECTION: Core Product -->
+    <div class="section-divider"><span class="dot dot-teal"></span>Core product fields</div>
+
+    <div class="node" onclick="toggle(this)">
+      <div class="indent"></div><div class="toggle-btn">▶</div>
+      <div class="node-content">
+        <div class="node-row">
+          <span class="key">name</span><span class="type-tag">string</span>
+          <span class="val val-str">"Kaos Polos Oversize"</span>
+        </div>
+      </div>
+    </div>
+    <div class="children">
+      <div style="padding:8px 16px 10px 40px;border-bottom:1px solid var(--color-border-tertiary);">
+        <div class="desc">Nama produk utama — ditampilkan di POS, receipt, dan catalog.</div>
+      </div>
+    </div>
+
+    <div class="node" onclick="toggle(this)">
+      <div class="indent"></div><div class="toggle-btn">▶</div>
+      <div class="node-content">
+        <div class="node-row">
+          <span class="key">nameTokens</span><span class="type-tag">array&lt;string&gt;</span>
+          <span class="val val-arr">["kaos", "kaos po", "kaos pol", ...]</span>
+          <span class="badge badge-idx" style="margin-left:auto;font-size:10px">indexed</span>
+        </div>
+      </div>
+    </div>
+    <div class="children">
+      <div style="padding:8px 16px 10px 40px;border-bottom:1px solid var(--color-border-tertiary);">
+        <div class="desc">Array prefix tokens untuk autocomplete search. Dibuat saat write (Cloud Function / client) dari field <code>name</code>. Memungkinkan query <code>array-contains</code> tanpa biaya read tambahan.</div>
+        <div class="note note-good" style="margin-top:5px;">✓ 1 read = hasil search. Tanpa full-text engine berbayar.</div>
+      </div>
+    </div>
+
+    <div class="node" onclick="toggle(this)">
+      <div class="indent"></div><div class="toggle-btn">▶</div>
+      <div class="node-content">
+        <div class="node-row">
+          <span class="key">productType</span><span class="type-tag">enum</span>
+          <span class="val val-str">"physical" | "service"</span>
+        </div>
+      </div>
+    </div>
+    <div class="children">
+      <div style="padding:8px 16px 10px 40px;border-bottom:1px solid var(--color-border-tertiary);">
+        <div class="desc"><strong>physical</strong>: stok dilacak per outlet per SKU. <strong>service</strong>: stok dianggap infinite (null), tidak ada stock deduction.</div>
+      </div>
+    </div>
+
+    <div class="node" onclick="toggle(this)">
+      <div class="indent"></div><div class="toggle-btn">▶</div>
+      <div class="node-content">
+        <div class="node-row">
+          <span class="key">category</span><span class="type-tag">string</span>
+          <span class="val val-str">"fashion/top"</span>
+        </div>
+      </div>
+    </div>
+    <div class="children">
+      <div style="padding:8px 16px 10px 40px;border-bottom:1px solid var(--color-border-tertiary);">
+        <div class="desc">Slash-separated hierarchy: <code>fashion/top</code>, <code>fnb/drink</code>, <code>workshop/service</code>. Mendukung filter multi-level dengan <code>startsWith</code>.</div>
+      </div>
+    </div>
+
+    <div class="node" onclick="toggle(this)">
+      <div class="indent"></div><div class="toggle-btn">▶</div>
+      <div class="node-content">
+        <div class="node-row">
+          <span class="key">basePrice</span><span class="type-tag">number</span>
+          <span class="val val-num">85000</span>
+        </div>
+      </div>
+    </div>
+    <div class="children">
+      <div style="padding:8px 16px 10px 40px;border-bottom:1px solid var(--color-border-tertiary);">
+        <div class="desc">Harga default produk (Rupiah, integer). Menjadi fallback jika variant tidak memiliki override harga. Untuk service: ini adalah tarif layanan.</div>
+      </div>
+    </div>
+
+    <div class="node" onclick="toggle(this)">
+      <div class="indent"></div><div class="toggle-btn">▶</div>
+      <div class="node-content">
+        <div class="node-row">
+          <span class="key">costPrice</span><span class="type-tag">number</span>
+          <span class="val val-num">52000</span>
+        </div>
+      </div>
+    </div>
+    <div class="children">
+      <div style="padding:8px 16px 10px 40px;border-bottom:1px solid var(--color-border-tertiary);">
+        <div class="desc">Harga pokok produk (HPP). Digunakan untuk kalkulasi margin dan laporan profit.</div>
+      </div>
+    </div>
+
+    <div class="node" onclick="toggle(this)">
+      <div class="indent"></div><div class="toggle-btn">▶</div>
+      <div class="node-content">
+        <div class="node-row">
+          <span class="key">imageUrl</span><span class="type-tag">string</span>
+          <span class="val val-str">"https://storage.../prod_9xK2.webp"</span>
+        </div>
+      </div>
+    </div>
+    <div class="children">
+      <div style="padding:8px 16px 10px 40px;border-bottom:1px solid var(--color-border-tertiary);">
+        <div class="desc">URL gambar utama produk dari Firebase Storage / CDN.</div>
+      </div>
+    </div>
+
+    <!-- SECTION: Variant Definition -->
+    <div class="section-divider"><span class="dot dot-amber"></span>Variant definition (dynamic, Shopee-style)</div>
+
+    <div class="node" onclick="toggle(this)">
+      <div class="indent"></div><div class="toggle-btn">▶</div>
+      <div class="node-content">
+        <div class="node-row">
+          <span class="key">variantGroups</span><span class="type-tag">array&lt;object&gt;</span>
+          <span class="obj-open">[ ... ]</span>
+        </div>
+        <div class="desc">Definisi dimensi varian. Max 2 group per produk (sesuai Shopee-style).</div>
+      </div>
+    </div>
+    <div class="children">
+      <div style="padding:8px 16px 12px 40px;border-bottom:1px solid var(--color-border-tertiary);font-family:var(--font-mono);font-size:12px;line-height:1.8;">
+        <span style="color:var(--color-text-secondary)">[</span><br>
+        &nbsp;&nbsp;<span style="color:var(--color-text-secondary)">{</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">groupId</span>: <span class="val val-str">"vg_001"</span>,<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">name</span>: <span class="val val-str">"Warna"</span>,<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">options</span>: <span class="val val-arr">["Hitam", "Putih", "Navy"]</span><br>
+        &nbsp;&nbsp;<span style="color:var(--color-text-secondary)">},</span><br>
+        &nbsp;&nbsp;<span style="color:var(--color-text-secondary)">{</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">groupId</span>: <span class="val val-str">"vg_002"</span>,<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">name</span>: <span class="val val-str">"Ukuran"</span>,<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">options</span>: <span class="val val-arr">["M", "L", "XL", "XXL"]</span><br>
+        &nbsp;&nbsp;<span style="color:var(--color-text-secondary)">}</span><br>
+        <span style="color:var(--color-text-secondary)">]</span>
+        <div class="note note-info" style="margin-top:8px;font-family:var(--font-sans);">ℹ Kosong <code>[]</code> = produk simple tanpa varian. Kombinasi dirender di frontend dari array ini.</div>
+      </div>
+    </div>
+
+    <!-- SECTION: SKU Matrix -->
+    <div class="section-divider"><span class="dot dot-red"></span>SKU matrix (variant combinations + stock per outlet)</div>
+
+    <div class="node" onclick="toggle(this)">
+      <div class="indent"></div><div class="toggle-btn">▶</div>
+      <div class="node-content">
+        <div class="node-row">
+          <span class="key">skus</span><span class="type-tag">array&lt;object&gt;</span>
+          <span class="obj-open">[ {sku_001}, {sku_002}, ... ]</span>
+        </div>
+        <div class="desc">Setiap kombinasi varian = 1 SKU. Ini adalah <strong>inti dari schema ini</strong>.</div>
+      </div>
+    </div>
+    <div class="children">
+      <div style="padding:10px 16px 14px 40px;border-bottom:1px solid var(--color-border-tertiary);font-family:var(--font-mono);font-size:12px;line-height:1.8;">
+        <span style="color:var(--color-text-secondary)">[</span><br>
+        &nbsp;&nbsp;<span style="color:var(--color-text-secondary)">{"/* Contoh: Hitam - M */</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">skuId</span>: <span class="val val-str">"sku_KO_M"</span>,<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">skuCode</span>: <span class="val val-str">"KPS-HIT-M"</span>,<span style="color:var(--color-text-tertiary);font-family:var(--font-sans)"> ← internal code</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">barcode</span>: <span class="val val-str">"8991234560001"</span>,<span style="color:var(--color-text-tertiary);font-family:var(--font-sans)"> ← nullable</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">combination</span>: <span style="color:var(--color-text-secondary)">{</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">vg_001</span>: <span class="val val-str">"Hitam"</span>,<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">vg_002</span>: <span class="val val-str">"M"</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--color-text-secondary)">},</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">priceOverride</span>: <span class="val val-null">null</span>,<span style="color:var(--color-text-tertiary);font-family:var(--font-sans)"> ← null = pakai basePrice</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">costOverride</span>: <span class="val val-null">null</span>,<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">imageUrl</span>: <span class="val val-str">"https://storage.../hitam.webp"</span>,<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">isActive</span>: <span class="val val-bool">true</span>,<br>
+        <br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">stock</span>: <span style="color:var(--color-text-secondary)">{</span><span style="color:var(--color-text-tertiary);font-family:var(--font-sans)"> ← map&lt;outletId, number&gt;</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"outlet_JKTPST"</span>: <span class="val val-num">42</span>,<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"outlet_JKTSEL"</span>: <span class="val val-num">18</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--color-text-secondary)">},</span><br>
+        <br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">wholesalePricing</span>: <span style="color:var(--color-text-secondary)">[</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--color-text-secondary)">{</span> <span class="key">minQty</span>: <span class="val val-num">1</span>, <span class="key">maxQty</span>: <span class="val val-num">9</span>, <span class="key">price</span>: <span class="val val-num">85000</span> <span style="color:var(--color-text-secondary)">},</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--color-text-secondary)">{</span> <span class="key">minQty</span>: <span class="val val-num">10</span>, <span class="key">maxQty</span>: <span class="val val-null">null</span>, <span class="key">price</span>: <span class="val val-num">75000</span> <span style="color:var(--color-text-secondary)">}</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--color-text-secondary)">]</span><br>
+        &nbsp;&nbsp;<span style="color:var(--color-text-secondary)">},</span><br>
+        &nbsp;&nbsp;<span style="color:var(--color-text-tertiary);font-family:var(--font-sans)">// ... SKU lainnya: Hitam-L, Hitam-XL, Putih-M, dst</span><br>
+        <span style="color:var(--color-text-secondary)">]</span>
+        <div class="note note-warn" style="margin-top:8px;font-family:var(--font-sans);">⚠ Capacity: 2 groups × 4 options = 8 SKU = ±8 stok entries. Masih aman dalam 1MB document limit.</div>
+        <div class="note note-good" style="margin-top:4px;font-family:var(--font-sans);">✓ stock update = 1 write (update field skus[i].stock.outletId)</div>
+      </div>
+    </div>
+
+    <!-- SECTION: Wholesale at product level -->
+    <div class="section-divider"><span class="dot dot-blue"></span>Product-level wholesale pricing (fallback)</div>
+
+    <div class="node" onclick="toggle(this)">
+      <div class="indent"></div><div class="toggle-btn">▶</div>
+      <div class="node-content">
+        <div class="node-row">
+          <span class="key">wholesalePricing</span><span class="type-tag">array&lt;object&gt; | null</span>
+        </div>
+        <div class="desc">Wholesale pricing di level produk — dipakai jika SKU tidak memiliki wholesalePricing sendiri.</div>
+      </div>
+    </div>
+    <div class="children">
+      <div style="padding:8px 16px 12px 40px;border-bottom:1px solid var(--color-border-tertiary);font-family:var(--font-mono);font-size:12px;line-height:1.8;">
+        <span style="color:var(--color-text-secondary)">[</span><br>
+        &nbsp;&nbsp;<span style="color:var(--color-text-secondary)">{</span> <span class="key">minQty</span>: <span class="val val-num">1</span>, <span class="key">maxQty</span>: <span class="val val-num">9</span>, <span class="key">price</span>: <span class="val val-num">85000</span> <span style="color:var(--color-text-secondary)">},</span><br>
+        &nbsp;&nbsp;<span style="color:var(--color-text-secondary)">{</span> <span class="key">minQty</span>: <span class="val val-num">10</span>, <span class="key">maxQty</span>: <span class="val val-num">49</span>, <span class="key">price</span>: <span class="val val-num">78000</span> <span style="color:var(--color-text-secondary)">},</span><br>
+        &nbsp;&nbsp;<span style="color:var(--color-text-secondary)">{</span> <span class="key">minQty</span>: <span class="val val-num">50</span>, <span class="key">maxQty</span>: <span class="val val-null">null</span>, <span class="key">price</span>: <span class="val val-num">70000</span> <span style="color:var(--color-text-secondary)">}</span><br>
+        <span style="color:var(--color-text-secondary)">]</span>
+        <div class="note note-info" style="margin-top:8px;font-family:var(--font-sans);">ℹ Priority chain: SKU.wholesalePricing → Product.wholesalePricing → basePrice</div>
+      </div>
+    </div>
+
+    <!-- SECTION: Metadata -->
+    <div class="section-divider"><span class="dot dot-coral"></span>Metadata & audit</div>
+
+    <div class="node" onclick="toggle(this)">
+      <div class="indent"></div><div class="toggle-btn">▶</div>
+      <div class="node-content">
+        <div class="node-row">
+          <span class="key">isActive</span><span class="type-tag">boolean</span>
+          <span class="val val-bool">true</span>
+        </div>
+        <div class="desc">Soft delete flag. <code>false</code> = produk disembunyikan dari POS tapi data tidak dihapus.</div>
+      </div>
+    </div>
+    <div class="children">
+      <div style="padding:4px 16px 8px 40px;border-bottom:1px solid var(--color-border-tertiary);">
+        <div class="desc">Filter <code>where('isActive', '==', true)</code> pada setiap query catalog.</div>
+      </div>
+    </div>
+
+    <div class="node" onclick="toggle(this)">
+      <div class="indent"></div><div class="toggle-btn">▶</div>
+      <div class="node-content">
+        <div class="node-row">
+          <span class="key">tags</span><span class="type-tag">array&lt;string&gt;</span>
+          <span class="val val-arr">["oversize", "bestseller", "new"]</span>
+        </div>
+      </div>
+    </div>
+    <div class="children">
+      <div style="padding:8px 16px 10px 40px;border-bottom:1px solid var(--color-border-tertiary);">
+        <div class="desc">Label bebas untuk filtering di UI. Bisa juga double sebagai tambahan token autocomplete.</div>
+      </div>
+    </div>
+
+    <div class="node" onclick="toggle(this)">
+      <div class="indent"></div><div class="toggle-btn">▶</div>
+      <div class="node-content">
+        <div class="node-row">
+          <span class="key">createdAt / updatedAt</span><span class="type-tag">timestamp</span>
+        </div>
+      </div>
+    </div>
+    <div class="children">
+      <div style="padding:8px 16px 10px 40px;border-bottom:1px solid var(--color-border-tertiary);">
+        <div class="desc">Server timestamp dari <code>FieldValue.serverTimestamp()</code>. Digunakan untuk sort produk terbaru dan audit trail.</div>
+      </div>
+    </div>
+
+    <div class="node" onclick="toggle(this)">
+      <div class="indent"></div><div class="toggle-btn">▶</div>
+      <div class="node-content">
+        <div class="node-row">
+          <span class="key">createdBy</span><span class="type-tag">string</span>
+          <span class="val val-str">"user_MgR4kP"</span>
+        </div>
+      </div>
+    </div>
+    <div class="children">
+      <div style="padding:8px 16px 10px 40px;">
+        <div class="desc">UID pengguna yang membuat produk (Firebase Auth UID). Untuk permission granular dan activity log.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Strategy Panel -->
+  <div class="tabs">
+    <div class="tab active" onclick="showPanel('search')">Autocomplete strategy</div>
+    <div class="tab" onclick="showPanel('index')">Composite indexes</div>
+    <div class="tab" onclick="showPanel('rules')">Security rules</div>
+  </div>
+
+  <div class="panel active" id="panel-search">
+    <div class="panel-header">Autocomplete search — tanpa biaya tinggi</div>
+    <div class="panel-body">
+      <div class="search-strategy">
+        <div class="strategy-card">
+          <div class="strategy-title">
+            <span style="width:18px;height:18px;border-radius:50%;background:#EEEDFE;color:#534AB7;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0">1</span>
+            Tokenisasi saat write
+            <span class="cost-badge cost-low" style="margin-left:auto">0 read cost</span>
+          </div>
+          <div class="strategy-body">
+            Saat produk disimpan, Cloud Function (atau client) generate array prefix:<br>
+            <code>"Kaos Polos"</code> → <code>["k","ka","kao","kaos","kaos ","kaos p","kaos po","kaos pol","kaos polo","kaos polos"]</code><br>
+            + tokenisasi setiap kata: <code>["p","po","pol","polo","polos"]</code>. Simpan ke field <code>nameTokens</code>.
+          </div>
+        </div>
+        <div class="strategy-card">
+          <div class="strategy-title">
+            <span style="width:18px;height:18px;border-radius:50%;background:#EEEDFE;color:#534AB7;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0">2</span>
+            Query dengan array-contains
+            <span class="cost-badge cost-low">1 read per doc match</span>
+          </div>
+          <div class="strategy-body">
+            <code>db.collection('products')<br>
+            &nbsp;.where('tenantId','==', tid)<br>
+            &nbsp;.where('isActive','==', true)<br>
+            &nbsp;.where('nameTokens','array-contains', input.toLowerCase())<br>
+            &nbsp;.limit(10)</code><br><br>
+            Hanya dokumen yang match yang dibaca. Input user 3 karakter sudah cukup untuk memulai query.
+          </div>
+        </div>
+        <div class="strategy-card">
+          <div class="strategy-title">
+            <span style="width:18px;height:18px;border-radius:50%;background:#EEEDFE;color:#534AB7;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0">3</span>
+            Debounce + local cache
+            <span class="cost-badge cost-low">0 extra reads</span>
+          </div>
+          <div class="strategy-body">
+            Di frontend: <code>debounce(300ms)</code> sebelum fire query. Cache hasil terakhir di memory. Jika user ketik "kao" lalu "kaos", hasil "kaos" sudah di cache — tidak perlu re-query jika kata sebelumnya sudah match.
+          </div>
+        </div>
+        <div class="strategy-card">
+          <div class="strategy-title">
+            <span style="width:18px;height:18px;border-radius:50%;background:#FAEEDA;color:#633806;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0">!</span>
+            Barcode scan (instant)
+            <span class="cost-badge cost-low">1 read</span>
+          </div>
+          <div class="strategy-body">
+            Query by barcode tidak perlu <code>nameTokens</code>. Simpan flat index terpisah <code>barcodeIndex/{barcode}</code> → <code>{productId, skuId, tenantId}</code>. Barcode scan = 1 read di collection kecil + 1 read dokumen produk = 2 reads total.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-index">
+    <div class="panel-header">Composite indexes yang dibutuhkan</div>
+    <div class="panel-body">
+      <div class="search-strategy">
+        <div class="strategy-card">
+          <div class="strategy-title">Catalog query <span class="cost-badge cost-low" style="margin-left:auto">required</span></div>
+          <div class="strategy-body">
+            <code>tenantId ASC, isActive ASC, updatedAt DESC</code><br>
+            Untuk: load semua produk aktif milik tenant, sorted terbaru.
+          </div>
+        </div>
+        <div class="strategy-card">
+          <div class="strategy-title">Autocomplete query <span class="cost-badge cost-low" style="margin-left:auto">required</span></div>
+          <div class="strategy-body">
+            <code>tenantId ASC, isActive ASC, nameTokens ARRAY</code><br>
+            Untuk: search produk aktif per tenant dengan prefix token.
+          </div>
+        </div>
+        <div class="strategy-card">
+          <div class="strategy-title">Category filter <span class="cost-badge cost-med" style="margin-left:auto">optional</span></div>
+          <div class="strategy-body">
+            <code>tenantId ASC, category ASC, isActive ASC</code><br>
+            Untuk: tampilkan produk per kategori (fashion, fnb, dsb).
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-rules">
+    <div class="panel-header">Security rules skeleton</div>
+    <div class="panel-body">
+      <div style="font-family:var(--font-mono);font-size:12px;line-height:1.8;color:var(--color-text-primary);">
+        <span style="color:var(--color-text-tertiary)">// firestore.rules</span><br>
+        match /products/{productId} {<br>
+        &nbsp;&nbsp;allow read: if isAuthenticated()<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&amp;&amp; resource.data.tenantId == getUserTenantId();<br>
+        <br>
+        &nbsp;&nbsp;allow write: if isAuthenticated()<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&amp;&amp; request.resource.data.tenantId == getUserTenantId()<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&amp;&amp; hasRole(['admin', 'manager']);<br>
+        }
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggle(node) {
+  const children = node.nextElementSibling;
+  if (!children || !children.classList.contains('children')) return;
+  const isOpen = children.classList.contains('open');
+  children.classList.toggle('open', !isOpen);
+  node.querySelector('.toggle-btn').textContent = isOpen ? '▶' : '▼';
+  node.classList.toggle('active', !isOpen);
+}
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  event.target.classList.add('active');
+}
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+if (prefersDark) document.querySelector('.root').classList.add('dark');
+</script>

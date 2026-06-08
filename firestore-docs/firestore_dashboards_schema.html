@@ -1,0 +1,474 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+.root { padding: 1rem 0; font-family: var(--font-sans); }
+.tree { background: var(--color-background-secondary); border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; margin-bottom: 14px; }
+.tree-header { padding: 10px 16px; background: var(--color-background-tertiary); border-bottom: 1px solid var(--color-border-tertiary); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.path { font-size: 13px; color: var(--color-text-secondary); font-family: var(--font-mono); }
+.badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
+.badge-col { background: #EEEDFE; color: #3C3489; }
+.badge-sub { background: #FAEEDA; color: #633806; }
+.badge-idx { background: #FCEBEB; color: #791F1F; }
+.node { display: flex; align-items: flex-start; cursor: pointer; border-bottom: 1px solid var(--color-border-tertiary); transition: background 0.12s; }
+.node:last-child { border-bottom: none; }
+.node:hover { background: var(--color-background-tertiary); }
+.node.open { background: var(--color-background-tertiary); }
+.toggle { width: 36px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--color-text-tertiary); font-size: 10px; padding-top: 12px; }
+.nc { flex: 1; padding: 9px 16px 9px 0; }
+.nr { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.key { font-family: var(--font-mono); font-size: 12px; color: var(--color-text-primary); font-weight: 500; }
+.type { font-size: 10px; color: var(--color-text-tertiary); background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: 4px; padding: 1px 5px; font-family: var(--font-mono); }
+.val-s { font-family: var(--font-mono); font-size: 12px; color: #1D9E75; }
+.val-n { font-family: var(--font-mono); font-size: 12px; color: #185FA5; }
+.val-b { font-family: var(--font-mono); font-size: 12px; color: #D85A30; }
+.val-null { font-family: var(--font-mono); font-size: 12px; color: #888780; }
+.desc { font-size: 11px; color: var(--color-text-secondary); margin-top: 3px; line-height: 1.45; }
+.children { display: none; }
+.children.open { display: block; }
+.detail { padding: 8px 16px 12px 36px; border-bottom: 1px solid var(--color-border-tertiary); }
+.detail-body { font-size: 12px; color: var(--color-text-secondary); line-height: 1.6; }
+.detail-body code { font-family: var(--font-mono); font-size: 11px; background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: 4px; padding: 1px 5px; color: var(--color-text-primary); }
+.note { font-size: 11px; margin-top: 6px; line-height: 1.5; }
+.note-warn { color: #BA7517; }
+.note-good { color: #3B6D11; }
+.note-info { color: #185FA5; }
+.mono-block { font-family: var(--font-mono); font-size: 11px; line-height: 1.8; color: var(--color-text-primary); background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: 6px; padding: 10px 12px; margin-top: 8px; overflow-x: auto; }
+.sec { padding: 6px 16px; background: var(--color-background-tertiary); border-bottom: 1px solid var(--color-border-tertiary); font-size: 11px; color: var(--color-text-secondary); font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.col-title { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.tabs { display: flex; gap: 4px; margin-top: 12px; flex-wrap: wrap; }
+.tab { padding: 6px 14px; border-radius: 20px; font-size: 12px; cursor: pointer; border: 1px solid var(--color-border-tertiary); background: var(--color-background-secondary); color: var(--color-text-secondary); transition: all 0.15s; }
+.tab.active { background: #EEEDFE; color: #3C3489; border-color: #AFA9EC; }
+.panel { margin-top: 10px; border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; display: none; }
+.panel.active { display: block; }
+.panel-header { padding: 10px 16px; background: var(--color-background-tertiary); border-bottom: 1px solid var(--color-border-tertiary); font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+.panel-body { padding: 12px 16px; }
+.card { border: 1px solid var(--color-border-tertiary); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; }
+.card:last-child { margin-bottom: 0; }
+.card-title { font-size: 12px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.card-body { font-size: 12px; color: var(--color-text-secondary); line-height: 1.6; }
+.card-body code { font-family: var(--font-mono); font-size: 11px; background: var(--color-background-tertiary); border: 1px solid var(--color-border-tertiary); border-radius: 4px; padding: 1px 5px; color: var(--color-text-primary); }
+.pill { font-size: 10px; padding: 2px 7px; border-radius: 10px; }
+.pill-green { background: #EAF3DE; color: #27500A; }
+.pill-amber { background: #FAEEDA; color: #633806; }
+.pill-blue { background: #E6F1FB; color: #0C447C; }
+.pill-purple { background: #EEEDFE; color: #3C3489; }
+.pill-red { background: #FCEBEB; color: #791F1F; }
+.arch-row { display: flex; align-items: stretch; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.arch-box { flex: 1; min-width: 140px; border: 1px solid var(--color-border-tertiary); border-radius: 8px; padding: 10px 12px; }
+.arch-box-title { font-size: 11px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 4px; }
+.arch-box-body { font-size: 11px; color: var(--color-text-secondary); line-height: 1.5; }
+.arrow { display: flex; align-items: center; color: var(--color-text-tertiary); font-size: 16px; }
+</style>
+
+<div class="root">
+
+  <!-- ARSITEKTUR -->
+  <div style="background:var(--color-background-secondary);border:1px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:14px 16px;margin-bottom:14px;">
+    <div style="font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:10px;">Strategi agregasi — kenapa tidak query langsung dari transactions?</div>
+    <div class="arch-row">
+      <div class="arch-box">
+        <div class="arch-box-title">❌ Cara naif</div>
+        <div class="arch-box-body">Query semua transactions bulan ini → hitung di frontend. 1000 transaksi = 1000 reads setiap owner buka dashboard.</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="arch-box">
+        <div class="arch-box-title">✓ Cara kita</div>
+        <div class="arch-box-body">Dokumen agregasi diupdate setiap transaksi baru. Dashboard = <strong>1–3 reads</strong> tanpa peduli berapa banyak transaksi.</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--color-text-secondary);margin-top:4px;">Dokumen agregasi = pre-computed summary. Biaya write naik sedikit, biaya read dashboard turun drastis → tetap aman di Free Tier.</div>
+  </div>
+
+  <!-- DOC 1: daily_summary -->
+  <div class="col-title"><span class="badge badge-col">DOC 1</span> dashboards / daily_{tenantId}_{outletId}_{dateKey}</div>
+  <div class="tree">
+    <div class="tree-header">
+      <span class="badge badge-col">DOC</span>
+      <span class="path">dashboards / daily_tenant_A7bR3k_outlet_JKTPST_2025-07-14</span>
+      <span style="font-size:11px;color:var(--color-text-tertiary);margin-left:auto">1 doc per outlet per hari</span>
+    </div>
+
+    <div class="sec"><span class="dot" style="background:#7F77DD"></span>Identitas dokumen</div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">type</span><span class="type">string</span><span class="val-s">"daily"</span></div>
+        <div class="desc">Tipe dokumen agregasi — untuk query filter.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Field ini memungkinkan query seperti <code>where('type','==','daily')</code> jika suatu saat semua agregasi digabung dalam satu koleksi besar.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">tenantId</span><span class="type">string</span><span class="val-s">"tenant_A7bR3k"</span><span class="badge badge-idx" style="margin-left:auto;font-size:10px">indexed</span></div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Wajib untuk isolasi data multi-tenant. Security Rules cek field ini sebelum mengizinkan read.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">outletId</span><span class="type">string</span><span class="val-s">"outlet_JKTPST"</span><span class="badge badge-idx" style="margin-left:auto;font-size:10px">indexed</span></div>
+        <div class="desc">Outlet mana yang direkap. "all" = konsolidasi semua cabang.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Untuk konsolidasi semua cabang, ada dokumen terpisah dengan <code>outletId: "all"</code>. Dokumen ini diupdate bersamaan dengan dokumen per-outlet saat ada transaksi baru.</div><div class="note note-good">✓ Dashboard konsolidasi = 1 read dokumen "all". Drill-down ke cabang = 1 read dokumen outlet tertentu.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">dateKey</span><span class="type">string</span><span class="val-s">"2025-07-14"</span><span class="badge badge-idx" style="margin-left:auto;font-size:10px">indexed</span></div>
+        <div class="desc">Format YYYY-MM-DD — kunci utama filter harian.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Dipakai untuk query rentang tanggal: <code>where('dateKey','>=','2025-07-01').where('dateKey','<=','2025-07-31')</code> untuk laporan bulanan. Lebih efisien dari range query timestamp.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">monthKey</span><span class="type">string</span><span class="val-s">"2025-07"</span><span class="badge badge-idx" style="margin-left:auto;font-size:10px">indexed</span></div>
+        <div class="desc">Format YYYY-MM — untuk filter laporan bulanan sekaligus.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Memudahkan query <code>where('monthKey','==','2025-07')</code> untuk ambil semua dokumen harian dalam satu bulan tanpa range query. Lebih simpel dan efisien.</div></div></div>
+
+    <div class="sec"><span class="dot" style="background:#1D9E75"></span>Metrik utama</div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">totalRevenue</span><span class="type">number</span><span class="val-n">4750000</span></div>
+        <div class="desc">Total pendapatan hari ini (Rupiah).</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Di-increment menggunakan <code>FieldValue.increment(grandTotal)</code> setiap transaksi baru. Tidak perlu hitung ulang — langsung tambah nilai transaksi ke angka yang sudah ada.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">totalTransactions</span><span class="type">number</span><span class="val-n">38</span></div>
+        <div class="desc">Jumlah transaksi hari ini.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Di-increment <code>FieldValue.increment(1)</code> setiap transaksi baru. Field ini yang ditampilkan di kartu "Transaksi Hari Ini" di dashboard.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">avgTransactionValue</span><span class="type">number</span><span class="val-n">125000</span></div>
+        <div class="desc">Rata-rata nilai transaksi = totalRevenue / totalTransactions.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Dihitung ulang di frontend saat render dashboard: <code>totalRevenue / totalTransactions</code>. Tidak perlu disimpan terpisah — lebih hemat write. Tampil di kartu "Rata-rata Transaksi".</div><div class="note note-info">ℹ Tidak di-store ke Firestore, hitung di client dari dua field di atas.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">revenueByPayment</span><span class="type">map</span></div>
+        <div class="desc">Breakdown pendapatan per metode pembayaran.</div>
+      </div>
+    </div>
+    <div class="children">
+      <div class="detail">
+        <div class="detail-body">Rekap per metode bayar untuk rekonsiliasi kas harian.</div>
+        <div class="mono-block">
+revenueByPayment: {<br>
+&nbsp;&nbsp;cash: <span class="val-n">2500000</span>,<br>
+&nbsp;&nbsp;qris: <span class="val-n">1750000</span>,<br>
+&nbsp;&nbsp;transfer: <span class="val-n">500000</span><br>
+}
+        </div>
+        <div class="note note-good">✓ Masing-masing di-increment terpisah: <code>FieldValue.increment(grandTotal)</code> di key yang sesuai metode bayar.</div>
+      </div>
+    </div>
+
+    <div class="sec"><span class="dot" style="background:#D85A30"></span>Produk terlaris</div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">topProducts</span><span class="type">array&lt;object&gt;</span></div>
+        <div class="desc">Top 10 produk terlaris hari ini hingga level varian.</div>
+      </div>
+    </div>
+    <div class="children">
+      <div class="detail">
+        <div class="detail-body">Array ini diupdate setiap transaksi oleh Cloud Function — cari entry yang cocok (productId + skuId), increment qty dan revenue-nya. Jika belum ada, tambahkan entry baru. Diurutkan by qty descending, max 10 entry.</div>
+        <div class="mono-block">
+topProducts: [<br>
+&nbsp;&nbsp;{<br>
+&nbsp;&nbsp;&nbsp;&nbsp;productId: <span class="val-s">"prod_9xK2mLqP"</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;skuId: <span class="val-s">"sku_KO_M"</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;productName: <span class="val-s">"Kaos Polos Oversize"</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;variantLabel: <span class="val-s">"Hitam / M"</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;qtyTotal: <span class="val-n">24</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;revenueTotal: <span class="val-n">2040000</span><br>
+&nbsp;&nbsp;},<br>
+&nbsp;&nbsp;<span style="color:var(--color-text-tertiary)">// ... max 10 entry</span><br>
+]
+        </div>
+        <div class="note note-warn">⚠ Array ini dikelola penuh oleh Cloud Function — bukan increment biasa. Cloud Function baca array, update entry yang relevan, tulis ulang array.</div>
+        <div class="note note-info">ℹ Menyimpan snapshot nama produk & varian agar tampil benar meski produk diedit kemudian.</div>
+      </div>
+    </div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">updatedAt</span><span class="type">timestamp</span></div>
+        <div class="desc">Waktu terakhir dokumen ini diupdate.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Diupdate setiap ada transaksi baru yang memodifikasi dokumen ini. Berguna untuk debugging dan monitoring lag antara transaksi dengan update agregasi.</div></div></div>
+  </div>
+
+  <!-- DOC 2: monthly_summary -->
+  <div class="col-title"><span class="badge badge-col">DOC 2</span> dashboards / monthly_{tenantId}_{outletId}_{monthKey}</div>
+  <div class="tree">
+    <div class="tree-header">
+      <span class="badge badge-col">DOC</span>
+      <span class="path">dashboards / monthly_tenant_A7bR3k_outlet_JKTPST_2025-07</span>
+      <span style="font-size:11px;color:var(--color-text-tertiary);margin-left:auto">1 doc per outlet per bulan</span>
+    </div>
+
+    <div class="sec"><span class="dot" style="background:#7F77DD"></span>Identitas & metrik bulanan</div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">type</span><span class="type">string</span><span class="val-s">"monthly"</span></div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Membedakan dokumen monthly dari daily dalam koleksi yang sama.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">tenantId / outletId / monthKey</span><span class="type">string</span></div>
+        <div class="desc">Sama seperti daily — pengikat identitas dokumen.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Struktur identitas sama persis dengan dokumen daily. outletId bisa "all" untuk konsolidasi.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">totalRevenue</span><span class="type">number</span><span class="val-n">87500000</span></div>
+        <div class="desc">Total pendapatan bulan ini — di-increment tiap transaksi.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Diupdate bersamaan dengan dokumen daily dalam satu batch write. Satu transaksi = update 2 dokumen agregasi (daily + monthly) + update produk stok. Semua dalam 1 batch.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">totalTransactions</span><span class="type">number</span><span class="val-n">412</span></div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Jumlah transaksi sepanjang bulan ini. Dipakai untuk grafik perbandingan bulan ke bulan di dashboard owner.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">revenueByPayment</span><span class="type">map</span></div>
+        <div class="desc">Breakdown cash / qris / transfer sepanjang bulan.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Struktur identik dengan daily. Berguna untuk laporan rekonsiliasi bulanan — owner bisa lihat berapa persen penjualan via QRIS vs cash.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">topProducts</span><span class="type">array&lt;object&gt;</span></div>
+        <div class="desc">Top 10 produk terlaris bulan ini — struktur sama dengan daily.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Diupdate Cloud Function bersamaan dengan topProducts di dokumen daily. Memungkinkan owner lihat produk terlaris bulan ini vs hari ini sekaligus.</div></div></div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">dailyBreakdown</span><span class="type">map&lt;string, number&gt;</span></div>
+        <div class="desc">Revenue per tanggal dalam bulan ini — untuk grafik garis.</div>
+      </div>
+    </div>
+    <div class="children">
+      <div class="detail">
+        <div class="detail-body">Map sederhana tanggal → revenue. Digunakan untuk render grafik tren revenue harian dalam satu bulan tanpa perlu query banyak dokumen daily.</div>
+        <div class="mono-block">
+dailyBreakdown: {<br>
+&nbsp;&nbsp;<span class="val-s">"01"</span>: <span class="val-n">3200000</span>,<br>
+&nbsp;&nbsp;<span class="val-s">"02"</span>: <span class="val-n">2800000</span>,<br>
+&nbsp;&nbsp;<span class="val-s">"03"</span>: <span class="val-n">4100000</span>,<br>
+&nbsp;&nbsp;<span style="color:var(--color-text-tertiary)">// ... s/d tanggal terakhir bulan</span><br>
+}
+        </div>
+        <div class="note note-good">✓ Grafik tren bulanan = 1 read dokumen monthly. Tidak perlu query 30 dokumen daily sekaligus.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DOC 3: low_stock -->
+  <div class="col-title"><span class="badge badge-col">DOC 3</span> dashboards / lowstock_{tenantId}</div>
+  <div class="tree">
+    <div class="tree-header">
+      <span class="badge badge-col">DOC</span>
+      <span class="path">dashboards / lowstock_tenant_A7bR3k</span>
+      <span style="font-size:11px;color:var(--color-text-tertiary);margin-left:auto">1 doc per tenant — semua outlet</span>
+    </div>
+
+    <div class="sec"><span class="dot" style="background:#D85A30"></span>Low stock alert</div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">alerts</span><span class="type">array&lt;object&gt;</span></div>
+        <div class="desc">Daftar SKU yang stoknya di bawah threshold yang diset owner.</div>
+      </div>
+    </div>
+    <div class="children">
+      <div class="detail">
+        <div class="detail-body">Diupdate Cloud Function setiap stok berubah akibat transaksi. Cek apakah stok baru di bawah <code>lowStockThreshold</code> di dokumen produk. Jika iya, tambah/update entry di array ini.</div>
+        <div class="mono-block">
+alerts: [<br>
+&nbsp;&nbsp;{<br>
+&nbsp;&nbsp;&nbsp;&nbsp;productId: <span class="val-s">"prod_9xK2mLqP"</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;skuId: <span class="val-s">"sku_KO_M"</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;productName: <span class="val-s">"Kaos Polos Oversize"</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;variantLabel: <span class="val-s">"Hitam / M"</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;outletId: <span class="val-s">"outlet_JKTPST"</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;outletName: <span class="val-s">"Cabang Jakarta Pusat"</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;currentStock: <span class="val-n">3</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;threshold: <span class="val-n">5</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;detectedAt: <span class="val-s">timestamp</span><br>
+&nbsp;&nbsp;}<br>
+]
+        </div>
+        <div class="note note-good">✓ Low stock dashboard = 1 read dokumen ini. Owner langsung lihat semua SKU menipis di semua cabang sekaligus.</div>
+        <div class="note note-info">ℹ Entry dihapus dari array jika stok sudah diisi ulang (restock) melewati threshold kembali.</div>
+      </div>
+    </div>
+
+    <div class="node" onclick="tog(this)">
+      <div class="toggle">▶</div>
+      <div class="nc">
+        <div class="nr"><span class="key">updatedAt</span><span class="type">timestamp</span></div>
+        <div class="desc">Waktu terakhir dokumen ini diupdate.</div>
+      </div>
+    </div>
+    <div class="children"><div class="detail"><div class="detail-body">Diupdate setiap ada perubahan di array alerts. Owner bisa lihat kapan terakhir sistem mengecek stok.</div></div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="showPanel('write', this)">Alur update agregasi</div>
+    <div class="tab" onclick="showPanel('read', this)">Pola read dashboard</div>
+    <div class="tab" onclick="showPanel('cost', this)">Estimasi biaya read</div>
+  </div>
+
+  <div class="panel active" id="panel-write">
+    <div class="panel-header">Alur update agregasi saat transaksi baru</div>
+    <div class="panel-body">
+      <div class="card">
+        <div class="card-title"><span class="pill pill-blue">1</span> Kasir klik bayar</div>
+        <div class="card-body">Frontend validasi dan siapkan data transaksi.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="pill pill-blue">2</span> Batch write atomic ke Firestore</div>
+        <div class="card-body">
+          Dalam satu batch (semua atau gagal semua):<br>
+          • Create <code>transactions/{id}</code><br>
+          • Decrement stok di <code>products/{id}.skus[i].stock.{outletId}</code><br>
+          • Update <code>tenants/{id}.lastTransactionAt</code>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="pill pill-purple">3</span> Cloud Function trigger (async)</div>
+        <div class="card-body">
+          <code>onDocumentCreated('transactions/{id}')</code> trigger otomatis:<br>
+          • Increment <code>dashboards/daily_*</code> — revenue, transactions, revenueByPayment, dailyBreakdown<br>
+          • Increment <code>dashboards/monthly_*</code> — sama<br>
+          • Update topProducts di daily & monthly<br>
+          • Cek low stock → update <code>dashboards/lowstock_*</code>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="pill pill-amber">Note</span> Async = tidak blocking kasir</div>
+        <div class="card-body">Cloud Function berjalan di background setelah batch write selesai. Kasir tidak perlu menunggu agregasi selesai. Jika Cloud Function gagal, ada retry otomatis — data transaksi tetap aman.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-read">
+    <div class="panel-header">Pola read saat owner buka dashboard</div>
+    <div class="panel-body">
+      <div class="card">
+        <div class="card-title">Dashboard hari ini — konsolidasi semua cabang <span class="pill pill-green" style="margin-left:auto">1 read</span></div>
+        <div class="card-body">Baca <code>dashboards/daily_tenantId_all_{today}</code>. Dapat: total revenue, total transaksi, breakdown per metode bayar, top 10 produk.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Drill-down ke cabang tertentu <span class="pill pill-green" style="margin-left:auto">1 read</span></div>
+        <div class="card-body">Baca <code>dashboards/daily_tenantId_{outletId}_{today}</code>. Data cabang spesifik.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Laporan bulan ini <span class="pill pill-green" style="margin-left:auto">1 read</span></div>
+        <div class="card-body">Baca <code>dashboards/monthly_tenantId_all_{monthKey}</code>. Dapat: revenue bulanan, grafik harian (dailyBreakdown), top produk bulan ini.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Filter rentang custom (misal: 7 hari terakhir) <span class="pill pill-amber" style="margin-left:auto">max 7 reads</span></div>
+        <div class="card-body">Query <code>where('tenantId','==',tid).where('outletId','==','all').where('dateKey','>=','...').where('dateKey','&lt;=','...')</code>. Hasilnya array dokumen harian — jumlah reads = jumlah hari yang dipilih.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Low stock alert <span class="pill pill-green" style="margin-left:auto">1 read</span></div>
+        <div class="card-body">Baca <code>dashboards/lowstock_{tenantId}</code>. Semua SKU menipis di semua cabang dalam satu dokumen.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-cost">
+    <div class="panel-header">Estimasi biaya read per bulan (Free Tier: 50.000 reads/hari)</div>
+    <div class="panel-body">
+      <div class="card">
+        <div class="card-title">Asumsi: 1 tenant, 2 outlet, owner buka dashboard 20x/hari</div>
+        <div class="card-body">
+          Dashboard buka: 20 × 3 reads (daily all + 2 outlet) = <strong>60 reads/hari</strong><br>
+          Low stock check: 20 × 1 read = <strong>20 reads/hari</strong><br>
+          Laporan bulanan (buka 5x/hari): 5 × 1 read = <strong>5 reads/hari</strong><br>
+          Kasir lihat riwayat transaksi (50 transaksi/hari): <strong>50 reads/hari</strong><br>
+          Kasir cari produk autocomplete: ~100 reads/hari<br><br>
+          <strong>Total estimasi: ~235 reads/hari</strong> dari limit 50.000. <span style="color:#3B6D11">Sangat aman di Free Tier.</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Write cost per transaksi</div>
+        <div class="card-body">
+          1 transaksi = create trx + update stok (N SKU) + update daily + update monthly + update lowstock<br>
+          Rata-rata: <strong>5–8 writes per transaksi</strong><br>
+          Free Tier limit: 20.000 writes/hari<br>
+          Aman hingga: <strong>~2.500 transaksi/hari</strong> per tenant.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function tog(node) {
+  const ch = node.nextElementSibling;
+  if (!ch || !ch.classList.contains('children')) return;
+  const isOpen = ch.classList.contains('open');
+  ch.classList.toggle('open', !isOpen);
+  node.querySelector('.toggle').textContent = isOpen ? '▶' : '▼';
+  node.classList.toggle('open', !isOpen);
+}
+function showPanel(id, tab) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  tab.classList.add('active');
+}
+</script>
