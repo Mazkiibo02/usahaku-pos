@@ -24,7 +24,7 @@ import type { Cashier } from '@/src/features/cashiers/types';
 import { ReceiptPrint } from '@/src/features/transactions/components/ReceiptPrint';
 
 export default function TransactionsPage() {
-  const { tenantId, user: currentUser, role, outletId: cashierOutletId } = useAuthStore();
+  const { tenantId, user: currentUser, role, outletId: cashierOutletId, isLoading: authLoading } = useAuthStore();
 
   // Core records state
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -45,12 +45,17 @@ export default function TransactionsPage() {
 
   // Load backend data
   const fetchData = useCallback(async () => {
-    if (!tenantId) return;
-
-    if (role === 'cashier' && !cashierOutletId) {
-      setIsLoading(false);
-      setError('Outlet ID kasir tidak ditemukan. Silakan hubungi owner.');
+    if (authLoading || !tenantId || !role) {
+      setIsLoading(true);
       return;
+    }
+
+    // Strict defensive check for cashier: both tenantId and cashierOutletId must be present
+    if (role === 'cashier') {
+      if (!tenantId || !cashierOutletId || cashierOutletId.trim() === '') {
+        setIsLoading(true);
+        return;
+      }
     }
 
     await Promise.resolve();
@@ -97,7 +102,7 @@ export default function TransactionsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [tenantId, role, cashierOutletId, currentUser]);
+  }, [tenantId, role, cashierOutletId, currentUser, authLoading]);
 
   useEffect(() => {
     if (tenantId) {

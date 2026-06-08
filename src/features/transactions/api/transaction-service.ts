@@ -28,7 +28,7 @@ export const transactionService = {
     const transactionsRef = collection(db, 'transactions');
     let q;
     
-    if (outletId) {
+    if (outletId && outletId.trim() !== '') {
       q = query(
         transactionsRef,
         where('tenantId', '==', tenantId),
@@ -74,7 +74,7 @@ export const transactionService = {
     const transactionsRef = collection(db, 'transactions');
     let q;
 
-    if (outletId) {
+    if (outletId && outletId.trim() !== '') {
       q = query(
         transactionsRef,
         where('tenantId', '==', tenantId),
