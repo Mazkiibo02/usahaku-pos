@@ -42,11 +42,20 @@ export function AuthGuard({ children, allowedRoles, fallback }: AuthGuardProps) 
       return;
     }
 
-    // If tenantId exists and user is on /onboarding or any public page, redirect to /dashboard
-    if (tenantId && (isOnboardingPage || isPublicPage)) {
-      router.replace('/dashboard');
+    // If tenantId exists:
+    if (tenantId) {
+      if (role === 'cashier') {
+        const isAllowedCashierRoute = pathname === '/pos' || pathname.startsWith('/pos/') || pathname === '/transactions' || pathname.startsWith('/transactions/');
+        if (!isAllowedCashierRoute || isOnboardingPage || isPublicPage) {
+          router.replace('/pos');
+        }
+      } else {
+        if (isOnboardingPage || isPublicPage) {
+          router.replace('/dashboard');
+        }
+      }
     }
-  }, [user, tenantId, isLoading, router, pathname, isPublicPage, isOnboardingPage]);
+  }, [user, role, tenantId, isLoading, router, pathname, isPublicPage, isOnboardingPage]);
 
   // Logic 1: If isLoading is true, return a loading spinner or null
   if (isLoading) {
@@ -73,6 +82,14 @@ export function AuthGuard({ children, allowedRoles, fallback }: AuthGuardProps) 
   // Role authorization check
   if (allowedRoles && (!role || !allowedRoles.includes(role as UserRole))) {
     return <>{fallback ?? <div className="p-4 text-center text-rose-600">You are not authorized to access this content.</div>}</>;
+  }
+
+  // Cashier role page protection
+  if (role === 'cashier') {
+    const isAllowedCashierRoute = pathname === '/pos' || pathname.startsWith('/pos/') || pathname === '/transactions' || pathname.startsWith('/transactions/');
+    if (!isAllowedCashierRoute) {
+      return null;
+    }
   }
 
   // Logic 4: If user exists AND tenantId exists, render {children}

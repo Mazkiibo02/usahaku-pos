@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Store, Activity, EyeOff, Loader2, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
@@ -14,7 +15,8 @@ import { OutletForm } from '@/src/features/outlets/components/outlet-form';
 import { db } from '@/src/lib/firebase/firebase';
 
 export default function OutletsPage() {
-  const { tenantId } = useAuthStore();
+  const { tenantId, role } = useAuthStore();
+  const router = useRouter();
   const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,8 +29,15 @@ export default function OutletsPage() {
   const [maxOutlets, setMaxOutlets] = useState<number>(2);
   const [isTenantLoading, setIsTenantLoading] = useState<boolean>(true);
 
+  // Redirect cashier users
+  useEffect(() => {
+    if (role === 'cashier') {
+      router.replace('/pos');
+    }
+  }, [role, router]);
+
   const fetchOutlets = useCallback(async () => {
-    if (!tenantId) return;
+    if (!tenantId || role === 'cashier') return;
     // Defer state updates to avoid synchronous setState inside useEffect hook
     await Promise.resolve();
     setIsLoading(true);
@@ -45,14 +54,14 @@ export default function OutletsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [tenantId]);
+  }, [tenantId, role]);
 
   useEffect(() => {
-    if (tenantId) {
+    if (tenantId && role !== 'cashier') {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchOutlets();
     }
-  }, [tenantId, fetchOutlets]);
+  }, [tenantId, role, fetchOutlets]);
 
   const handleAddClick = () => {
     setSelectedOutlet(null);
@@ -69,6 +78,10 @@ export default function OutletsPage() {
   const activeOutlets = outlets.filter((o) => o.isActive).length;
   const inactiveOutlets = totalOutlets - activeOutlets;
 
+  if (role === 'cashier') {
+    return null;
+  }
+
   if (!tenantId) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -82,7 +95,7 @@ export default function OutletsPage() {
 
   // Listen to the tenant's maxOutlets in real time
   useEffect(() => {
-    if (!tenantId) {
+    if (!tenantId || role === 'cashier') {
       setIsTenantLoading(false);
       return;
     }
@@ -105,7 +118,7 @@ export default function OutletsPage() {
     );
 
     return () => unsubscribe();
-  }, [tenantId]);
+  }, [tenantId, role]);
 
   const isLimitReached = outlets.length >= maxOutlets;
 
