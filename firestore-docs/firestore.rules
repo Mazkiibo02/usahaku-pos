@@ -259,15 +259,22 @@ service cloud.firestore {
     // =========================================================
     // COLLECTION: invoices/{invoiceId}
     // =========================================================
-    // Owner: read only (untuk cek status pembayaran)
-    // Write: hanya via Cloud Function (Admin SDK)
+    // Owner & Kasir (Tenant Member): read, create, update
+    // Membaca, membuat, dan memperbarui invoice dengan isolasi multi-tenant yang ketat
     // =========================================================
 
     match /invoices/{invoiceId} {
-      allow read: if isOwner()
-                  && resource.data.tenantId == myTenantId();
+      allow read: if isTenantMember()
+                  && isSameTenant();
 
-      allow write: if false; // Hanya Cloud Function
+      allow create: if isTenantMember()
+                    && isWritingToMyTenant();
+
+      allow update: if isTenantMember()
+                    && isSameTenant()
+                    && isWritingToMyTenant();
+
+      allow delete: if false;
     }
 
 

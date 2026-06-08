@@ -47,15 +47,20 @@ export default function TransactionsPage() {
   const fetchData = useCallback(async () => {
     if (!tenantId) return;
 
+    if (role === 'cashier' && !cashierOutletId) {
+      setIsLoading(false);
+      setError('Outlet ID kasir tidak ditemukan. Silakan hubungi owner.');
+      return;
+    }
+
     await Promise.resolve();
     setIsLoading(true);
     setError(null);
 
     try {
       if (role === 'cashier') {
-        const targetOutletId = cashierOutletId || undefined;
         const [txData, outletsData] = await Promise.all([
-          transactionService.getTransactions(tenantId, 100, targetOutletId),
+          transactionService.getTransactions(tenantId, 100, cashierOutletId || undefined),
           outletService.getOutlets(tenantId),
         ]);
         setTransactions(txData);
