@@ -226,14 +226,14 @@ export const createStaffAccount = functions.https.onCall(
       });
 
       // 7. Save Metadata
-      await db.collection("staff").doc(uid).set({
+      await db.collection("users").doc(uid).set({
         uid,
         name,
         email,
         role: "cashier",
         tenantId,
         outletId,
-        createdAt: FieldValue.serverTimestamp(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
       return {
