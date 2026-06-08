@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   TrendingUp,
   ShoppingCart,
@@ -39,14 +40,22 @@ import type { Outlet } from '@/src/features/outlets/types';
 import type { Cashier } from '@/src/features/cashiers/types';
 
 export default function DashboardPage() {
-  const { tenantId, user } = useAuthStore();
+  const { tenantId, user, role } = useAuthStore();
+  const router = useRouter();
   const [storeName, setStoreName] = useState<string>('Usahaku POS');
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  // Redirect cashier users
+  useEffect(() => {
+    if (role === 'cashier') {
+      router.replace('/pos');
+    }
+  }, [role, router]);
 
   // Fetch Tenant store details (Store Name & Custom Logo)
   useEffect(() => {
     async function fetchTenantDetails() {
-      if (!tenantId) return;
+      if (!tenantId || role === 'cashier') return;
       try {
         const docRef = doc(db, 'tenants', tenantId);
         const docSnap = await getDoc(docRef);
@@ -62,7 +71,7 @@ export default function DashboardPage() {
       }
     }
     fetchTenantDetails();
-  }, [tenantId]);
+  }, [tenantId, role]);
 
   // 1. Date Range State: Default to current month (e.g. June 1 to June 30)
   const [startDate, setStartDate] = useState<string>(() => {
@@ -118,7 +127,7 @@ export default function DashboardPage() {
 
   // 2. Fetch statistics data
   const fetchStats = useCallback(async (showRefreshing = false) => {
-    if (!tenantId) return;
+    if (!tenantId || role === 'cashier') return;
 
     if (showRefreshing) {
       setIsRefreshing(true);
@@ -145,7 +154,7 @@ export default function DashboardPage() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [tenantId, startDate, endDate]);
+  }, [tenantId, role, startDate, endDate]);
 
   useEffect(() => {
     fetchStats();
@@ -219,6 +228,10 @@ export default function DashboardPage() {
       </div>
     </div>
   );
+
+  if (role === 'cashier') {
+    return null;
+  }
 
   if (isLoading) {
     return <DashboardSkeleton />;

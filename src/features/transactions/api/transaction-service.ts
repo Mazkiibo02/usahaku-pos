@@ -20,18 +20,30 @@ export const transactionService = {
    * Mengambil riwayat transaksi penjualan yang terisolasi berdasarkan tenantId.
    * Diurutkan dari transaksi terbaru (createdAt desc) dan dibatasi jumlahnya untuk optimalisasi.
    */
-  async getTransactions(tenantId: string, limitCount = 50): Promise<Transaction[]> {
+  async getTransactions(tenantId: string, limitCount = 50, outletId?: string): Promise<Transaction[]> {
     if (!tenantId) {
       throw new Error('Tenant ID is required');
     }
 
     const transactionsRef = collection(db, 'transactions');
-    const q = query(
-      transactionsRef,
-      where('tenantId', '==', tenantId),
-      orderBy('createdAt', 'desc'),
-      limit(limitCount)
-    );
+    let q;
+    
+    if (outletId) {
+      q = query(
+        transactionsRef,
+        where('tenantId', '==', tenantId),
+        where('outletId', '==', outletId),
+        orderBy('createdAt', 'desc'),
+        limit(limitCount)
+      );
+    } else {
+      q = query(
+        transactionsRef,
+        where('tenantId', '==', tenantId),
+        orderBy('createdAt', 'desc'),
+        limit(limitCount)
+      );
+    }
 
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map((doc) => {
@@ -49,7 +61,8 @@ export const transactionService = {
   async getTransactionsInDateRange(
     tenantId: string,
     startDateStr: string,
-    endDateStr: string
+    endDateStr: string,
+    outletId?: string
   ): Promise<Transaction[]> {
     if (!tenantId) {
       throw new Error('Tenant ID is required');
@@ -59,13 +72,26 @@ export const transactionService = {
     const endTimestamp = new Date(endDateStr + 'T23:59:59.999');
 
     const transactionsRef = collection(db, 'transactions');
-    const q = query(
-      transactionsRef,
-      where('tenantId', '==', tenantId),
-      where('createdAt', '>=', startTimestamp),
-      where('createdAt', '<=', endTimestamp),
-      orderBy('createdAt', 'desc')
-    );
+    let q;
+
+    if (outletId) {
+      q = query(
+        transactionsRef,
+        where('tenantId', '==', tenantId),
+        where('outletId', '==', outletId),
+        where('createdAt', '>=', startTimestamp),
+        where('createdAt', '<=', endTimestamp),
+        orderBy('createdAt', 'desc')
+      );
+    } else {
+      q = query(
+        transactionsRef,
+        where('tenantId', '==', tenantId),
+        where('createdAt', '>=', startTimestamp),
+        where('createdAt', '<=', endTimestamp),
+        orderBy('createdAt', 'desc')
+      );
+    }
 
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map((doc) => {

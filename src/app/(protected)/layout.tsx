@@ -25,7 +25,7 @@ function FullScreenSpinner() {
 
 export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
   const router = useRouter();
-  const { user, tenantId, isLoading } = useAuthStore();
+  const { user, role, tenantId, isLoading } = useAuthStore();
   const { fetchActiveShift } = useShiftStore();
   const isAuthenticated = !!user;
 
@@ -45,7 +45,7 @@ export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
   }, [isAuthenticated, user?.uid, tenantId, fetchActiveShift]);
 
   useEffect(() => {
-    if (!isAuthenticated || !tenantId) {
+    if (!isAuthenticated || !tenantId || role === 'cashier') {
       setIsSubLoading(false);
       return;
     }
@@ -91,7 +91,7 @@ export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
     );
 
     return () => unsubscribe();
-  }, [tenantId, isAuthenticated]);
+  }, [tenantId, isAuthenticated, role]);
 
   if (isLoading || !isAuthenticated || (isSubLoading && tenantId)) {
     return <FullScreenSpinner />;
