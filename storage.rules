@@ -1,8 +1,26 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    
+    // Multi-tenant store logo uploads
+    match /tenants/{tenantId}/{allPaths=**} {
+      // 1. Public read access to the tenant directory so logos can be rendered externally
+      allow read: if true;
+      
+      // 2. Strict Owner-Only Write Access & 3. File Size Protection (must not exceed 2MB)
+      allow create, update: if request.auth != null
+                            && request.auth.token.role == 'owner'
+                            && request.auth.token.tenantId == tenantId
+                            && request.resource.size < 2 * 1024 * 1024;
+                            
+      allow delete: if request.auth != null
+                    && request.auth.token.role == 'owner'
+                    && request.auth.token.tenantId == tenantId;
+    }
+
+    // Default fallback rules: deny all other paths
     match /{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }

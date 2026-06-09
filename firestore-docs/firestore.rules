@@ -212,23 +212,19 @@ service cloud.firestore {
 
     match /transactions/{transactionId} {
 
-      // READ — Owner baca semua, Kasir baca outlet sendiri
-      allow read: if isOwner()
-                  && isSameTenant()
-                  ||
-                  isCashier()
-                  && isSameTenant()
-                  && isCashierAssignedToOutlet(resource.data.outletId);
+      // READ — Owner baca semua, Kasir baca outlet sendiri (zero read cost claims helper)
+      allow read: if (isOwner() && (resource == null || resource.data.tenantId == myTenantId()))
+                  || (isCashier() && (resource == null || (resource.data.tenantId == myTenantId() && resource.data.outletId == myOutletId())));
 
       // CREATE — Owner & Kasir boleh buat transaksi, tenant harus aktif
       allow create: if isTenantMember()
                     && isWritingToMyTenant()
                     && isTenantActive()
-                    // Kasir hanya bisa buat transaksi di outlet yang ditugaskan
+                    // Kasir hanya bisa buat transaksi di outlet yang ditugaskan (claims validated)
                     && (
                       isOwner()
                       ||
-                      (isCashier() && isCashierAssignedToOutlet(request.resource.data.outletId))
+                      (isCashier() && request.resource.data.tenantId == myTenantId() && request.resource.data.outletId == myOutletId())
                     )
                     // Validasi field wajib ada
                     && request.resource.data.keys().hasAll([

@@ -144,18 +144,26 @@ export default function PosPage() {
     }
   }, [tenantId, fetchProducts, fetchOutlets]);
 
+  // Sync selectedOutletId with activeShift.outletId if a shift is active
+  useEffect(() => {
+    if (activeShift && role === 'owner') {
+      setSelectedOutletId(activeShift.outletId);
+    }
+  }, [activeShift, role]);
+
   // Set the final active outletId
   const activeOutletId = useMemo(() => {
+    if (activeShift) return activeShift.outletId;
     if (role === 'cashier') return cashierOutletId ?? '';
     return selectedOutletId;
-  }, [role, cashierOutletId, selectedOutletId]);
+  }, [activeShift, role, cashierOutletId, selectedOutletId]);
 
   // Get active outlet details
   const activeOutletName = useMemo(() => {
-    const targetId = role === 'cashier' ? cashierOutletId : selectedOutletId;
+    const targetId = activeOutletId;
     const match = outlets.find((o) => o.id === targetId);
     return match ? match.name : (role === 'cashier' ? 'Cabang Ditugaskan' : 'Pilih Cabang');
-  }, [role, cashierOutletId, selectedOutletId, outlets]);
+  }, [activeOutletId, outlets, role]);
 
   // Categories list
   const categoriesList = useMemo(() => {
@@ -309,6 +317,8 @@ export default function PosPage() {
         quantity: item.quantity,
       }));
 
+      const displayName = user?.displayName || user?.email || 'Kasir';
+
       const res = await posService.processTransaction({
         items: itemsPayload,
         outletId: activeOutletId,
@@ -318,7 +328,7 @@ export default function PosPage() {
         paymentMethod: paymentMethod,
         shippingCost: shippingCost,
         outletName: activeOutletName,
-        cashierName: user?.displayName || 'Kasir',
+        cashierName: displayName,
         shiftId: activeShift.id,
       });
 
@@ -344,7 +354,7 @@ export default function PosPage() {
         paymentMethod: paymentMethod,
         createdAt: { toDate: () => new Date() } as any,
         outletName: activeOutletName,
-        cashierName: user?.displayName || 'Kasir',
+        cashierName: displayName,
         shiftId: activeShift.id,
       };
       setCompletedTx(tempTx);
@@ -645,9 +655,12 @@ export default function PosPage() {
 
     setIsOpeningShift(true);
     try {
+      const displayName = user.displayName || user.email || 'Kasir';
+      const shiftCashierName = role === 'owner' ? `${displayName} (Owner)` : displayName;
+
       await openShift(tenantId, {
         cashierId: user.uid,
-        cashierName: user.displayName || 'Kasir',
+        cashierName: shiftCashierName,
         outletId: activeOutletId,
         startingCash: val,
       });
@@ -690,7 +703,7 @@ export default function PosPage() {
           </p>
 
           <form onSubmit={handleOpenShift} className="mt-6 space-y-4">
-            {role === 'owner' ? (
+            {role === 'owner' && outlets.length > 1 ? (
               <div className="space-y-1">
                 <label className="text-xs font-extrabold text-slate-700 flex items-center gap-1">
                   Cabang Outlet <span className="text-rose-500">*</span>
@@ -814,19 +827,17 @@ export default function PosPage() {
           </div>
           
           {/* Owner-facing physical branch selection */}
-          {role === 'owner' ? (
+          {role === 'owner' && outlets.length > 1 ? (
             <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm shrink-0">
               <Store className="h-4.5 w-4.5 text-slate-500" />
               <select
                 value={selectedOutletId}
                 onChange={(e) => setSelectedOutletId(e.target.value)}
-                disabled={isLoadingOutlets}
-                className="bg-transparent text-sm text-slate-700 outline-none cursor-pointer font-bold"
+                disabled={isLoadingOutlets || !!activeShift}
+                className="bg-transparent text-sm text-slate-700 outline-none cursor-pointer font-bold disabled:opacity-75 disabled:cursor-not-allowed"
               >
                 {isLoadingOutlets ? (
                   <option>Memuat cabang...</option>
-                ) : outlets.length === 0 ? (
-                  <option value="">Tidak ada cabang aktif</option>
                 ) : (
                   outlets.map((o) => (
                     <option key={o.id} value={o.id}>
@@ -1092,7 +1103,7 @@ export default function PosPage() {
           isOpen={isReceiptPrintOpen}
           onClose={() => setIsReceiptPrintOpen(false)}
           transaction={completedTx}
-          cashierName={user?.displayName || 'Kasir'}
+          cashierName={completedTx.cashierName || user?.displayName || user?.email || 'Kasir'}
           outletName={activeOutletName}
         />
       )}

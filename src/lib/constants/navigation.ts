@@ -26,6 +26,11 @@ export const OWNER_NAV_LINKS: NavigationItem[] = [
     icon: Briefcase,
   },
   {
+    title: 'Kasir / POS',
+    href: '/pos',
+    icon: Wallet,
+  },
+  {
     title: 'Kasir',
     href: '/cashiers',
     icon: Users,
@@ -39,7 +44,7 @@ export const OWNER_NAV_LINKS: NavigationItem[] = [
 
 export const CASHIER_NAV_LINKS: NavigationItem[] = [
   {
-    title: 'POS',
+    title: 'Kasir / POS',
     href: '/pos',
     icon: Wallet,
   },

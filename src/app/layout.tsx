@@ -24,6 +24,14 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Usahaku POS",
   description: "Sistem Kasir Pintar untuk UMKM",
+  manifest: "/site.webmanifest",
+  icons: {
+    icon: [
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
