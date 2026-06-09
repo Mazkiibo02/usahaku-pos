@@ -45,7 +45,8 @@
 
 ### 5. Multi-Outlet Restriction & Gatekeeping
 * **Decision:** Establish strong resource boundaries both in the client state and server storage to enforce plan constraints.
-* **Implementation:** * **Atomic Accounting:** Modifications to outlets (creation/deletion) must bundle data mutations along with an atomic increment/decrement counter field (`outletsCount`) inside a Firestore `writeBatch`.
+* **Implementation:**
+    * **Atomic Accounting:** Modifications to outlets (creation/deletion) must bundle data mutations along with an atomic increment/decrement counter field (`outletsCount`) inside a Firestore `writeBatch`.
     * **Dual-Guardrails:** The frontend UI programmatically disables addition triggers and injects Tailwind v4 warning banners when `outletsCount >= maxOutlets`. Server-side validation is strictly locked within `firestore.rules` checking structural integrity.
     * **Defensive UI Flow:** To prevent horizontal shifting and layout leakage displaying raw html body masks, root layout wrappers enforce `max-w-full overflow-x-hidden p-0.5` while structural data views (e.g. `outlet-list.tsx` table) confine wide viewports via targeted internal `overflow-x-auto` scroll-boxes.
 
@@ -60,3 +61,7 @@
 ### 7. Deployment Pipeline Infrastructure
 * **Decision:** Production branch delivery mapping alignment.
 * **Implementation:** Vercel Hosting is programmatically bound to the `staging` Git branch as its primary Production delivery vehicle. Code integration routes through `main` push lines before processing Pull Requests onto `staging`, which automates deployment compilations to live customer environments.
+
+### 8. Cashier Operational Isolation & Invoice Query Strategy (Pending Fix)
+* **Decision:** Enforce isolated query restrictions for cashier access on billing/invoice entities to accommodate real-world receipt reprinting workflows without breaching confidentiality.
+* **Rule Design:** Frontend queries executing from the cashier’s viewport must absolutely omit generic collection pulls. Queries must strictly chain `.where('tenantId', '==', currentTenantId).where('outletId', '==', currentOutletId)` to guarantee zero leaks. `firestore.rules` must align with this query boundary to prevent immediate database-level query termination.

@@ -1,0 +1,25 @@
+[
+  {
+    "origin": [
+      "http://localhost:3000",
+      "https://www.usahakupos.my.id",
+      "https://usahakupos.my.id",
+      "https://*.vercel.app"
+    ],
+    "method": [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE",
+      "HEAD"
+    ],
+    "responseHeader": [
+      "Content-Type",
+      "Authorization",
+      "Content-Length",
+      "User-Agent",
+      "x-goog-resumable"
+    ],
+    "maxAgeSeconds": 3600
+  }
+]

@@ -22,6 +22,11 @@ service cloud.firestore {
       return request.auth.token.role;
     }
 
+    // Ambil outletId dari Custom Claims (0 read cost)
+    function myOutletId() {
+      return request.auth.token.outletId;
+    }
+
     // Cek apakah user adalah owner
     function isOwner() {
       return isAuthenticated() && myRole() == 'owner';
@@ -242,7 +247,7 @@ service cloud.firestore {
 
 
     // =========================================================
-    // COLLECTION: dashboards/{docId}
+    // COLLECTION: dashboards/{docId} (and stats/{tenantId}/{document=**})
     // =========================================================
     // Owner: read only (dokumen tenantnya)
     // Kasir: tidak bisa akses sama sekali
@@ -250,28 +255,33 @@ service cloud.firestore {
     // =========================================================
 
     match /dashboards/{docId} {
-      allow read: if isOwner() && docId == myTenantId();
+      allow read: if isOwner() && (docId == myTenantId() || (resource != null && resource.data.tenantId == myTenantId()));
 
       allow write: if false; // Hanya Cloud Function
+    }
+
+    match /stats/{tenantId}/{document=**} {
+      allow read: if isOwner() && tenantId == myTenantId();
+      allow write: if false;
     }
 
 
     // =========================================================
     // COLLECTION: invoices/{invoiceId}
     // =========================================================
-    // Owner & Kasir (Tenant Member): read, create, update
-    // Membaca, membuat, dan memperbarui invoice dengan isolasi multi-tenant yang ketat
+    // Owner: read, create, update (untuk cek status pembayaran & perpanjang langganan)
+    // Kasir: read (outlet-isolated), create (outlet-isolated), no update/delete
     // =========================================================
 
     match /invoices/{invoiceId} {
-      allow read: if isTenantMember()
-                  && isSameTenant();
+      allow read: if (isOwner() && (resource == null || resource.data.tenantId == myTenantId()))
+                  || (isCashier() && (resource == null || (resource.data.tenantId == myTenantId() && resource.data.outletId == myOutletId())));
 
-      allow create: if isTenantMember()
-                    && isWritingToMyTenant();
+      allow create: if (isOwner() && isWritingToMyTenant())
+                    || (isCashier() && isWritingToMyTenant() && request.resource.data.outletId == myOutletId());
 
-      allow update: if isTenantMember()
-                    && isSameTenant()
+      allow update: if isOwner()
+                    && (resource == null || resource.data.tenantId == myTenantId())
                     && isWritingToMyTenant();
 
       allow delete: if false;
