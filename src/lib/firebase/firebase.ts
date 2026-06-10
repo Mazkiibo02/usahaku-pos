@@ -56,15 +56,15 @@ const storage = getStorage(app);
 if (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
   // Prevent double-connection errors in Next.js fast refresh
   const globalWithEmulators = globalThis as typeof globalThis & { _emulatorsStarted?: boolean };
-  
+
   if (!globalWithEmulators._emulatorsStarted) {
     const emulatorHost = process.env.NEXT_PUBLIC_FIREBASE_EMULATOR_HOST || 'localhost';
-    
+
     connectAuthEmulator(auth, `http://${emulatorHost}:9099`, { disableWarnings: true });
     connectFirestoreEmulator(db, emulatorHost, 8085);
     connectFunctionsEmulator(functions, emulatorHost, 5001);
     connectStorageEmulator(storage, emulatorHost, 9199);
-    
+
     globalWithEmulators._emulatorsStarted = true;
     console.log(`Firebase Emulators connected to ${emulatorHost} (Auth: 9099, Firestore: 8085, Functions: 5001, Storage: 9199)`);
   }

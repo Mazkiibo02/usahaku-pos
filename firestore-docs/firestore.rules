@@ -317,6 +317,27 @@ service cloud.firestore {
 
 
     // =========================================================
+    // COLLECTION: audit_logs/{logId}
+    // =========================================================
+    // Write-once, immutable logs for critical actions.
+    // Read: Only Owner of the same tenant can read.
+    // Create: Any authenticated user of the same tenant can create.
+    // Update/Delete: Blocked completely.
+    // =========================================================
+
+    match /audit_logs/{logId} {
+      allow create: if request.auth != null
+                    && request.resource.data.tenantId == request.auth.token.tenantId;
+
+      allow read: if request.auth != null
+                  && request.auth.token.role == 'owner'
+                  && resource.data.tenantId == request.auth.token.tenantId;
+
+      allow update, delete: if false;
+    }
+
+
+    // =========================================================
     // DEFAULT: Tolak semua akses yang tidak didefinisikan
     // =========================================================
 
@@ -326,3 +347,4 @@ service cloud.firestore {
 
   }
 }
+
