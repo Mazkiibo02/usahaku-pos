@@ -85,7 +85,9 @@ export function SecurityForm({ showToast }: SecurityFormProps) {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-rose-550/5 p-5 shadow-sm space-y-2 border-rose-100 bg-rose-50/30">
+        <div className={`rounded-2xl border bg-rose-550/5 p-5 shadow-sm space-y-2 bg-rose-50/30 ${
+          errors.passwordBaru ? 'border-rose-100' : 'border-slate-200'
+        }`}>
           <div className="flex items-center gap-2 text-rose-800 font-bold text-sm">
             <ShieldAlert className="h-4.5 w-4.5 text-rose-600 shrink-0" />
             <span>Aturan Password</span>
