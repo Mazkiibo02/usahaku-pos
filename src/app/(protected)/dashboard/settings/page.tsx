@@ -197,6 +197,33 @@ export default function SettingsPage() {
     showToast('Perubahan pratinjau dibatalkan.', 'info');
   };
 
+  // Delete logo from database and storage references
+  const handleDeleteLogo = async () => {
+    if (!tenantId) return;
+
+    const confirmDelete = window.confirm('Apakah Anda yakin ingin menghapus logo usaha Anda?');
+    if (!confirmDelete) return;
+
+    setIsSaving(true);
+    showToast('Sedang menghapus logo usaha...', 'info');
+
+    try {
+      await updateTenantLogoUrl(tenantId, '');
+      setExistingLogoUrl(null);
+      setPreviewUrl(null);
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      showToast('Logo usaha berhasil dihapus.', 'success');
+    } catch (err: any) {
+      console.error('Error deleting tenant logo:', err);
+      showToast(err.message || 'Gagal menghapus logo usaha.', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Submit Upload and Persistence
   const handleSaveLogo = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -420,12 +447,11 @@ export default function SettingsPage() {
                 <div
                   onDragOver={handleDragOver}
                   onDrop={handleDrop}
-                  className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition-all ${
-                    previewUrl 
-                      ? 'border-indigo-200 bg-slate-50/30' 
-                      : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50/30 cursor-pointer'
-                  }`}
-                  onClick={() => !previewUrl && fileInputRef.current?.click()}
+                  className="relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition-all cursor-pointer border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/10"
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest('button')) return;
+                    fileInputRef.current?.click();
+                  }}
                 >
                   <input
                     type="file"
@@ -437,14 +463,21 @@ export default function SettingsPage() {
 
                   {previewUrl ? (
                     <div className="space-y-4">
-                      {/* Image Preview Window */}
-                      <div className="relative mx-auto flex h-32 w-32 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-md">
+                      {/* Image Preview Window with Hover Overlay */}
+                      <div className="group relative mx-auto flex h-32 w-32 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-md transition-all duration-300 hover:shadow-lg">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={previewUrl}
                           alt="Logo Preview"
-                          className="h-full w-full object-contain"
+                          className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
                         />
+                        {/* Hover Overlay */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/60 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                          <Upload className="h-6 w-6 text-white mb-1 animate-bounce" />
+                          <span className="text-[10px] font-bold text-white uppercase tracking-wider px-2 text-center">
+                            Ganti Logo
+                          </span>
+                        </div>
                       </div>
                       
                       {/* File details or preview status */}
@@ -459,15 +492,40 @@ export default function SettingsPage() {
                         )}
                       </div>
 
-                      {/* Remove Preview Button */}
-                      <button
-                        type="button"
-                        onClick={handleRemoveImage}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-rose-600 shadow-sm transition hover:bg-rose-50 hover:border-rose-200"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Batalkan Perubahan
-                      </button>
+                      {/* Action Buttons based on Scenario */}
+                      {selectedFile ? (
+                        /* Scenario B: Unsaved staged file */
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-rose-600 shadow-sm transition hover:bg-rose-50 hover:border-rose-200"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Batalkan Perubahan
+                        </button>
+                      ) : (
+                        /* Scenario A: No unsaved changes (Displayed logo matches database URL) */
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                          >
+                            <Upload className="h-3.5 w-3.5 text-slate-500" />
+                            Ganti Logo
+                          </button>
+                          {existingLogoUrl && (
+                            <button
+                              type="button"
+                              onClick={handleDeleteLogo}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-rose-205 bg-white px-3 py-1.5 text-xs font-bold text-rose-600 shadow-sm transition hover:bg-rose-50 hover:border-rose-200"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+                              Hapus Logo
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-3 cursor-pointer">
