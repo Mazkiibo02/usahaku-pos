@@ -5,6 +5,7 @@ export const firebaseEnv = {
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET as string,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID as string,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID as string,
+  recaptchaSiteKey: process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY as string,
 };
 
 if (
@@ -13,7 +14,8 @@ if (
   !firebaseEnv.projectId ||
   !firebaseEnv.storageBucket ||
   !firebaseEnv.messagingSenderId ||
-  !firebaseEnv.appId
+  !firebaseEnv.appId ||
+  !firebaseEnv.recaptchaSiteKey
 ) {
   console.error("Missing Firebase Config:", firebaseEnv);
   throw new Error(

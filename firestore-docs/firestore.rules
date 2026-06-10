@@ -52,12 +52,6 @@ service cloud.firestore {
       return request.resource.data.tenantId == myTenantId();
     }
 
-    // Cek apakah kasir ditugaskan di outlet ini (1 read — hanya untuk kasir)
-    function isCashierAssignedToOutlet(outletId) {
-      return get(/databases/$(database)/documents/outlets/$(outletId))
-               .data.assignedCashiers.hasAny([request.auth.uid]);
-    }
-
     // Pastikan tenant aktif (tidak expired/suspended) — baca dari tenants doc
     // Digunakan untuk operasi kritis seperti buat transaksi
     function isTenantActive() {
@@ -137,12 +131,19 @@ service cloud.firestore {
                     (isCashier() && request.auth.uid == uid)
                   );
 
-      allow update: if isOwner()
-                    && resource.data.tenantId == myTenantId()
-                    // Owner hanya boleh update: name, phone, isActive
-                    // Tidak boleh ubah role, tenantId, uid, email
-                    && request.resource.data.diff(resource.data).affectedKeys()
-                        .hasOnly(['name', 'phone', 'isActive', 'lastLoginAt']);
+      allow update: if isAuthenticated()
+                    && (
+                      // Owner can update staff/cashier fields (name, phone, isActive, outletId, updatedAt)
+                      (isOwner() && resource.data.tenantId == myTenantId()
+                       && request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['name', 'phone', 'isActive', 'lastLoginAt', 'outletId', 'updatedAt']))
+                      ||
+                      // Users can update their own profile document (e.g., editing display name or profile picture)
+                      (request.auth.uid == uid)
+                    )
+                    // CRITICAL PROTECTION: Role and Tenant Immutability Guard
+                    && request.resource.data.role == resource.data.role
+                    && request.resource.data.tenantId == resource.data.tenantId;
 
       allow create, delete: if false; // Hanya Cloud Function
     }
@@ -188,14 +189,24 @@ service cloud.firestore {
                   && isSameTenant();
 
       allow create: if isOwner()
-                    && isWritingToMyTenant();
+                    && isWritingToMyTenant()
+                    // Validasi: harga dan stok harus angka dan tidak boleh negatif
+                    && request.resource.data.price is number
+                    && request.resource.data.price >= 0
+                    && request.resource.data.stock is number
+                    && request.resource.data.stock >= 0;
 
       allow update: if isOwner()
                     && isSameTenant()
                     // Proteksi: tenantId tidak boleh diubah
                     && request.resource.data.tenantId == resource.data.tenantId
                     // Proteksi: productId (di dalam dokumen) tidak boleh diubah
-                    && request.resource.data.productId == resource.data.productId;
+                    && request.resource.data.productId == resource.data.productId
+                    // Validasi: harga dan stok harus angka dan tidak boleh negatif
+                    && request.resource.data.price is number
+                    && request.resource.data.price >= 0
+                    && request.resource.data.stock is number
+                    && request.resource.data.stock >= 0;
 
       allow delete: if isOwner()
                     && isSameTenant();

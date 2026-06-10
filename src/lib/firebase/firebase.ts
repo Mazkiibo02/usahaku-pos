@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
 import { firebaseEnv } from '../constants/env';
 
@@ -23,6 +24,20 @@ const firebaseConfig = {
 };
 
 const app: FirebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
+
+// Initialize Firebase App Check in browser environment
+if (typeof window !== 'undefined') {
+  // Use debug token in local development or emulator modes
+  if (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+  }
+
+  initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider(firebaseEnv.recaptchaSiteKey),
+    isTokenAutoRefreshEnabled: true,
+  });
+}
 
 const auth = getAuth(app);
 

@@ -7,11 +7,12 @@ service firebase.storage {
       // 1. Public read access to the tenant directory so logos can be rendered externally
       allow read: if true;
       
-      // 2. Strict Owner-Only Write Access & 3. File Size Protection (must not exceed 2MB)
+      // 2. Strict Owner-Only Write Access, File Size Protection (must not exceed 2MB), & MIME-Type Validation
       allow create, update: if request.auth != null
                             && request.auth.token.role == 'owner'
                             && request.auth.token.tenantId == tenantId
-                            && request.resource.size < 2 * 1024 * 1024;
+                            && request.resource.size < 2 * 1024 * 1024
+                            && request.resource.contentType.matches('image/.*');
                             
       allow delete: if request.auth != null
                     && request.auth.token.role == 'owner'
