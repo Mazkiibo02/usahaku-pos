@@ -95,13 +95,35 @@ export function SubscriptionLock() {
     setActivePlanType(planType);
 
     try {
-      const generateSnapTokenFn = httpsCallable<{ planType: string }, { token: string; redirectUrl: string; orderId: string }>(
-        functions,
-        'generateSnapToken'
-      );
+      let grossAmount = 0;
+      if (planType === '1-outlet') grossAmount = 25000;
+      else if (planType === '2-outlets') grossAmount = 50000;
+      else if (planType === '4-outlets') grossAmount = 100000;
 
-      const result = await generateSnapTokenFn({ planType });
-      const { token, orderId } = result.data;
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) {
+        throw new Error('Autentikasi diperlukan. Silakan masuk kembali.');
+      }
+
+      const response = await fetch('/api/midtrans/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          grossAmount,
+          tenantId,
+          planName: planType,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Gagal memproses token pembayaran.');
+      }
+
+      const { token, orderId } = await response.json();
       setPendingInvoiceId(orderId);
 
       if (!window.snap) {
@@ -278,7 +300,10 @@ export function SubscriptionLock() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-radial from-slate-50 via-slate-100 to-indigo-50/30 px-4 py-12 dark:bg-slate-950">
       <Script
-        src="https://app.sandbox.midtrans.com/snap/snap.js"
+        src={process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true'
+          ? "https://app.midtrans.com/snap/snap.js"
+          : "https://app.sandbox.midtrans.com/snap/snap.js"
+        }
         data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
         strategy="afterInteractive"
       />

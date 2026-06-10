@@ -23,7 +23,7 @@ import { httpsCallable } from 'firebase/functions';
 import { useAuthStore } from '@/src/stores/authStore';
 import { db } from '@/src/lib/firebase/firebase';
 import { uploadTenantLogo, updateTenantLogoUrl } from '@/src/features/settings/services/storageService';
-import { functions } from '@/src/lib/firebase';
+import { auth, functions } from '@/src/lib/firebase';
 import { SecurityForm } from '@/src/features/settings/components/SecurityForm';
 
 // Custom Toast Notification structure
@@ -128,13 +128,35 @@ export default function SettingsPage() {
     setActivePlanType(planType);
 
     try {
-      const generateSnapTokenFn = httpsCallable<{ planType: string }, { token: string; redirectUrl: string; orderId: string }>(
-        functions,
-        'generateSnapToken'
-      );
+      let grossAmount = 0;
+      if (planType === '1-outlet') grossAmount = 25000;
+      else if (planType === '2-outlets') grossAmount = 50000;
+      else if (planType === '4-outlets') grossAmount = 100000;
 
-      const result = await generateSnapTokenFn({ planType });
-      const { token } = result.data;
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) {
+        throw new Error('Autentikasi diperlukan. Silakan masuk kembali.');
+      }
+
+      const response = await fetch('/api/midtrans/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          grossAmount,
+          tenantId,
+          planName: planType,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Gagal memproses token pembayaran.');
+      }
+
+      const { token } = await response.json();
 
       if (!window.snap) {
         throw new Error('Midtrans Snap SDK is not loaded yet. Please wait a moment and try again.');
@@ -632,7 +654,10 @@ export default function SettingsPage() {
       ) : activeTab === 'subscription' && role === 'owner' ? (
         <div className="space-y-6">
           <Script
-            src="https://app.sandbox.midtrans.com/snap/snap.js"
+            src={process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true'
+              ? "https://app.midtrans.com/snap/snap.js"
+              : "https://app.sandbox.midtrans.com/snap/snap.js"
+            }
             data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
             strategy="afterInteractive"
           />
