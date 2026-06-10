@@ -54,6 +54,7 @@ export function ProductForm({
       sku: product?.sku ?? '',
       category: product?.category ?? '',
       isAvailable: product?.isAvailable ?? true,
+      imageUrl: product?.imageUrl ?? '',
     },
   });
 
@@ -80,6 +81,7 @@ export function ProductForm({
       setValue('sku', product.sku ?? '');
       setValue('category', product.category);
       setValue('isAvailable', product.isAvailable);
+      setValue('imageUrl', product.imageUrl ?? '');
       setDisplayPrice(formatRupiah(product.price));
     } else {
       setValue('name', '');
@@ -89,6 +91,7 @@ export function ProductForm({
       setValue('sku', '');
       setValue('category', '');
       setValue('isAvailable', true);
+      setValue('imageUrl', '');
       setDisplayPrice('');
     }
     setError(null);
@@ -326,6 +329,24 @@ export function ProductForm({
                     <p className="text-xs font-medium text-rose-600">{errors.stock.message}</p>
                   )}
                 </div>
+              </div>
+
+              {/* Image URL */}
+              <div className="space-y-1">
+                <label htmlFor="imageUrl" className="block text-sm font-semibold text-slate-700">
+                  URL Gambar Produk <span className="text-xs font-normal text-slate-400">(Opsional)</span>
+                </label>
+                <input
+                  id="imageUrl"
+                  type="text"
+                  placeholder="Contoh: https://example.com/gambar.jpg"
+                  {...register('imageUrl')}
+                  disabled={isSubmitting}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5 disabled:cursor-not-allowed disabled:opacity-70"
+                />
+                {errors.imageUrl && (
+                  <p className="text-xs font-medium text-rose-600">{errors.imageUrl.message}</p>
+                )}
               </div>
 
               {/* Description */}

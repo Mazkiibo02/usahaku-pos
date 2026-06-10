@@ -26,6 +26,22 @@ const formatPrice = (price: number) => {
   }).format(price);
 };
 
+const getInitials = (name: string): string => {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+};
+
+const getPastelColor = (name: string): string => {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h = Math.abs(hash) % 360;
+  return `hsl(${h}, 70%, 85%)`;
+};
+
 export function ProductList({
   products,
   tenantId,
@@ -175,9 +191,23 @@ export function ProductList({
                     {/* Name */}
                     <td className="whitespace-nowrap px-6 py-4 font-semibold text-slate-900">
                       <div className="flex items-center space-x-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-50 text-slate-600">
-                          <Tag className="h-4 w-4" />
-                        </div>
+                        {product.imageUrl ? (
+                          <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-slate-200">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={product.imageUrl}
+                              alt={product.name}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg font-bold text-slate-800 text-xs uppercase"
+                            style={{ backgroundColor: getPastelColor(product.name) }}
+                          >
+                            {getInitials(product.name)}
+                          </div>
+                        )}
                         <div className="flex flex-col">
                           <span>{product.name}</span>
                           {product.description && (

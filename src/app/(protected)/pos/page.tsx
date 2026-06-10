@@ -42,6 +42,22 @@ interface ToastNotification {
   message: string;
 }
 
+const getInitials = (name: string): string => {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+};
+
+const getPastelColor = (name: string): string => {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h = Math.abs(hash) % 360;
+  return `hsl(${h}, 70%, 85%)`;
+};
+
 export default function PosPage() {
   const { tenantId, outletId: cashierOutletId, role, user } = useAuth();
   const { activeShift, isLoadingShift, openShift } = useShiftStore();
@@ -902,57 +918,75 @@ export default function PosPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div className="flex flex-col gap-3">
               {filteredProducts.map((product) => {
                 const isOutOfStock = product.stock <= 0;
                 
                 return (
                   <motion.div
                     key={product.id}
-                    whileHover={!isOutOfStock ? { y: -4 } : {}}
-                    whileTap={!isOutOfStock ? { scale: 0.98 } : {}}
+                    whileHover={!isOutOfStock ? { x: 4 } : {}}
+                    whileTap={!isOutOfStock ? { scale: 0.99 } : {}}
                     onClick={() => !isOutOfStock && addToCart(product)}
-                    className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all duration-200 ${
+                    className={`group relative flex items-center justify-between rounded-xl border border-slate-100 bg-white p-3 shadow-sm transition-all duration-200 ${
                       isOutOfStock 
                         ? 'opacity-60 cursor-not-allowed bg-slate-50' 
-                        : 'cursor-pointer hover:border-slate-300 hover:shadow-md'
+                        : 'cursor-pointer hover:border-slate-350 hover:shadow-md'
                     }`}
                   >
-                    <div>
-                      {/* Category Pill Tag */}
-                      <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700">
-                        {product.category}
-                      </span>
-                      
-                      {/* Name */}
-                      <h3 className="mt-2 text-sm font-bold text-slate-900 line-clamp-2">
-                        {product.name}
-                      </h3>
-                      
-                      {/* SKU */}
-                      {product.sku && (
-                        <p className="mt-0.5 text-[10px] font-mono text-slate-400">
-                          {product.sku}
-                        </p>
+                    <div className="flex items-center space-x-3 min-w-0 flex-1">
+                      {/* Product Thumbnail (Condition A / B) */}
+                      {product.imageUrl ? (
+                        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-slate-200">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={product.imageUrl}
+                            alt={product.name}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg font-bold text-slate-800 text-xs uppercase"
+                          style={{ backgroundColor: getPastelColor(product.name) }}
+                        >
+                          {getInitials(product.name)}
+                        </div>
                       )}
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="inline-block rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-700 uppercase">
+                            {product.category}
+                          </span>
+                          {product.sku && (
+                            <span className="text-[9px] font-mono text-slate-400">
+                              {product.sku}
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="mt-1 text-sm font-bold text-slate-900 truncate">
+                          {product.name}
+                        </h3>
+                      </div>
                     </div>
-                    
-                    {/* Price and Stock Indicators */}
-                    <div className="mt-4 flex items-end justify-between border-t border-slate-50 pt-3">
-                      <div>
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Harga</p>
-                        <p className="text-sm font-black text-slate-900 group-hover:text-slate-950">
+
+                    {/* Price and Stock info */}
+                    <div className="flex items-center space-x-4 shrink-0 pl-3">
+                      <div className="text-right">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Harga</p>
+                        <p className="text-sm font-black text-slate-900">
                           {formatPrice(product.price)}
                         </p>
                       </div>
-                      
-                      <div className="text-right">
+
+                      <div className="text-right w-16">
                         {isOutOfStock ? (
-                          <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-extrabold text-rose-600 border border-rose-100">
+                          <span className="inline-block rounded-full bg-rose-50 px-2 py-0.5 text-[9px] font-extrabold text-rose-600 border border-rose-100">
                             Habis
                           </span>
                         ) : product.stock <= 5 ? (
-                          <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-extrabold text-amber-600 border border-amber-100 animate-pulse">
+                          <span className="inline-block rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-extrabold text-amber-600 border border-amber-100 animate-pulse">
                             sisa {product.stock}
                           </span>
                         ) : (

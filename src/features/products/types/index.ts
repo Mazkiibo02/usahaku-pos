@@ -11,6 +11,7 @@ export interface Product {
   sku?: string;
   category: string;
   isAvailable: boolean;
+  imageUrl?: string | null;
   createdAt: Date | Timestamp;
   updatedAt: Date | Timestamp;
 }
@@ -33,6 +34,7 @@ export const productFormSchema = z.object({
     .trim()
     .min(1, 'Kategori wajib diisi.'),
   isAvailable: z.boolean(),
+  imageUrl: z.string().trim().optional().nullable(),
 });
 
 export type ProductFormValues = z.infer<typeof productFormSchema>;

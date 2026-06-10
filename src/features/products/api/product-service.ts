@@ -50,6 +50,7 @@ export const productService = {
       sku: data.sku ?? '',
       category: data.category,
       isAvailable: data.isAvailable ?? true,
+      imageUrl: data.imageUrl ?? null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
