@@ -24,6 +24,7 @@ import { useAuthStore } from '@/src/stores/authStore';
 import { db } from '@/src/lib/firebase/firebase';
 import { uploadTenantLogo, updateTenantLogoUrl } from '@/src/features/settings/services/storageService';
 import { functions } from '@/src/lib/firebase';
+import { SecurityForm } from '@/src/features/settings/components/SecurityForm';
 
 // Custom Toast Notification structure
 interface Toast {
@@ -46,7 +47,7 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const [activeTab, setActiveTab] = useState<'logo' | 'subscription'>('logo');
+  const [activeTab, setActiveTab] = useState<'logo' | 'subscription' | 'security'>('logo');
   const [maxOutlets, setMaxOutlets] = useState<number>(2);
   const [subscription, setSubscription] = useState<any>(null);
   const [isRenewing, setIsRenewing] = useState(false);
@@ -99,14 +100,26 @@ export default function SettingsPage() {
     }
   }, [tenantId, fetchTenantData]);
 
+  // Set default tab for cashier
+  useEffect(() => {
+    if (role === 'cashier') {
+      setActiveTab('security');
+    }
+  }, [role]);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('tab') === 'subscription') {
+      const queryTab = params.get('tab');
+      if (queryTab === 'subscription' && role === 'owner') {
         setActiveTab('subscription');
+      } else if (queryTab === 'security') {
+        setActiveTab('security');
+      } else if (queryTab === 'logo' && role === 'owner') {
+        setActiveTab('logo');
       }
     }
-  }, []);
+  }, [role]);
 
   const handlePay = async (planType: '1-outlet' | '2-outlets' | '4-outlets') => {
     setIsRenewing(true);
@@ -290,7 +303,7 @@ export default function SettingsPage() {
   };
 
   // Access check
-  if (role !== 'owner') {
+  if (role !== 'owner' && role !== 'cashier') {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center p-6 text-center">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 text-rose-600 mb-4">
@@ -298,8 +311,7 @@ export default function SettingsPage() {
         </div>
         <h2 className="text-xl font-bold text-slate-900">Akses Ditolak</h2>
         <p className="mt-2 text-sm text-slate-500 max-w-md">
-          Maaf, halaman pengaturan logo usaha ini hanya dapat diakses oleh Pemilik Usaha (Owner). 
-          Silakan hubungi administrator jika Anda merasa ini adalah kesalahan.
+          Maaf, halaman pengaturan ini hanya dapat diakses oleh Pemilik Usaha atau Kasir yang terdaftar.
         </p>
         <Link 
           href="/dashboard"
@@ -348,35 +360,51 @@ export default function SettingsPage() {
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between shrink-0">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
-            Pengaturan Usaha
+            {role === 'owner' ? 'Pengaturan Usaha' : 'Pengaturan Keamanan'}
           </h1>
           <p className="text-sm text-slate-500 md:text-base">
-            Konfigurasi identitas visual usaha Anda untuk struk belanja POS dan laporan PDF.
+            {role === 'owner' 
+              ? 'Konfigurasi identitas visual usaha Anda untuk struk belanja POS dan laporan PDF.' 
+              : 'Kelola kata sandi dan keamanan akun Anda.'}
           </p>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex border-b border-slate-200">
+        {role === 'owner' && (
+          <>
+            <button
+              onClick={() => setActiveTab('logo')}
+              className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition ${
+                activeTab === 'logo'
+                  ? 'border-indigo-650 text-indigo-600 border-indigo-650'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Logo Usaha
+            </button>
+            <button
+              onClick={() => setActiveTab('subscription')}
+              className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition ${
+                activeTab === 'subscription'
+                  ? 'border-indigo-650 text-indigo-600 border-indigo-650'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Paket Langganan
+            </button>
+          </>
+        )}
         <button
-          onClick={() => setActiveTab('logo')}
+          onClick={() => setActiveTab('security')}
           className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition ${
-            activeTab === 'logo'
+            activeTab === 'security'
               ? 'border-indigo-650 text-indigo-600 border-indigo-650'
               : 'border-transparent text-slate-500 hover:text-slate-700'
           }`}
         >
-          Logo Usaha
-        </button>
-        <button
-          onClick={() => setActiveTab('subscription')}
-          className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition ${
-            activeTab === 'subscription'
-              ? 'border-indigo-650 text-indigo-600 border-indigo-650'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          Paket Langganan
+          Keamanan Akun
         </button>
       </div>
 
@@ -388,7 +416,7 @@ export default function SettingsPage() {
             <p className="mt-2 text-sm text-slate-500">Memuat informasi usaha Anda...</p>
           </div>
         </div>
-      ) : activeTab === 'logo' ? (
+      ) : activeTab === 'logo' && role === 'owner' ? (
         <div className="grid gap-6 md:grid-cols-3">
           
           {/* Card left: Store Info Summary */}
@@ -601,7 +629,7 @@ export default function SettingsPage() {
           </div>
 
         </div>
-      ) : (
+      ) : activeTab === 'subscription' && role === 'owner' ? (
         <div className="space-y-6">
           <Script
             src="https://app.sandbox.midtrans.com/snap/snap.js"
@@ -752,7 +780,7 @@ export default function SettingsPage() {
                       <p className="mt-3 text-xs leading-relaxed text-slate-500">{tier.description}</p>
                       <ul className="mt-5 space-y-2 border-t border-slate-100 pt-4">
                         {tier.features.map((feature, idx) => (
-                          <li key={idx} className="flex items-center gap-2 text-[11px] text-slate-600">
+                          <li key={idx} className="flex items-center gap-2 text-[11px] text-slate-650">
                             <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 shrink-0" />
                             <span>{feature}</span>
                           </li>
@@ -787,7 +815,9 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
-      )}
+      ) : activeTab === 'security' ? (
+        <SecurityForm showToast={showToast} />
+      ) : null}
 
     </div>
   );

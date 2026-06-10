@@ -45,7 +45,13 @@ export function AuthGuard({ children, allowedRoles, fallback }: AuthGuardProps) 
     // If tenantId exists:
     if (tenantId) {
       if (role === 'cashier') {
-        const isAllowedCashierRoute = pathname === '/pos' || pathname.startsWith('/pos/') || pathname === '/transactions' || pathname.startsWith('/transactions/');
+        const isAllowedCashierRoute = 
+          pathname === '/pos' || 
+          pathname.startsWith('/pos/') || 
+          pathname === '/transactions' || 
+          pathname.startsWith('/transactions/') ||
+          pathname === '/dashboard/settings' ||
+          pathname.startsWith('/dashboard/settings/');
         if (!isAllowedCashierRoute || isOnboardingPage || isPublicPage) {
           router.replace('/pos');
         }
@@ -86,7 +92,13 @@ export function AuthGuard({ children, allowedRoles, fallback }: AuthGuardProps) 
 
   // Cashier role page protection
   if (role === 'cashier') {
-    const isAllowedCashierRoute = pathname === '/pos' || pathname.startsWith('/pos/') || pathname === '/transactions' || pathname.startsWith('/transactions/');
+    const isAllowedCashierRoute = 
+      pathname === '/pos' || 
+      pathname.startsWith('/pos/') || 
+      pathname === '/transactions' || 
+      pathname.startsWith('/transactions/') ||
+      pathname === '/dashboard/settings' ||
+      pathname.startsWith('/dashboard/settings/');
     if (!isAllowedCashierRoute) {
       return null;
     }

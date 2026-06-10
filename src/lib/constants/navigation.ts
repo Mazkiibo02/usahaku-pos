@@ -53,6 +53,11 @@ export const CASHIER_NAV_LINKS: NavigationItem[] = [
     href: '/transactions',
     icon: ReceiptText,
   },
+  {
+    title: 'Pengaturan',
+    href: '/dashboard/settings',
+    icon: Settings,
+  },
 ];
 
 export function getNavigationByRole(role: UserRole | null): NavigationItem[] {
