@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 import { LoginForm } from '@/src/features/auth/components/login-form';
-import { GoogleSignInButton } from '@/src/features/auth/components/google-sign-in-button';
 import { useAuth } from '@/src/features/auth/hooks/use-auth';
 
 export default function LoginPage() {
@@ -35,14 +34,6 @@ export default function LoginPage() {
         </div>
 
         <LoginForm />
-
-        <div className="my-5 flex items-center gap-3">
-          <div className="h-px flex-1 bg-slate-200" />
-          <span className="text-xs font-medium uppercase tracking-wider text-slate-400">or</span>
-          <div className="h-px flex-1 bg-slate-200" />
-        </div>
-
-        <GoogleSignInButton />
 
         <div className="mt-6 text-center text-sm text-slate-600">
           Belum punya akun?{' '}
