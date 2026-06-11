@@ -210,44 +210,76 @@ export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set,
       }
 
       // 2. Connect to the GATT server
-      const server = await device.gatt.connect();
+      let server = await device.gatt.connect();
+
+      // Add this helper delay to allow printer hardware to stabilize
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
+      if (!server || !server.connected) {
+        throw new Error("GATT Server disconnected immediately after pairing. Retrying...");
+      }
 
       // 3. Find target write characteristic by testing services
       let writeChar: BluetoothRemoteGATTCharacteristic | null = null;
+      let discoveryRetries = 3;
 
-      for (const serviceUuid of PRINTER_SERVICES) {
+      while (discoveryRetries > 0 && !writeChar) {
         try {
-          const service = await server.getPrimaryService(serviceUuid);
-          const characteristics = await service.getCharacteristics();
-          for (const char of characteristics) {
-            if (char.properties.write || char.properties.writeWithoutResponse) {
-              writeChar = char;
-              break;
+          // Reconnect if GATT connection dropped during retry cycles
+          if (!server || !server.connected) {
+            console.warn("GATT Server disconnected during service discovery. Reconnecting...");
+            server = await device.gatt.connect();
+            await new Promise((resolve) => setTimeout(resolve, 800));
+            if (!server || !server.connected) {
+              throw new Error("GATT Server reconnection failed during service discovery.");
             }
           }
-        } catch (e) {
-          // Continue searching next service if this one is not found
-          console.warn(`GATT Service ${serviceUuid} not found or inaccessible:`, e);
-        }
-        if (writeChar) break;
-      }
 
-      // Fallback: If specific UUIDs failed, query all primary services
-      if (!writeChar) {
-        try {
-          const primaryServices = await server.getPrimaryServices();
-          for (const service of primaryServices) {
-            const characteristics = await service.getCharacteristics();
-            for (const char of characteristics) {
-              if (char.properties.write || char.properties.writeWithoutResponse) {
-                writeChar = char;
-                break;
+          for (const serviceUuid of PRINTER_SERVICES) {
+            try {
+              const service = await server.getPrimaryService(serviceUuid);
+              const characteristics = await service.getCharacteristics();
+              for (const char of characteristics) {
+                if (char.properties.write || char.properties.writeWithoutResponse) {
+                  writeChar = char;
+                  break;
+                }
               }
+            } catch (e) {
+              // Continue searching next service if this one is not found
+              console.warn(`GATT Service ${serviceUuid} not found or inaccessible:`, e);
             }
             if (writeChar) break;
           }
-        } catch (fallbackError) {
-          console.error('Failed querying all primary services:', fallbackError);
+
+          // Fallback: If specific UUIDs failed, query all primary services
+          if (!writeChar) {
+            try {
+              const primaryServices = await server.getPrimaryServices();
+              for (const service of primaryServices) {
+                const characteristics = await service.getCharacteristics();
+                for (const char of characteristics) {
+                  if (char.properties.write || char.properties.writeWithoutResponse) {
+                    writeChar = char;
+                    break;
+                  }
+                }
+                if (writeChar) break;
+              }
+            } catch (fallbackError) {
+              console.error('Failed querying all primary services:', fallbackError);
+            }
+          }
+        } catch (discoveryError) {
+          console.error(`Service discovery attempt failed (retries left: ${discoveryRetries - 1}):`, discoveryError);
+        }
+
+        if (!writeChar) {
+          discoveryRetries--;
+          if (discoveryRetries > 0) {
+            // Short delay between retries to let the hardware settle
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
         }
       }
 
