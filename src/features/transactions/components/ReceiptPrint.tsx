@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Printer, FileText, Calendar, User, Store } from 'lucide-react';
+import { X, Printer, FileText, Bluetooth, Loader2 } from 'lucide-react';
 import type { Transaction } from '../types';
 import { transactionService } from '../api/transaction-service';
+import { useBluetoothPrinter } from '@/src/shared/hooks/useBluetoothPrinter';
 
 type ReceiptPrintProps = {
   isOpen: boolean;
@@ -24,7 +25,19 @@ export function ReceiptPrint({
   const [storeName, setStoreName] = useState('Usahaku POS');
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [paperWidth, setPaperWidth] = useState<'58mm' | '80mm'>('58mm');
-  const [isLoading, setIsLoading] = useState(false);
+  const [, setIsLoading] = useState(false);
+
+  const {
+    connectedDevice,
+    printerCharacteristic,
+    isConnecting,
+    connectPrinter,
+    disconnectPrinter,
+    printReceipt,
+  } = useBluetoothPrinter();
+
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [printErrorMsg, setPrintErrorMsg] = useState<string | null>(null);
 
   // Fetch Tenant store name & logo
   useEffect(() => {
@@ -62,19 +75,40 @@ export function ReceiptPrint({
   };
 
   // Date Formatter
-  const formatDate = (timestamp: any) => {
+  const formatDate = (timestamp: { toDate?: () => Date } | Date | null | undefined) => {
     if (!timestamp) return '-';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const date = 'toDate' in timestamp && typeof timestamp.toDate === 'function' 
+      ? timestamp.toDate() 
+      : new Date(timestamp as Date | string | number);
     return new Intl.DateTimeFormat('id-ID', {
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(date);
   };
 
-  const handlePrint = () => {
-    setTimeout(() => {
-      window.print();
-    }, 500);
+  const handlePrint = async () => {
+    if (connectedDevice && printerCharacteristic) {
+      setIsPrinting(true);
+      setPrintErrorMsg(null);
+      try {
+        await printReceipt(
+          transaction,
+          storeName,
+          outletName,
+          cashierName,
+          paperWidth
+        );
+      } catch (err) {
+        console.error('Gagal mencetak Bluetooth:', err);
+        setPrintErrorMsg(err instanceof Error ? err.message : 'Gagal mengirim data ke printer Bluetooth.');
+      } finally {
+        setIsPrinting(false);
+      }
+    } else {
+      setTimeout(() => {
+        window.print();
+      }, 500);
+    }
   };
 
   return (
@@ -138,6 +172,47 @@ export function ReceiptPrint({
                 >
                   80 mm
                 </button>
+              </div>
+            </div>
+
+            {/* Bluetooth Printer Config */}
+            <div className="mt-3 flex items-center justify-between rounded-xl border border-slate-150 bg-slate-50/50 p-3 shrink-0 text-sm no-print print:hidden">
+              <div className="flex items-center gap-2">
+                <Bluetooth className={`h-4.5 w-4.5 ${connectedDevice ? 'text-emerald-600 animate-pulse' : 'text-slate-400'}`} />
+                <div className="text-left font-sans">
+                  <span className="font-semibold text-slate-700 block text-xs">Printer Bluetooth:</span>
+                  <span className="text-[10px] text-slate-500 font-semibold block truncate max-w-[140px]">
+                    {connectedDevice ? connectedDevice.name || 'Terhubung' : 'Terputus'}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                {connectedDevice ? (
+                  <button
+                    type="button"
+                    onClick={disconnectPrinter}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-650 hover:bg-slate-100 transition shadow-sm cursor-pointer"
+                  >
+                    Putuskan
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={connectPrinter}
+                    disabled={isConnecting}
+                    className="rounded-lg bg-slate-900 px-3 py-1 text-xs font-bold text-white hover:bg-slate-850 transition disabled:opacity-60 flex items-center gap-1 shadow-sm cursor-pointer"
+                  >
+                    {isConnecting ? (
+                      <>
+                        <Loader2 className="h-3 w-3 animate-spin text-white" />
+                        Konek...
+                      </>
+                    ) : (
+                      'Konek Printer'
+                    )}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -279,22 +354,40 @@ export function ReceiptPrint({
 
             </div>
 
+            {/* Bluetooth Print Error message */}
+            {printErrorMsg && (
+              <div className="mt-3 rounded-lg bg-rose-550/10 border border-rose-200 p-2.5 text-xs text-rose-700 font-semibold no-print print:hidden">
+                {printErrorMsg}
+              </div>
+            )}
+
             {/* Print and Close Actions */}
             <div className="mt-4 flex gap-3 shrink-0 no-print print:hidden">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                disabled={isPrinting}
+                className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
               >
                 Kembali
               </button>
               <button
                 type="button"
                 onClick={handlePrint}
-                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-slate-950 py-2.5 text-sm font-bold text-white transition hover:bg-slate-850 shadow-md"
+                disabled={isPrinting}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-slate-950 py-2.5 text-sm font-bold text-white transition hover:bg-slate-850 shadow-md disabled:opacity-65 cursor-pointer"
               >
-                <Printer className="h-4 w-4" />
-                Cetak Struk
+                {isPrinting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin text-white" />
+                    Mencetak...
+                  </>
+                ) : (
+                  <>
+                    <Printer className="h-4 w-4" />
+                    Cetak Struk
+                  </>
+                )}
               </button>
             </div>
 

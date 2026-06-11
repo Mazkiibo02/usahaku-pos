@@ -1,6 +1,12 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { adminDb, adminAuth } from '@/src/lib/firebase/admin';
+import { adminDb } from '@/src/lib/firebase/admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { jwtVerify, createRemoteJWKSet } from 'jose';
+
+// Establish the Google secure token public key set
+const GoogleJWKS = createRemoteJWKSet(
+  new URL('https://www.googleapis.com/robot/v1/metadata/jwk/securetoken@system.gserviceaccount.com')
+);
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,11 +17,29 @@ export async function POST(req: NextRequest) {
     }
 
     const idToken = authHeader.split('Bearer ')[1];
-    let decodedToken;
+    let decodedToken: {
+      uid: string;
+      email?: string;
+      role?: string;
+      tenantId?: string;
+      [key: string]: any;
+    };
     try {
-      decodedToken = await adminAuth.verifyIdToken(idToken);
+      const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'usahaku-69700';
+      const { payload } = await jwtVerify(idToken, GoogleJWKS, {
+        issuer: `https://securetoken.google.com/${projectId}`,
+        audience: projectId,
+      });
+
+      decodedToken = {
+        uid: payload.sub as string,
+        email: payload.email as string | undefined,
+        role: payload.role as string | undefined,
+        tenantId: payload.tenantId as string | undefined,
+        ...payload,
+      };
     } catch (err: unknown) {
-      console.error('Error verifying Firebase ID token:', err);
+      console.error('JWT Verification via jose failed:', err);
       return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
     }
 

@@ -15,7 +15,9 @@ import {
   Store, 
   X,
   FileText,
-  Info
+  Info,
+  Printer,
+  Bluetooth
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -28,6 +30,7 @@ import { posService } from '@/src/features/pos/api/pos-service';
 import { ReceiptPrint } from '@/src/features/transactions/components/ReceiptPrint';
 import type { Transaction } from '@/src/features/transactions/types';
 import { useShiftStore } from '@/src/stores/shiftStore';
+import { useBluetoothPrinter } from '@/src/shared/hooks/useBluetoothPrinter';
 
 // Interface for POS Cart Item
 interface CartItem {
@@ -61,6 +64,12 @@ const getPastelColor = (name: string): string => {
 export default function PosPage() {
   const { tenantId, outletId: cashierOutletId, role, user } = useAuth();
   const { activeShift, isLoadingShift, openShift } = useShiftStore();
+  const {
+    connectedDevice,
+    isConnecting,
+    connectPrinter,
+    disconnectPrinter,
+  } = useBluetoothPrinter();
   const [startingCashInput, setStartingCashInput] = useState<string>('');
   const [isOpeningShift, setIsOpeningShift] = useState(false);
   
@@ -433,6 +442,53 @@ export default function PosPage() {
             )}
           </div>
         )}
+
+        {/* Bluetooth Printer Status Widget */}
+        <div className="my-3 rounded-xl border border-slate-150 bg-slate-50/50 p-3 shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
+                connectedDevice 
+                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
+                  : 'bg-slate-100 text-slate-400 border border-slate-200'
+              }`}>
+                <Bluetooth className={`h-4 w-4 ${connectedDevice ? 'animate-pulse' : ''}`} />
+              </div>
+              <div className="text-left font-sans">
+                <p className="text-xs font-bold text-slate-800">Printer Kasir</p>
+                <p className="text-[10px] text-slate-500 font-semibold truncate max-w-[140px]">
+                  {connectedDevice ? connectedDevice.name || 'Bluetooth Printer' : 'Belum Terhubung'}
+                </p>
+              </div>
+            </div>
+            
+            {connectedDevice ? (
+              <button
+                type="button"
+                onClick={disconnectPrinter}
+                className="rounded-lg bg-slate-150 border border-slate-200 px-3 py-1.5 text-[10px] font-extrabold text-slate-650 hover:bg-slate-200 hover:text-slate-800 transition active:scale-95 shadow-sm cursor-pointer"
+              >
+                Putuskan
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={connectPrinter}
+                disabled={isConnecting}
+                className="rounded-lg bg-slate-900 px-3 py-1.5 text-[10px] font-extrabold text-white hover:bg-slate-850 transition active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-1 shadow-sm cursor-pointer"
+              >
+                {isConnecting ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin text-white" />
+                    Konek...
+                  </>
+                ) : (
+                  'Hubungkan'
+                )}
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* Shopping Cart List */}
         <div className="flex-1 overflow-y-auto pr-1 shrink-0 py-2">

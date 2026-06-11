@@ -2,16 +2,12 @@
 
 import { initializeApp, getApps, getApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
 
 // Check if emulator mode is enabled
 if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
   const host = process.env.NEXT_PUBLIC_FIREBASE_EMULATOR_HOST || 'localhost';
   
   // Configure Firebase Admin SDK environment variables for emulators
-  if (!process.env.FIREBASE_AUTH_EMULATOR_HOST) {
-    process.env.FIREBASE_AUTH_EMULATOR_HOST = `${host}:9099`;
-  }
   if (!process.env.FIRESTORE_EMULATOR_HOST) {
     process.env.FIRESTORE_EMULATOR_HOST = `${host}:8085`;
   }
@@ -45,6 +41,5 @@ if (!getApps().length) {
 }
 
 const adminDb = getFirestore(app);
-const adminAuth = getAuth(app);
 
-export { adminDb, adminAuth };
+export { adminDb };
