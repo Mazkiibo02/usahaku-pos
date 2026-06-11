@@ -176,15 +176,10 @@ interface BluetoothPrinterStoreState {
 
 // Global list of common BLE Thermal Printer Service UUIDs
 const PRINTER_SERVICES = [
-  '000018f0-0000-1000-8000-00805f9b34fb', // Standard generic thermal printer service
-  '0000ff00-0000-1000-8000-00805f9b34fb', // Alternative common custom service
-  '0000ffe0-0000-1000-8000-00805f9b34fb', // Common serial SPP/BLE service
-  '0000ffe1-0000-1000-8000-00805f9b34fb', // Alternative serial/SPP
-  '49535343-fe7d-4ae5-8fa9-9fafd205e455', // ISSC SPP service
+  '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+  '0000ffe0-0000-1000-8000-00805f9b34fb',
+  '0000ff00-0000-1000-8000-00805f9b34fb'
 ];
-
-// Helper delay function
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set, get) => ({
   connectedDevice: null,
@@ -212,130 +207,38 @@ export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set,
         throw new Error('GATT Server tidak tersedia pada printer ini.');
       }
 
-      // 2. Connect to the GATT server
-      let server = await device.gatt.connect();
+      // Step 1: Call const server = await device.gatt.connect();
+      const server = await device.gatt.connect();
 
-      // Reduce initial post-connect delay to 300ms to avoid idle disconnection on cheap chips
-      await delay(300);
+      // Step 2: Immediately inject a mandatory stabilization delay: await new Promise(r => setTimeout(r, 1000));
+      await new Promise((r) => setTimeout(r, 1000));
 
       if (!server || !server.connected) {
-        throw new Error("GATT Server disconnected immediately after pairing. Retrying...");
+        throw new Error('GATT Server disconnected immediately after pairing.');
       }
 
-      // 3. Find target write characteristic by testing services
+      // Step 3: Do NOT loop through single getPrimaryService(uuid) calls. Instead, call the bulk retrieval immediately:
+      const services = await server.getPrimaryServices();
+
+      // Step 4: Iterate through the services array discovered from the hardware.
       let writeChar: BluetoothRemoteGATTCharacteristic | null = null;
-      let discoveryRetries = 3;
-
-      while (discoveryRetries > 0 && !writeChar) {
+      for (const service of services) {
         try {
-          // Reconnect if GATT connection dropped during retry cycles
-          if (!server || !server.connected) {
-            console.warn("GATT Server disconnected during service discovery. Reconnecting...");
-            server = await device.gatt.connect();
-            await delay(500);
-            if (!server || !server.connected) {
-              throw new Error("GATT Server reconnection failed during service discovery.");
+          // For each service, fetch its characteristics
+          const characteristics = await service.getCharacteristics();
+
+          // Step 5: Search for a characteristic where c.properties.write or c.properties.writeWithoutResponse is true.
+          for (const char of characteristics) {
+            if (char.properties.write || char.properties.writeWithoutResponse) {
+              writeChar = char;
+              break;
             }
           }
-
-          for (const serviceUuid of PRINTER_SERVICES) {
-            let service;
-            try {
-              // Before querying any service UUID, check if the server is still connected
-              if (!server.connected) {
-                console.warn(`GATT Server disconnected before querying service ${serviceUuid}. Reconnecting...`);
-                server = await device.gatt.connect();
-                await delay(500);
-              }
-              service = await server.getPrimaryService(serviceUuid);
-            } catch (e) {
-              console.warn(`GATT Service ${serviceUuid} not found or inaccessible:`, e);
-              const errorStr = String(e).toLowerCase();
-              if (errorStr.includes('disconnect') || !server.connected) {
-                console.warn(`Disconnection detected during service ${serviceUuid} discovery, re-establishing GATT...`);
-                try {
-                  server = await device.gatt.connect();
-                  await delay(500);
-                } catch (reconnectErr) {
-                  console.error("Reconnection inside loop failed:", reconnectErr);
-                }
-              }
-              // Move to the next step
-              continue;
-            }
-
-            try {
-              // Before querying characteristics, check if the server is still connected
-              if (!server.connected) {
-                console.warn(`GATT Server disconnected before querying characteristics of service ${serviceUuid}. Reconnecting...`);
-                server = await device.gatt.connect();
-                await delay(500);
-              }
-              const characteristics = await service.getCharacteristics();
-              for (const char of characteristics) {
-                if (char.properties.write || char.properties.writeWithoutResponse) {
-                  writeChar = char;
-                  break;
-                }
-              }
-            } catch (e) {
-              console.warn(`Characteristics discovery failed for service ${serviceUuid}:`, e);
-              const errorStr = String(e).toLowerCase();
-              if (errorStr.includes('disconnect') || !server.connected) {
-                console.warn(`Disconnection detected during characteristics query of service ${serviceUuid}, re-establishing GATT...`);
-                try {
-                  server = await device.gatt.connect();
-                  await delay(500);
-                } catch (reconnectErr) {
-                  console.error("Reconnection inside characteristics query failed:", reconnectErr);
-                }
-              }
-            }
-            if (writeChar) break;
-          }
-
-          // Fallback: Ultimate Fallback (Sapu Bersih Mechanism)
-          if (!writeChar) {
-            try {
-              console.warn("Predefined services did not yield write characteristic. Running Ultimate Fallback (Sapu Bersih)...");
-              // Re-connect GATT unconditionally
-              server = await device.gatt.connect();
-              await delay(500);
-
-              const services = await server.getPrimaryServices();
-              for (const service of services) {
-                try {
-                  if (!server.connected) {
-                    server = await device.gatt.connect();
-                    await delay(500);
-                  }
-                  const characteristics = await service.getCharacteristics();
-                  for (const char of characteristics) {
-                    if (char.properties.write || char.properties.writeWithoutResponse) {
-                      writeChar = char;
-                      console.log("Ultimate Fallback (Sapu Bersih) grabbed characteristic successfully!");
-                      break;
-                    }
-                  }
-                } catch (serviceErr) {
-                  console.warn("Failed retrieving characteristics from service in fallback:", serviceErr);
-                }
-                if (writeChar) break;
-              }
-            } catch (fallbackError) {
-              console.error('Ultimate Fallback (Sapu Bersih) query failed:', fallbackError);
-            }
-          }
-        } catch (discoveryError) {
-          console.error(`Service discovery attempt failed (retries left: ${discoveryRetries - 1}):`, discoveryError);
+        } catch (e) {
+          console.warn('Gagal membaca karakteristik dari service:', e);
         }
-
-        if (!writeChar) {
-          discoveryRetries--;
-          if (discoveryRetries > 0) {
-            // Short delay between retries to let the hardware settle
-            await delay(1000);
-          }
+        if (writeChar) {
+          break;
         }
       }
 
