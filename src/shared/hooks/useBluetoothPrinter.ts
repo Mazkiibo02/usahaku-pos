@@ -176,9 +176,10 @@ interface BluetoothPrinterStoreState {
 
 // Global list of common BLE Thermal Printer Service UUIDs
 const PRINTER_SERVICES = [
-  '49535343-fe7d-4ae5-8fa9-9fafd205e455',
-  '0000ffe0-0000-1000-8000-00805f9b34fb',
-  '0000ff00-0000-1000-8000-00805f9b34fb'
+  '49535343-fe7d-4ae5-8fa9-9fafd205e455', // ISSC / RPP02N Standard (Target #1)
+  '0000ffe0-0000-1000-8000-00805f9b34fb', // Generic Custom TFE0
+  '0000ffe1-0000-1000-8000-00805f9b34fb', // Xprinter / Generic Custom TFE1
+  '000018f0-0000-1000-8000-00805f9b34fb'  // Standard Printing Service
 ];
 
 export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set, get) => ({
@@ -207,38 +208,44 @@ export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set,
         throw new Error('GATT Server tidak tersedia pada printer ini.');
       }
 
-      // Step 1: Call const server = await device.gatt.connect();
-      const server = await device.gatt.connect();
-
-      // Step 2: Immediately inject a mandatory stabilization delay: await new Promise(r => setTimeout(r, 1000));
-      await new Promise((r) => setTimeout(r, 1000));
-
-      if (!server || !server.connected) {
-        throw new Error('GATT Server disconnected immediately after pairing.');
-      }
-
-      // Step 3: Do NOT loop through single getPrimaryService(uuid) calls. Instead, call the bulk retrieval immediately:
-      const services = await server.getPrimaryServices();
-
-      // Step 4: Iterate through the services array discovered from the hardware.
+      // 2. Connect to the GATT server and query services one-by-one with isolated retry state
+      let server: BluetoothRemoteGATTServer | null = null;
       let writeChar: BluetoothRemoteGATTCharacteristic | null = null;
-      for (const service of services) {
+
+      for (const uuid of PRINTER_SERVICES) {
         try {
-          // For each service, fetch its characteristics
+          if (!server || !server.connected) {
+            console.log(`Connecting to GATT server for service ${uuid}...`);
+            server = await device.gatt.connect();
+            await new Promise((r) => setTimeout(r, 1000)); // 1 second stabilization delay
+          }
+
+          if (!server || !server.connected) {
+            console.warn(`GATT Server not connected, skipping service ${uuid}`);
+            continue;
+          }
+
+          console.log(`Querying service ${uuid} directly...`);
+          const service = await server.getPrimaryService(uuid);
           const characteristics = await service.getCharacteristics();
 
-          // Step 5: Search for a characteristic where c.properties.write or c.properties.writeWithoutResponse is true.
           for (const char of characteristics) {
             if (char.properties.write || char.properties.writeWithoutResponse) {
               writeChar = char;
               break;
             }
           }
+
+          if (writeChar) {
+            console.log(`Found write characteristic on service ${uuid}`);
+            break;
+          }
         } catch (e) {
-          console.warn('Gagal membaca karakteristik dari service:', e);
-        }
-        if (writeChar) {
-          break;
+          console.warn(`Failed target query for service ${uuid}:`, e);
+          // If connection dropped during query, reset server to force reconnection in next iteration
+          if (server && !server.connected) {
+            server = null;
+          }
         }
       }
 
