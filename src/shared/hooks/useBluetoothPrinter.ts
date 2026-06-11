@@ -183,6 +183,9 @@ const PRINTER_SERVICES = [
   '49535343-fe7d-4ae5-8fa9-9fafd205e455', // ISSC SPP service
 ];
 
+// Helper delay function
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set, get) => ({
   connectedDevice: null,
   printerCharacteristic: null,
@@ -212,8 +215,8 @@ export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set,
       // 2. Connect to the GATT server
       let server = await device.gatt.connect();
 
-      // Add this helper delay to allow printer hardware to stabilize
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      // Reduce initial post-connect delay to 300ms to avoid idle disconnection on cheap chips
+      await delay(300);
 
       if (!server || !server.connected) {
         throw new Error("GATT Server disconnected immediately after pairing. Retrying...");
@@ -229,15 +232,45 @@ export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set,
           if (!server || !server.connected) {
             console.warn("GATT Server disconnected during service discovery. Reconnecting...");
             server = await device.gatt.connect();
-            await new Promise((resolve) => setTimeout(resolve, 800));
+            await delay(500);
             if (!server || !server.connected) {
               throw new Error("GATT Server reconnection failed during service discovery.");
             }
           }
 
           for (const serviceUuid of PRINTER_SERVICES) {
+            let service;
             try {
-              const service = await server.getPrimaryService(serviceUuid);
+              // Before querying any service UUID, check if the server is still connected
+              if (!server.connected) {
+                console.warn(`GATT Server disconnected before querying service ${serviceUuid}. Reconnecting...`);
+                server = await device.gatt.connect();
+                await delay(500);
+              }
+              service = await server.getPrimaryService(serviceUuid);
+            } catch (e) {
+              console.warn(`GATT Service ${serviceUuid} not found or inaccessible:`, e);
+              const errorStr = String(e).toLowerCase();
+              if (errorStr.includes('disconnect') || !server.connected) {
+                console.warn(`Disconnection detected during service ${serviceUuid} discovery, re-establishing GATT...`);
+                try {
+                  server = await device.gatt.connect();
+                  await delay(500);
+                } catch (reconnectErr) {
+                  console.error("Reconnection inside loop failed:", reconnectErr);
+                }
+              }
+              // Move to the next step
+              continue;
+            }
+
+            try {
+              // Before querying characteristics, check if the server is still connected
+              if (!server.connected) {
+                console.warn(`GATT Server disconnected before querying characteristics of service ${serviceUuid}. Reconnecting...`);
+                server = await device.gatt.connect();
+                await delay(500);
+              }
               const characteristics = await service.getCharacteristics();
               for (const char of characteristics) {
                 if (char.properties.write || char.properties.writeWithoutResponse) {
@@ -246,28 +279,51 @@ export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set,
                 }
               }
             } catch (e) {
-              // Continue searching next service if this one is not found
-              console.warn(`GATT Service ${serviceUuid} not found or inaccessible:`, e);
+              console.warn(`Characteristics discovery failed for service ${serviceUuid}:`, e);
+              const errorStr = String(e).toLowerCase();
+              if (errorStr.includes('disconnect') || !server.connected) {
+                console.warn(`Disconnection detected during characteristics query of service ${serviceUuid}, re-establishing GATT...`);
+                try {
+                  server = await device.gatt.connect();
+                  await delay(500);
+                } catch (reconnectErr) {
+                  console.error("Reconnection inside characteristics query failed:", reconnectErr);
+                }
+              }
             }
             if (writeChar) break;
           }
 
-          // Fallback: If specific UUIDs failed, query all primary services
+          // Fallback: Ultimate Fallback (Sapu Bersih Mechanism)
           if (!writeChar) {
             try {
-              const primaryServices = await server.getPrimaryServices();
-              for (const service of primaryServices) {
-                const characteristics = await service.getCharacteristics();
-                for (const char of characteristics) {
-                  if (char.properties.write || char.properties.writeWithoutResponse) {
-                    writeChar = char;
-                    break;
+              console.warn("Predefined services did not yield write characteristic. Running Ultimate Fallback (Sapu Bersih)...");
+              // Re-connect GATT unconditionally
+              server = await device.gatt.connect();
+              await delay(500);
+
+              const services = await server.getPrimaryServices();
+              for (const service of services) {
+                try {
+                  if (!server.connected) {
+                    server = await device.gatt.connect();
+                    await delay(500);
                   }
+                  const characteristics = await service.getCharacteristics();
+                  for (const char of characteristics) {
+                    if (char.properties.write || char.properties.writeWithoutResponse) {
+                      writeChar = char;
+                      console.log("Ultimate Fallback (Sapu Bersih) grabbed characteristic successfully!");
+                      break;
+                    }
+                  }
+                } catch (serviceErr) {
+                  console.warn("Failed retrieving characteristics from service in fallback:", serviceErr);
                 }
                 if (writeChar) break;
               }
             } catch (fallbackError) {
-              console.error('Failed querying all primary services:', fallbackError);
+              console.error('Ultimate Fallback (Sapu Bersih) query failed:', fallbackError);
             }
           }
         } catch (discoveryError) {
@@ -278,7 +334,7 @@ export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set,
           discoveryRetries--;
           if (discoveryRetries > 0) {
             // Short delay between retries to let the hardware settle
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+            await delay(1000);
           }
         }
       }
