@@ -289,7 +289,7 @@ export default function LandingPage() {
             {/* Quick Proof Items */}
             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-slate-500 text-sm font-semibold mb-12 sm:mb-16">
               <span className="flex items-center gap-1.5">
-                <Check className="w-4 h-4 text-emerald-500 stroke-[3px]" /> Gratis Selamanya
+                <Check className="w-4 h-4 text-emerald-500 stroke-[3px]" /> 30 Hari Free Trial
               </span>
               <span className="flex items-center gap-1.5">
                 <Check className="w-4 h-4 text-emerald-500 stroke-[3px]" /> Tanpa Alat Tambahan
@@ -746,8 +746,77 @@ export default function LandingPage() {
           {/* BENTO GRID */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
-            {/* Box 1 (Large Box - 2 cols): PWA Offline Mode */}
+            {/* Box 1 (Large Box - 2 cols): Sistem Pembayaran Digital Otomatis */}
             <div className="md:col-span-2 bg-linear-to-br from-indigo-600 via-indigo-700 to-violet-800 text-white rounded-3xl p-6 sm:p-8 flex flex-col justify-between overflow-hidden relative shadow-lg group hover:-translate-y-1 transition-all duration-300 min-h-[320px]">
+              {/* Abstract layout background */}
+              <div className="absolute -bottom-8 -right-8 w-64 h-64 rounded-full bg-white/5 blur-2xl group-hover:bg-white/10 transition-colors duration-300" />
+              
+              <div className="relative z-10 flex flex-col h-full justify-between">
+                <div>
+                  <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center mb-6">
+                    <DollarSign className="w-6 h-6 text-white" />
+                  </div>
+                  <h4 className="text-xl sm:text-2xl font-black mb-3">Sistem Pembayaran Digital Otomatis</h4>
+                  <p className="text-indigo-100 text-sm sm:text-base max-w-md leading-relaxed">
+                    Integrasi QRIS dan Transfer Bank Production secara real-time (Powered by Midtrans). Verifikasi otomatis transaksi secara instan tanpa perlu cek mutasi manual.
+                  </p>
+                </div>
+
+                <div className="mt-8 flex items-center gap-4 bg-white/10 backdrop-blur-xs p-3 rounded-2xl max-w-sm border border-white/10">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                    <Check className="w-4 h-4 text-white stroke-[3px]" />
+                  </div>
+                  <span className="text-xs sm:text-sm font-semibold">Integrasi Resmi Midtrans • QRIS & Bank Transfer</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Box 2 (Standard Box - 1 col): Dukungan Printer Thermal Universal */}
+            <div className="bg-sky-50 border border-sky-100 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-sm group hover:-translate-y-1 transition-all duration-300 min-h-[320px]">
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-sky-500/10 flex items-center justify-center mb-6 text-sky-600">
+                  <Printer className="w-6 h-6" />
+                </div>
+                <h4 className="text-xl font-black text-slate-800 mb-3">Dukungan Printer Thermal Universal</h4>
+                <p className="text-slate-500 text-sm leading-relaxed">
+                  Cetak struk fisik instan lewat Bluetooth (Android RawBT) atau Kabel USB tanpa ribet pasang driver.
+                </p>
+              </div>
+
+              <div className="mt-8 pt-4 border-t border-sky-100/50 flex flex-col space-y-2">
+                <span className="text-[10px] text-sky-600 font-extrabold uppercase tracking-wide">Metode Cetak Lengkap</span>
+                <div className="flex flex-wrap gap-2 text-xs font-bold text-slate-600">
+                  <span className="px-2 py-1 bg-white rounded border border-slate-200">Bluetooth RawBT</span>
+                  <span className="px-2 py-1 bg-white rounded border border-slate-200">Kabel USB</span>
+                  <span className="px-2 py-1 bg-white rounded border border-slate-200">Bebas Driver</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Box 3 (Standard Box - 1 col): Kirim Struk Digital */}
+            <div className="bg-emerald-50 border border-emerald-100 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-sm group hover:-translate-y-1 transition-all duration-300 min-h-[320px]">
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-6 text-emerald-600">
+                  <Receipt className="w-6 h-6" />
+                </div>
+                <h4 className="text-xl font-black text-slate-800 mb-3">Kirim Struk Digital</h4>
+                <p className="text-slate-500 text-sm leading-relaxed">
+                  Fitur pengiriman struk belanja instan via WhatsApp Link Integration dan Email Notifikasi.
+                </p>
+              </div>
+
+              <div className="mt-8 pt-4 border-t border-emerald-100/50 flex flex-col space-y-2">
+                <span className="text-[10px] text-emerald-600 font-extrabold uppercase tracking-wide">E-Receipt & Paperless</span>
+                <div className="flex flex-wrap gap-2 text-xs font-bold text-slate-600">
+                  <span className="px-2 py-1 bg-white rounded border border-slate-200">WhatsApp Link</span>
+                  <span className="px-2 py-1 bg-white rounded border border-slate-200">Email Notif</span>
+                  <span className="px-2 py-1 bg-white rounded border border-slate-200">Coming Soon</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Box 4 (Large Box - 2 cols): PWA Offline Mode */}
+            <div className="md:col-span-2 bg-slate-900 border border-slate-800 text-white rounded-3xl p-6 sm:p-8 flex flex-col justify-between overflow-hidden relative shadow-lg group hover:-translate-y-1 transition-all duration-300 min-h-[320px]">
               {/* Abstract layout background */}
               <div className="absolute -bottom-8 -right-8 w-64 h-64 rounded-full bg-white/5 blur-2xl group-hover:bg-white/10 transition-colors duration-300" />
               
@@ -757,7 +826,7 @@ export default function LandingPage() {
                     <WifiOff className="w-6 h-6 text-white" />
                   </div>
                   <h4 className="text-xl sm:text-2xl font-black mb-3">PWA Offline Mode</h4>
-                  <p className="text-indigo-100 text-sm sm:text-base max-w-md leading-relaxed">
+                  <p className="text-slate-300 text-sm sm:text-base max-w-md leading-relaxed">
                     Aplikasi tetap berjalan dan menyimpan antrean transaksi meski Wi-Fi mati. Data otomatis disinkronkan ke cloud saat koneksi internet kembali normal.
                   </p>
                 </div>
@@ -766,34 +835,12 @@ export default function LandingPage() {
                   <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
                     <Check className="w-4 h-4 text-white stroke-[3px]" />
                   </div>
-                  <span className="text-xs sm:text-sm font-semibold">Transaksi Jalan Terus Tanpa Khawatir Kuota Habis</span>
+                  <span className="text-xs sm:text-sm font-semibold">Transaksi Jalan Terus Tanpa Khawatir Internet Mati</span>
                 </div>
               </div>
             </div>
 
-            {/* Box 2 (Standard Box - 1 col): Cetak Struk Instan */}
-            <div className="bg-sky-50 border border-sky-100 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-sm group hover:-translate-y-1 transition-all duration-300 min-h-[320px]">
-              <div>
-                <div className="w-12 h-12 rounded-2xl bg-sky-500/10 flex items-center justify-center mb-6 text-sky-600">
-                  <Printer className="w-6 h-6" />
-                </div>
-                <h4 className="text-xl font-black text-slate-800 mb-3">Cetak Struk Instan</h4>
-                <p className="text-slate-500 text-sm leading-relaxed">
-                  Dukungan printer thermal Bluetooth & simpan sebagai PDF. Kirim struk instan digital via WhatsApp/Email langsung ke pelanggan Anda.
-                </p>
-              </div>
-
-              <div className="mt-8 pt-4 border-t border-sky-100/50 flex flex-col space-y-2">
-                <span className="text-[10px] text-sky-600 font-extrabold uppercase tracking-wide">Mendukung Printer Thermal</span>
-                <div className="flex gap-2 text-xs font-bold text-slate-600">
-                  <span className="px-2 py-1 bg-white rounded border border-slate-200">58mm</span>
-                  <span className="px-2 py-1 bg-white rounded border border-slate-200">80mm</span>
-                  <span className="px-2 py-1 bg-white rounded border border-slate-200">PDF E-Receipt</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Box 3 (Standard Box - 1 col): Manajemen Shift */}
+            {/* Box 5 (Standard Box - 1 col): Manajemen Shift */}
             <div className="bg-amber-50 border border-amber-100 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-sm group hover:-translate-y-1 transition-all duration-300 min-h-[320px]">
               <div>
                 <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-6 text-amber-600">
@@ -814,7 +861,7 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Box 4 (Large Box - 2 cols): Multi-Cabang */}
+            {/* Box 6 (Large Box - 2 cols): Multi-Cabang & Multi-User */}
             <div className="md:col-span-2 bg-indigo-50 border border-indigo-100 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-sm group hover:-translate-y-1 transition-all duration-300 min-h-[320px] relative overflow-hidden">
               {/* Decorative mini graph mockup */}
               <div className="absolute right-0 bottom-0 w-1/2 opacity-25 group-hover:opacity-40 transition-opacity duration-300 hidden sm:block">
@@ -839,7 +886,7 @@ export default function LandingPage() {
               <div className="mt-8 pt-4 border-t border-indigo-100/50 flex flex-wrap gap-4 text-xs font-bold text-slate-600">
                 <div className="flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                  <span>Akses Role Staff</span>
+                  <span>Akses Role Staf</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Users className="w-4 h-4 text-indigo-600" />
@@ -1407,9 +1454,9 @@ export default function LandingPage() {
           <div className="space-y-6">
             {/* FAQ 1 */}
             <div className="bg-white p-6 rounded-2xl border border-slate-200/70 shadow-xs">
-              <h5 className="font-bold text-slate-850 text-base mb-2">Apakah Usahaku POS benar-benar bisa gratis?</h5>
+              <h5 className="font-bold text-slate-850 text-base mb-2">Apakah Usahaku POS menyediakan masa uji coba gratis?</h5>
               <p className="text-sm text-slate-500 leading-relaxed">
-                Ya! Kami menyediakan paket gratis selamanya yang mencakup fungsionalitas dasar kasir, mode offline, dan pencatatan transaksi untuk 1 outlet. Anda dapat mendaftar tanpa kartu kredit.
+                Ya! Kami menyediakan 30 Hari Free Trial (Uji Coba Gratis) dengan fitur premium lengkap dan kapasitas hingga 2 outlet untuk seluruh pengguna baru. Setelah masa uji coba berakhir, Anda dapat memilih paket berlangganan transparan mulai dari Rp 25.000/bulan sesuai dengan skala bisnis Anda.
               </p>
             </div>
 
@@ -1473,7 +1520,7 @@ export default function LandingPage() {
           </div>
 
           <p className="text-xs text-slate-400 mt-6 font-semibold">
-            ✓ Gratis 14 Hari Demo Fitur Premium • Tanpa Kontrak Mengikat
+            ✓ 30 Hari Free Trial (Uji Coba Gratis) • Tanpa Kontrak Mengikat
           </p>
         </div>
       </section>
