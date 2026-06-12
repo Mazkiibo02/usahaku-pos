@@ -73,8 +73,32 @@ export default function PosPage() {
     isConnectingUsb,
     connectUsbPrinter,
     disconnectUsbPrinter,
+    connectedUsbDevice,
+    connectWebUsbPrinter,
   } = useBluetoothPrinter();
   const [startingCashInput, setStartingCashInput] = useState<string>('');
+  
+  const handleConnectUsb = async () => {
+    try {
+      // Try Web Serial connection first
+      await connectUsbPrinter();
+      showToast('Printer USB Serial terhubung!', 'success');
+    } catch (err: any) {
+      console.warn('Web Serial connection failed, prompting WebUSB...', err);
+      const tryWebUsb = window.confirm(
+        'Koneksi Serial COM tidak berhasil atau dibatalkan.\n\nApakah Anda ingin mencoba menghubungkan langsung melalui WebUSB (Printer Class)?'
+      );
+      if (tryWebUsb) {
+        try {
+          await connectWebUsbPrinter();
+          showToast('Printer WebUSB terhubung!', 'success');
+        } catch (usbErr: any) {
+          console.error('WebUSB connection failed:', usbErr);
+          showToast(usbErr?.message || 'Gagal terhubung ke printer WebUSB.', 'error');
+        }
+      }
+    }
+  };
   const [isOpeningShift, setIsOpeningShift] = useState(false);
   
   // Page states
@@ -500,17 +524,21 @@ export default function PosPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
-                connectedUsbPort 
+                connectedUsbPort || connectedUsbDevice 
                   ? 'bg-blue-50 text-blue-600 border border-blue-100' 
                   : 'bg-slate-100 text-slate-400 border border-slate-200'
               }`}>
-                <Printer className={`h-4 w-4 ${connectedUsbPort ? 'animate-pulse' : ''}`} />
+                <Printer className={`h-4 w-4 ${connectedUsbPort || connectedUsbDevice ? 'animate-pulse' : ''}`} />
               </div>
               <div className="text-left font-sans">
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Printer USB (Serial)</p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Printer USB</p>
                 {connectedUsbPort ? (
                   <span className="inline-block rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[9px] font-extrabold text-blue-700 mt-0.5 animate-fadeIn">
-                    USB Terhubung
+                    USB Serial Terhubung
+                  </span>
+                ) : connectedUsbDevice ? (
+                  <span className="inline-block rounded-full bg-indigo-50 border border-indigo-100 px-2 py-0.5 text-[9px] font-extrabold text-indigo-700 mt-0.5 animate-fadeIn">
+                    WebUSB Terhubung
                   </span>
                 ) : (
                   <p className="text-xs font-bold text-slate-800">
@@ -520,7 +548,7 @@ export default function PosPage() {
               </div>
             </div>
             
-            {connectedUsbPort ? (
+            {connectedUsbPort || connectedUsbDevice ? (
               <button
                 type="button"
                 onClick={disconnectUsbPrinter}
@@ -531,7 +559,7 @@ export default function PosPage() {
             ) : (
               <button
                 type="button"
-                onClick={connectUsbPrinter}
+                onClick={handleConnectUsb}
                 disabled={isConnectingUsb}
                 className="rounded-lg bg-slate-900 px-2.5 py-1 text-[10px] font-extrabold text-white hover:bg-slate-850 transition active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-1 shadow-sm cursor-pointer"
               >

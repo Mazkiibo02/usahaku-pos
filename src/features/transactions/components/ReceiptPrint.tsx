@@ -38,10 +38,35 @@ export function ReceiptPrint({
     isConnectingUsb,
     connectUsbPrinter,
     disconnectUsbPrinter,
+    connectedUsbDevice,
+    connectWebUsbPrinter,
   } = useBluetoothPrinter();
 
   const [isPrinting, setIsPrinting] = useState(false);
   const [printErrorMsg, setPrintErrorMsg] = useState<string | null>(null);
+
+  const handleConnectUsb = async () => {
+    try {
+      setPrintErrorMsg(null);
+      // Try Web Serial connection first
+      await connectUsbPrinter();
+    } catch (err: any) {
+      console.warn('Web Serial connection failed, prompting WebUSB...', err);
+      
+      // Check if they want to try WebUSB connection
+      const tryWebUsb = window.confirm(
+        'Koneksi Serial COM tidak berhasil atau dibatalkan.\n\nApakah Anda ingin mencoba menghubungkan langsung melalui WebUSB (Printer Class)?'
+      );
+      if (tryWebUsb) {
+        try {
+          await connectWebUsbPrinter();
+        } catch (usbErr: any) {
+          console.error('WebUSB connection failed:', usbErr);
+          setPrintErrorMsg(usbErr?.message || 'Gagal terhubung ke printer WebUSB.');
+        }
+      }
+    }
+  };
 
   // Fetch Tenant store name & logo
   useEffect(() => {
@@ -91,7 +116,7 @@ export function ReceiptPrint({
   };
 
   const handlePrint = async () => {
-    if ((connectedDevice && printerCharacteristic) || connectedUsbPort) {
+    if ((connectedDevice && printerCharacteristic) || connectedUsbPort || connectedUsbDevice) {
       setIsPrinting(true);
       setPrintErrorMsg(null);
       try {
@@ -223,12 +248,16 @@ export function ReceiptPrint({
             {/* USB Printer Config */}
             <div className="mt-2 flex items-center justify-between rounded-xl border border-slate-150 bg-slate-50/50 p-3 shrink-0 text-sm no-print print:hidden">
               <div className="flex items-center gap-2">
-                <Printer className={`h-4.5 w-4.5 ${connectedUsbPort ? 'text-blue-650 animate-pulse' : 'text-slate-400'}`} />
+                <Printer className={`h-4.5 w-4.5 ${connectedUsbPort || connectedUsbDevice ? 'text-blue-650 animate-pulse' : 'text-slate-400'}`} />
                 <div className="text-left font-sans">
-                  <span className="font-semibold text-slate-700 block text-xs">Printer USB (Serial):</span>
+                  <span className="font-semibold text-slate-700 block text-xs">Printer USB:</span>
                   {connectedUsbPort ? (
                     <span className="inline-block rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[10px] font-extrabold text-blue-700 mt-0.5 animate-fadeIn">
-                      USB Terhubung
+                      USB Serial Terhubung
+                    </span>
+                  ) : connectedUsbDevice ? (
+                    <span className="inline-block rounded-full bg-indigo-50 border border-indigo-100 px-2 py-0.5 text-[10px] font-extrabold text-indigo-700 mt-0.5 animate-fadeIn">
+                      WebUSB Terhubung
                     </span>
                   ) : (
                     <span className="text-[10px] text-slate-500 font-semibold block truncate max-w-[140px]">
@@ -239,20 +268,20 @@ export function ReceiptPrint({
               </div>
               
               <div className="flex gap-2">
-                {connectedUsbPort ? (
+                {connectedUsbPort || connectedUsbDevice ? (
                   <button
                     type="button"
                     onClick={disconnectUsbPrinter}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-650 hover:bg-slate-100 transition shadow-sm cursor-pointer"
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-650 hover:bg-slate-100 transition shadow-sm cursor-pointer"
                   >
                     Putuskan
                   </button>
                 ) : (
                   <button
                     type="button"
-                    onClick={connectUsbPrinter}
+                    onClick={handleConnectUsb}
                     disabled={isConnectingUsb}
-                    className="rounded-lg bg-slate-900 px-3 py-1 text-xs font-bold text-white hover:bg-slate-850 transition disabled:opacity-60 flex items-center gap-1 shadow-sm cursor-pointer"
+                    className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-slate-850 transition disabled:opacity-60 flex items-center gap-1 shadow-sm cursor-pointer"
                   >
                     {isConnectingUsb ? (
                       <>

@@ -35,6 +35,46 @@ interface BluetoothRemoteGATTCharacteristic {
   writeValue?: (value: BufferSource) => Promise<void>;
 }
 
+interface WebUsbPrinterEndpoint {
+  direction: 'in' | 'out';
+  type: 'bulk' | 'interrupt' | 'isochronous' | 'control';
+  endpointNumber: number;
+}
+
+interface WebUsbPrinterAlternateInterface {
+  alternateSetting: number;
+  interfaceClass: number;
+  interfaceSubclass: number;
+  interfaceProtocol: number;
+  interfaceName?: string;
+  endpoints: WebUsbPrinterEndpoint[];
+}
+
+interface WebUsbPrinterInterface {
+  interfaceNumber: number;
+  alternate: WebUsbPrinterAlternateInterface;
+  alternates: WebUsbPrinterAlternateInterface[];
+  claimed: boolean;
+}
+
+interface WebUsbPrinterConfiguration {
+  configurationValue: number;
+  configurationName?: string;
+  interfaces: WebUsbPrinterInterface[];
+}
+
+interface WebUsbPrinterDevice {
+  open: () => Promise<void>;
+  close: () => Promise<void>;
+  selectConfiguration: (configurationValue: number) => Promise<void>;
+  claimInterface: (interfaceNumber: number) => Promise<void>;
+  releaseInterface: (interfaceNumber: number) => Promise<void>;
+  transferOut: (endpointNumber: number, data: BufferSource) => Promise<{ bytesWritten: number; status: string }>;
+  configuration?: WebUsbPrinterConfiguration | null;
+  configurations: WebUsbPrinterConfiguration[];
+  productName?: string;
+}
+
 interface NavigatorWithBluetooth {
   bluetooth?: {
     requestDevice: (options: {
@@ -55,9 +95,13 @@ interface SerialPort {
   };
 }
 
-interface NavigatorWithBluetoothAndSerial extends NavigatorWithBluetooth {
+interface NavigatorWithBluetoothSerialAndUsb extends NavigatorWithBluetooth {
   serial?: {
-    requestPort: () => Promise<SerialPort>;
+    requestPort: (options?: { filters?: any[] }) => Promise<SerialPort>;
+  };
+  usb?: {
+    requestDevice: (options: { filters: Array<{ interfaceClass?: number }> }) => Promise<WebUsbPrinterDevice>;
+    getDevices: () => Promise<WebUsbPrinterDevice[]>;
   };
 }
 
@@ -190,6 +234,12 @@ interface BluetoothPrinterStoreState {
   disconnectUsbPrinter: () => Promise<void>;
   printViaUsb: (rawBytes: Uint8Array) => Promise<void>;
 
+  // WebUSB Printer additions
+  connectedUsbDevice: WebUsbPrinterDevice | null;
+  usbInterfaceNumber: number | null;
+  usbEndpointOut: number | null;
+  connectWebUsbPrinter: () => Promise<void>;
+
   printReceipt: (
     transaction: Transaction,
     storeName: string,
@@ -217,8 +267,13 @@ export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set,
   connectedUsbPort: null,
   isConnectingUsb: false,
 
+  // WebUSB State
+  connectedUsbDevice: null,
+  usbInterfaceNumber: null,
+  usbEndpointOut: null,
+
   connectPrinter: async () => {
-    const nav = typeof navigator !== 'undefined' ? (navigator as unknown as NavigatorWithBluetoothAndSerial) : null;
+    const nav = typeof navigator !== 'undefined' ? (navigator as unknown as NavigatorWithBluetoothSerialAndUsb) : null;
     if (!nav || !nav.bluetooth) {
       set({ error: 'Browser ini tidak mendukung Web Bluetooth API.' });
       throw new Error('Web Bluetooth tidak didukung.');
@@ -318,7 +373,7 @@ export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set,
   },
 
   connectUsbPrinter: async () => {
-    const nav = typeof navigator !== 'undefined' ? (navigator as unknown as NavigatorWithBluetoothAndSerial) : null;
+    const nav = typeof navigator !== 'undefined' ? (navigator as unknown as NavigatorWithBluetoothSerialAndUsb) : null;
     if (!nav || !nav.serial) {
       set({ error: 'Browser ini tidak mendukung Web Serial API.' });
       throw new Error('Web Serial tidak didukung.');
@@ -327,10 +382,13 @@ export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set,
     set({ isConnectingUsb: true, error: null });
 
     try {
-      const port = await nav.serial.requestPort();
+      const port = await nav.serial.requestPort({});
       await port.open({ baudRate: 9600 });
       set({
         connectedUsbPort: port,
+        connectedUsbDevice: null,
+        usbInterfaceNumber: null,
+        usbEndpointOut: null,
         isConnectingUsb: false,
         error: null,
       });
@@ -345,29 +403,139 @@ export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set,
     }
   },
 
+  connectWebUsbPrinter: async () => {
+    const nav = typeof navigator !== 'undefined' ? (navigator as unknown as NavigatorWithBluetoothSerialAndUsb) : null;
+    if (!nav || !nav.usb) {
+      set({ error: 'Browser ini tidak mendukung WebUSB API.' });
+      throw new Error('WebUSB tidak didukung.');
+    }
+
+    set({ isConnectingUsb: true, error: null });
+
+    try {
+      const device = await nav.usb.requestDevice({
+        filters: [{ interfaceClass: 7 }] // Direct target for USB Printing Support class
+      });
+
+      await device.open();
+      if (device.configuration === null) {
+        await device.selectConfiguration(1);
+      }
+
+      // Discover interface number and endpoint out dynamically
+      let interfaceNumber: number | null = null;
+      let endpointOut: number | null = null;
+
+      for (const config of device.configurations) {
+        for (const iface of config.interfaces) {
+          for (const alt of iface.alternates) {
+            if (alt.interfaceClass === 7) {
+              interfaceNumber = iface.interfaceNumber;
+              for (const ep of alt.endpoints) {
+                if (ep.direction === 'out' && ep.type === 'bulk') {
+                  endpointOut = ep.endpointNumber;
+                  break;
+                }
+              }
+            }
+            if (endpointOut !== null) break;
+          }
+          if (endpointOut !== null) break;
+        }
+        if (endpointOut !== null) break;
+      }
+
+      // Fallback search for any bulk output endpoint if class 7 discovery failed
+      if (endpointOut === null) {
+        for (const config of device.configurations) {
+          for (const iface of config.interfaces) {
+            for (const alt of iface.alternates) {
+              for (const ep of alt.endpoints) {
+                if (ep.direction === 'out' && ep.type === 'bulk') {
+                  interfaceNumber = iface.interfaceNumber;
+                  endpointOut = ep.endpointNumber;
+                  break;
+                }
+              }
+              if (endpointOut !== null) break;
+            }
+            if (endpointOut !== null) break;
+          }
+          if (endpointOut !== null) break;
+        }
+      }
+
+      if (interfaceNumber === null || endpointOut === null) {
+        throw new Error('Tidak dapat menemukan antarmuka/endpoint cetak bulk-out pada perangkat USB.');
+      }
+
+      await device.claimInterface(interfaceNumber);
+
+      set({
+        connectedUsbDevice: device,
+        usbInterfaceNumber: interfaceNumber,
+        usbEndpointOut: endpointOut,
+        connectedUsbPort: null, // clear serial if any
+        isConnectingUsb: false,
+        error: null,
+      });
+    } catch (err) {
+      console.error('WebUSB connection failed:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Gagal terhubung ke printer WebUSB.';
+      set({
+        isConnectingUsb: false,
+        error: errorMsg,
+      });
+      throw err;
+    }
+  },
+
   disconnectUsbPrinter: async () => {
-    const { connectedUsbPort } = get();
+    const { connectedUsbPort, connectedUsbDevice, usbInterfaceNumber } = get();
+    
     if (connectedUsbPort) {
       try {
         await connectedUsbPort.close();
       } catch (err) {
-        console.error('Error during USB disconnect:', err);
+        console.error('Error closing Serial port:', err);
       }
     }
-    set({ connectedUsbPort: null, error: null });
+
+    if (connectedUsbDevice) {
+      try {
+        if (usbInterfaceNumber !== null) {
+          await connectedUsbDevice.releaseInterface(usbInterfaceNumber);
+        }
+        await connectedUsbDevice.close();
+      } catch (err) {
+        console.error('Error closing WebUSB device:', err);
+      }
+    }
+
+    set({
+      connectedUsbPort: null,
+      connectedUsbDevice: null,
+      usbInterfaceNumber: null,
+      usbEndpointOut: null,
+      error: null,
+    });
   },
 
   printViaUsb: async (rawBytes: Uint8Array) => {
-    const { connectedUsbPort } = get();
-    if (!connectedUsbPort) {
+    const { connectedUsbPort, connectedUsbDevice, usbEndpointOut } = get();
+    if (!connectedUsbPort && !connectedUsbDevice) {
       set({ error: 'Printer USB tidak terhubung.' });
       throw new Error('Printer USB tidak terhubung.');
     }
 
     try {
-      const writer = connectedUsbPort.writable.getWriter();
-      await writer.write(rawBytes);
-      writer.releaseLock();
+      if (connectedUsbPort) {
+        const writer = connectedUsbPort.writable.getWriter();
+        await writer.write(rawBytes);
+        writer.releaseLock();
+      } else if (connectedUsbDevice && usbEndpointOut !== null) {
+        await connectedUsbDevice.transferOut(usbEndpointOut, rawBytes as any);
+      }
     } catch (err) {
       console.error('USB printing failed:', err);
       const errorMsg = err instanceof Error ? err.message : 'Gagal mencetak via USB.';
@@ -377,8 +545,8 @@ export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set,
   },
 
   printReceipt: async (transaction, storeName, outletName, cashierName, paperWidth) => {
-    const { printerCharacteristic, connectedUsbPort } = get();
-    if (!printerCharacteristic && !connectedUsbPort) {
+    const { printerCharacteristic, connectedUsbPort, connectedUsbDevice, usbEndpointOut } = get();
+    if (!printerCharacteristic && !connectedUsbPort && !connectedUsbDevice) {
       set({ error: 'Printer tidak terhubung.' });
       throw new Error('Printer tidak terhubung.');
     }
@@ -390,6 +558,11 @@ export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set,
         const writer = connectedUsbPort.writable.getWriter();
         await writer.write(payload);
         writer.releaseLock();
+        return;
+      }
+
+      if (connectedUsbDevice && usbEndpointOut !== null) {
+        await connectedUsbDevice.transferOut(usbEndpointOut, payload as any);
         return;
       }
 
@@ -438,6 +611,12 @@ export function useBluetoothPrinter() {
     connectUsbPrinter: store.connectUsbPrinter,
     disconnectUsbPrinter: store.disconnectUsbPrinter,
     printViaUsb: store.printViaUsb,
+
+    // WebUSB additions
+    connectedUsbDevice: store.connectedUsbDevice,
+    usbInterfaceNumber: store.usbInterfaceNumber,
+    usbEndpointOut: store.usbEndpointOut,
+    connectWebUsbPrinter: store.connectWebUsbPrinter,
 
     printReceipt: store.printReceipt,
   };
