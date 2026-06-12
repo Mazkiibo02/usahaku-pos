@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Printer, FileText, Bluetooth, Loader2, Smartphone } from 'lucide-react';
+import { X, Printer, FileText, Bluetooth, Loader2, Smartphone, Share2 } from 'lucide-react';
 import type { Transaction } from '../types';
 import { transactionService } from '../api/transaction-service';
 import { useBluetoothPrinter, buildReceiptPayload } from '@/src/shared/hooks/useBluetoothPrinter';
+import { toBlob } from 'html-to-image';
 
 type ReceiptPrintProps = {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export function ReceiptPrint({
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [paperWidth, setPaperWidth] = useState<'58mm' | '80mm'>('58mm');
   const [, setIsLoading] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
 
   const {
     connectedDevice,
@@ -91,6 +93,65 @@ export function ReceiptPrint({
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(date);
+  };
+
+  const shareReceiptAsImage = async () => {
+    const element = document.getElementById('thermal-receipt-container');
+    if (!element) {
+      setPrintErrorMsg('Elemen struk tidak ditemukan.');
+      return;
+    }
+
+    setIsSharing(true);
+    setPrintErrorMsg(null);
+
+    try {
+      // Convert HTML element to PNG blob
+      const blob = await toBlob(element, {
+        cacheBust: true,
+        backgroundColor: '#ffffff',
+        style: {
+          margin: '0',
+          boxShadow: 'none',
+          border: 'none',
+        },
+      });
+
+      if (!blob) {
+        throw new Error('Gagal menghasilkan gambar struk.');
+      }
+
+      // Create file from blob
+      const file = new File([blob], `struk-${transaction.id.slice(-8).toUpperCase()}.png`, {
+        type: 'image/png',
+      });
+
+      // Check for Web Share API support
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Struk Belanja Digital',
+          text: `Terima kasih telah berbelanja di ${storeName}!`,
+        });
+      } else {
+        // Fallback for browsers/platforms not supporting file sharing (e.g. desktop Chrome)
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `struk-${transaction.id.slice(-8).toUpperCase()}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      console.error('Gagal memproses bagikan gambar:', err);
+      setPrintErrorMsg(
+        err instanceof Error ? err.message : 'Terjadi kesalahan saat memproses gambar struk.'
+      );
+    } finally {
+      setIsSharing(false);
+    }
   };
 
   const handlePrint = async (useRawBt: boolean = false) => {
@@ -286,8 +347,9 @@ export function ReceiptPrint({
                       try {
                         setPrintErrorMsg(null);
                         await connectWebUsbPrinter();
-                      } catch (err: any) {
-                        setPrintErrorMsg(err?.message || 'Gagal terhubung via WebUSB.');
+                      } catch (err) {
+                        const msg = err instanceof Error ? err.message : 'Gagal terhubung via WebUSB.';
+                        setPrintErrorMsg(msg);
                       }
                     }}
                     disabled={isConnectingUsb}
@@ -308,8 +370,9 @@ export function ReceiptPrint({
                       try {
                         setPrintErrorMsg(null);
                         await connectUsbPrinter();
-                      } catch (err: any) {
-                        setPrintErrorMsg(err?.message || 'Gagal terhubung via USB Serial/COM.');
+                      } catch (err) {
+                        const msg = err instanceof Error ? err.message : 'Gagal terhubung via USB Serial/COM.';
+                        setPrintErrorMsg(msg);
                       }
                     }}
                     disabled={isConnectingUsb}
@@ -347,6 +410,7 @@ export function ReceiptPrint({
                     <img
                       src={logoUrl}
                       alt="Logo Toko"
+                      crossOrigin="anonymous"
                       className="grayscale contrast-200 mix-blend-multiply max-w-[40mm] mx-auto mb-2 object-contain"
                     />
                   )}
@@ -473,12 +537,33 @@ export function ReceiptPrint({
               </div>
             )}
 
-            {/* Mobile/Android RawBT Action */}
-            <div className="mt-4 shrink-0 no-print print:hidden">
+            {/* Action Buttons */}
+            <div className="mt-4 flex flex-col gap-2 shrink-0 no-print print:hidden">
+              {/* Premium WhatsApp / Share Image Button */}
+              <button
+                type="button"
+                onClick={shareReceiptAsImage}
+                disabled={isSharing || isPrinting}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-sm font-bold text-white py-3 transition active:scale-[0.99] shadow-md shadow-emerald-950/10 disabled:opacity-65 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {isSharing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin text-white" />
+                    Sedang Memproses...
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="h-4 w-4" />
+                    Bagikan Struk Gambar
+                  </>
+                )}
+              </button>
+
+              {/* Mobile/Android RawBT Action */}
               <button
                 type="button"
                 onClick={() => handlePrint(true)}
-                disabled={isPrinting}
+                disabled={isPrinting || isSharing}
                 className="w-full flex items-center justify-center gap-2 rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 py-3 text-sm font-bold text-white transition hover:from-emerald-700 hover:to-teal-700 active:scale-[0.99] shadow-md shadow-emerald-900/10 disabled:opacity-65 disabled:cursor-not-allowed cursor-pointer"
               >
                 <Smartphone className="h-4 w-4" />
@@ -491,7 +576,7 @@ export function ReceiptPrint({
               <button
                 type="button"
                 onClick={onClose}
-                disabled={isPrinting}
+                disabled={isPrinting || isSharing}
                 className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
               >
                 Kembali
@@ -499,7 +584,7 @@ export function ReceiptPrint({
               <button
                 type="button"
                 onClick={() => handlePrint(false)}
-                disabled={isPrinting}
+                disabled={isPrinting || isSharing}
                 className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-slate-950 py-2.5 text-sm font-bold text-white transition hover:bg-slate-850 shadow-md disabled:opacity-65 cursor-pointer"
               >
                 {isPrinting ? (
