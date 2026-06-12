@@ -69,6 +69,10 @@ export default function PosPage() {
     isConnecting,
     connectPrinter,
     disconnectPrinter,
+    connectedUsbPort,
+    isConnectingUsb,
+    connectUsbPrinter,
+    disconnectUsbPrinter,
   } = useBluetoothPrinter();
   const [startingCashInput, setStartingCashInput] = useState<string>('');
   const [isOpeningShift, setIsOpeningShift] = useState(false);
@@ -443,8 +447,9 @@ export default function PosPage() {
           </div>
         )}
 
-        {/* Bluetooth Printer Status Widget */}
-        <div className="my-3 rounded-xl border border-slate-150 bg-slate-50/50 p-3 shrink-0">
+        {/* Dual Printer Status Widget (Bluetooth & USB) */}
+        <div className="my-3 rounded-xl border border-slate-150 bg-slate-50/50 p-3 shrink-0 space-y-3">
+          {/* Bluetooth Option */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
@@ -455,8 +460,8 @@ export default function PosPage() {
                 <Bluetooth className={`h-4 w-4 ${connectedDevice ? 'animate-pulse' : ''}`} />
               </div>
               <div className="text-left font-sans">
-                <p className="text-xs font-bold text-slate-800">Printer Kasir</p>
-                <p className="text-[10px] text-slate-500 font-semibold truncate max-w-[140px]">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Printer Bluetooth</p>
+                <p className="text-xs font-bold text-slate-800 truncate max-w-[120px]" title={connectedDevice ? connectedDevice.name || 'Bluetooth Printer' : 'Belum Terhubung'}>
                   {connectedDevice ? connectedDevice.name || 'Bluetooth Printer' : 'Belum Terhubung'}
                 </p>
               </div>
@@ -466,7 +471,7 @@ export default function PosPage() {
               <button
                 type="button"
                 onClick={disconnectPrinter}
-                className="rounded-lg bg-slate-150 border border-slate-200 px-3 py-1.5 text-[10px] font-extrabold text-slate-650 hover:bg-slate-200 hover:text-slate-800 transition active:scale-95 shadow-sm cursor-pointer"
+                className="rounded-lg bg-slate-150 border border-slate-200 px-2.5 py-1 text-[10px] font-extrabold text-slate-650 hover:bg-slate-200 hover:text-slate-800 transition active:scale-95 shadow-sm cursor-pointer"
               >
                 Putuskan
               </button>
@@ -475,7 +480,7 @@ export default function PosPage() {
                 type="button"
                 onClick={connectPrinter}
                 disabled={isConnecting}
-                className="rounded-lg bg-slate-900 px-3 py-1.5 text-[10px] font-extrabold text-white hover:bg-slate-850 transition active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-1 shadow-sm cursor-pointer"
+                className="rounded-lg bg-slate-900 px-2.5 py-1 text-[10px] font-extrabold text-white hover:bg-slate-850 transition active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-1 shadow-sm cursor-pointer"
               >
                 {isConnecting ? (
                   <>
@@ -484,6 +489,59 @@ export default function PosPage() {
                   </>
                 ) : (
                   'Hubungkan'
+                )}
+              </button>
+            )}
+          </div>
+
+          <div className="border-t border-slate-200/60 my-2" />
+
+          {/* USB Option */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
+                connectedUsbPort 
+                  ? 'bg-blue-50 text-blue-600 border border-blue-100' 
+                  : 'bg-slate-100 text-slate-400 border border-slate-200'
+              }`}>
+                <Printer className={`h-4 w-4 ${connectedUsbPort ? 'animate-pulse' : ''}`} />
+              </div>
+              <div className="text-left font-sans">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Printer USB (Serial)</p>
+                {connectedUsbPort ? (
+                  <span className="inline-block rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[9px] font-extrabold text-blue-700 mt-0.5 animate-fadeIn">
+                    USB Terhubung
+                  </span>
+                ) : (
+                  <p className="text-xs font-bold text-slate-800">
+                    Belum Terhubung
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            {connectedUsbPort ? (
+              <button
+                type="button"
+                onClick={disconnectUsbPrinter}
+                className="rounded-lg bg-slate-150 border border-slate-200 px-2.5 py-1 text-[10px] font-extrabold text-slate-650 hover:bg-slate-200 hover:text-slate-800 transition active:scale-95 shadow-sm cursor-pointer"
+              >
+                Putuskan
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={connectUsbPrinter}
+                disabled={isConnectingUsb}
+                className="rounded-lg bg-slate-900 px-2.5 py-1 text-[10px] font-extrabold text-white hover:bg-slate-850 transition active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-1 shadow-sm cursor-pointer"
+              >
+                {isConnectingUsb ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin text-white" />
+                    Konek...
+                  </>
+                ) : (
+                  'Konek USB'
                 )}
               </button>
             )}

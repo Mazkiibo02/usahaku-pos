@@ -34,6 +34,10 @@ export function ReceiptPrint({
     connectPrinter,
     disconnectPrinter,
     printReceipt,
+    connectedUsbPort,
+    isConnectingUsb,
+    connectUsbPrinter,
+    disconnectUsbPrinter,
   } = useBluetoothPrinter();
 
   const [isPrinting, setIsPrinting] = useState(false);
@@ -87,7 +91,7 @@ export function ReceiptPrint({
   };
 
   const handlePrint = async () => {
-    if (connectedDevice && printerCharacteristic) {
+    if ((connectedDevice && printerCharacteristic) || connectedUsbPort) {
       setIsPrinting(true);
       setPrintErrorMsg(null);
       try {
@@ -99,8 +103,8 @@ export function ReceiptPrint({
           paperWidth
         );
       } catch (err) {
-        console.error('Gagal mencetak Bluetooth:', err);
-        setPrintErrorMsg(err instanceof Error ? err.message : 'Gagal mengirim data ke printer Bluetooth.');
+        console.error('Gagal mencetak:', err);
+        setPrintErrorMsg(err instanceof Error ? err.message : 'Gagal mengirim data ke printer.');
       } finally {
         setIsPrinting(false);
       }
@@ -210,6 +214,53 @@ export function ReceiptPrint({
                       </>
                     ) : (
                       'Konek Printer'
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* USB Printer Config */}
+            <div className="mt-2 flex items-center justify-between rounded-xl border border-slate-150 bg-slate-50/50 p-3 shrink-0 text-sm no-print print:hidden">
+              <div className="flex items-center gap-2">
+                <Printer className={`h-4.5 w-4.5 ${connectedUsbPort ? 'text-blue-650 animate-pulse' : 'text-slate-400'}`} />
+                <div className="text-left font-sans">
+                  <span className="font-semibold text-slate-700 block text-xs">Printer USB (Serial):</span>
+                  {connectedUsbPort ? (
+                    <span className="inline-block rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[10px] font-extrabold text-blue-700 mt-0.5 animate-fadeIn">
+                      USB Terhubung
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-500 font-semibold block truncate max-w-[140px]">
+                      Terputus
+                    </span>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                {connectedUsbPort ? (
+                  <button
+                    type="button"
+                    onClick={disconnectUsbPrinter}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-650 hover:bg-slate-100 transition shadow-sm cursor-pointer"
+                  >
+                    Putuskan
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={connectUsbPrinter}
+                    disabled={isConnectingUsb}
+                    className="rounded-lg bg-slate-900 px-3 py-1 text-xs font-bold text-white hover:bg-slate-850 transition disabled:opacity-60 flex items-center gap-1 shadow-sm cursor-pointer"
+                  >
+                    {isConnectingUsb ? (
+                      <>
+                        <Loader2 className="h-3 w-3 animate-spin text-white" />
+                        Konek...
+                      </>
+                    ) : (
+                      'Konek via USB'
                     )}
                   </button>
                 )}

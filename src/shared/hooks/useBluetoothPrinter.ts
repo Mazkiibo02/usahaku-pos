@@ -44,6 +44,23 @@ interface NavigatorWithBluetooth {
   };
 }
 
+interface SerialPort {
+  open: (options: { baudRate: number }) => Promise<void>;
+  close: () => Promise<void>;
+  writable: {
+    getWriter: () => {
+      write: (data: Uint8Array) => Promise<void>;
+      releaseLock: () => void;
+    };
+  };
+}
+
+interface NavigatorWithBluetoothAndSerial extends NavigatorWithBluetooth {
+  serial?: {
+    requestPort: () => Promise<SerialPort>;
+  };
+}
+
 // Helper to format currency in IDR format (e.g. Rp15.000)
 const formatPriceText = (price: number) => {
   return 'Rp' + Math.round(price).toLocaleString('id-ID');
@@ -165,6 +182,14 @@ interface BluetoothPrinterStoreState {
   error: string | null;
   connectPrinter: () => Promise<void>;
   disconnectPrinter: () => Promise<void>;
+
+  // Web Serial USB printer state/methods
+  connectedUsbPort: SerialPort | null;
+  isConnectingUsb: boolean;
+  connectUsbPrinter: () => Promise<void>;
+  disconnectUsbPrinter: () => Promise<void>;
+  printViaUsb: (rawBytes: Uint8Array) => Promise<void>;
+
   printReceipt: (
     transaction: Transaction,
     storeName: string,
@@ -188,8 +213,12 @@ export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set,
   isConnecting: false,
   error: null,
 
+  // Web Serial USB State
+  connectedUsbPort: null,
+  isConnectingUsb: false,
+
   connectPrinter: async () => {
-    const nav = typeof navigator !== 'undefined' ? (navigator as unknown as NavigatorWithBluetooth) : null;
+    const nav = typeof navigator !== 'undefined' ? (navigator as unknown as NavigatorWithBluetoothAndSerial) : null;
     if (!nav || !nav.bluetooth) {
       set({ error: 'Browser ini tidak mendukung Web Bluetooth API.' });
       throw new Error('Web Bluetooth tidak didukung.');
@@ -288,9 +317,68 @@ export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set,
     set({ connectedDevice: null, printerCharacteristic: null, error: null });
   },
 
+  connectUsbPrinter: async () => {
+    const nav = typeof navigator !== 'undefined' ? (navigator as unknown as NavigatorWithBluetoothAndSerial) : null;
+    if (!nav || !nav.serial) {
+      set({ error: 'Browser ini tidak mendukung Web Serial API.' });
+      throw new Error('Web Serial tidak didukung.');
+    }
+
+    set({ isConnectingUsb: true, error: null });
+
+    try {
+      const port = await nav.serial.requestPort();
+      await port.open({ baudRate: 9600 });
+      set({
+        connectedUsbPort: port,
+        isConnectingUsb: false,
+        error: null,
+      });
+    } catch (err) {
+      console.error('USB connection failed:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Gagal terhubung ke printer USB.';
+      set({
+        isConnectingUsb: false,
+        error: errorMsg,
+      });
+      throw err;
+    }
+  },
+
+  disconnectUsbPrinter: async () => {
+    const { connectedUsbPort } = get();
+    if (connectedUsbPort) {
+      try {
+        await connectedUsbPort.close();
+      } catch (err) {
+        console.error('Error during USB disconnect:', err);
+      }
+    }
+    set({ connectedUsbPort: null, error: null });
+  },
+
+  printViaUsb: async (rawBytes: Uint8Array) => {
+    const { connectedUsbPort } = get();
+    if (!connectedUsbPort) {
+      set({ error: 'Printer USB tidak terhubung.' });
+      throw new Error('Printer USB tidak terhubung.');
+    }
+
+    try {
+      const writer = connectedUsbPort.writable.getWriter();
+      await writer.write(rawBytes);
+      writer.releaseLock();
+    } catch (err) {
+      console.error('USB printing failed:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Gagal mencetak via USB.';
+      set({ error: errorMsg });
+      throw err;
+    }
+  },
+
   printReceipt: async (transaction, storeName, outletName, cashierName, paperWidth) => {
-    const { printerCharacteristic } = get();
-    if (!printerCharacteristic) {
+    const { printerCharacteristic, connectedUsbPort } = get();
+    if (!printerCharacteristic && !connectedUsbPort) {
       set({ error: 'Printer tidak terhubung.' });
       throw new Error('Printer tidak terhubung.');
     }
@@ -298,17 +386,24 @@ export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set,
     try {
       const payload = buildReceiptPayload(transaction, storeName, outletName, cashierName, paperWidth);
 
+      if (connectedUsbPort) {
+        const writer = connectedUsbPort.writable.getWriter();
+        await writer.write(payload);
+        writer.releaseLock();
+        return;
+      }
+
       // Write in chunked mode (max 20 bytes per write)
       const CHUNK_SIZE = 20;
       for (let i = 0; i < payload.length; i += CHUNK_SIZE) {
         const chunk = payload.slice(i, i + CHUNK_SIZE);
 
-        if (typeof printerCharacteristic.writeValueWithoutResponse === 'function') {
-          await printerCharacteristic.writeValueWithoutResponse(chunk);
-        } else if (typeof printerCharacteristic.writeValueWithResponse === 'function') {
-          await printerCharacteristic.writeValueWithResponse(chunk);
-        } else if (typeof printerCharacteristic.writeValue === 'function') {
-          await printerCharacteristic.writeValue(chunk);
+        if (typeof printerCharacteristic!.writeValueWithoutResponse === 'function') {
+          await printerCharacteristic!.writeValueWithoutResponse(chunk);
+        } else if (typeof printerCharacteristic!.writeValueWithResponse === 'function') {
+          await printerCharacteristic!.writeValueWithResponse(chunk);
+        } else if (typeof printerCharacteristic!.writeValue === 'function') {
+          await printerCharacteristic!.writeValue(chunk);
         }
 
         // Small delay to allow thermal printer buffer processing
@@ -328,7 +423,7 @@ export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set,
  */
 export function useBluetoothPrinter() {
   const store = useBluetoothPrinterStore();
-  
+
   return {
     connectedDevice: store.connectedDevice,
     printerCharacteristic: store.printerCharacteristic,
@@ -336,6 +431,14 @@ export function useBluetoothPrinter() {
     error: store.error,
     connectPrinter: store.connectPrinter,
     disconnectPrinter: store.disconnectPrinter,
+
+    // USB additions
+    connectedUsbPort: store.connectedUsbPort,
+    isConnectingUsb: store.isConnectingUsb,
+    connectUsbPrinter: store.connectUsbPrinter,
+    disconnectUsbPrinter: store.disconnectUsbPrinter,
+    printViaUsb: store.printViaUsb,
+
     printReceipt: store.printReceipt,
   };
 }
