@@ -247,6 +247,7 @@ interface BluetoothPrinterStoreState {
     cashierName: string,
     paperWidth: '58mm' | '80mm'
   ) => Promise<void>;
+  printViaRawBt: (rawBytes: Uint8Array) => void;
 }
 
 // Global list of common BLE Thermal Printer Service UUIDs
@@ -589,6 +590,27 @@ export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set,
       throw err;
     }
   },
+  printViaRawBt: (rawBytes: Uint8Array) => {
+    try {
+      let base64Data = '';
+      if (typeof Buffer !== 'undefined') {
+        base64Data = Buffer.from(rawBytes).toString('base64');
+      } else {
+        let binary = '';
+        const len = rawBytes.byteLength;
+        for (let i = 0; i < len; i++) {
+          binary += String.fromCharCode(rawBytes[i]);
+        }
+        base64Data = btoa(binary);
+      }
+      window.location.href = `rawbt://base64,${base64Data}`;
+    } catch (err) {
+      console.error('RawBT printing failed:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Gagal mengirim data ke RawBT.';
+      set({ error: errorMsg });
+      throw err;
+    }
+  },
 }));
 
 /**
@@ -619,5 +641,6 @@ export function useBluetoothPrinter() {
     connectWebUsbPrinter: store.connectWebUsbPrinter,
 
     printReceipt: store.printReceipt,
+    printViaRawBt: store.printViaRawBt,
   };
 }

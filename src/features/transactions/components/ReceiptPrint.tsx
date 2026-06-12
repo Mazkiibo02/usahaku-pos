@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Printer, FileText, Bluetooth, Loader2 } from 'lucide-react';
+import { X, Printer, FileText, Bluetooth, Loader2, Smartphone } from 'lucide-react';
 import type { Transaction } from '../types';
 import { transactionService } from '../api/transaction-service';
-import { useBluetoothPrinter } from '@/src/shared/hooks/useBluetoothPrinter';
+import { useBluetoothPrinter, buildReceiptPayload } from '@/src/shared/hooks/useBluetoothPrinter';
 
 type ReceiptPrintProps = {
   isOpen: boolean;
@@ -40,6 +40,7 @@ export function ReceiptPrint({
     disconnectUsbPrinter,
     connectedUsbDevice,
     connectWebUsbPrinter,
+    printViaRawBt,
   } = useBluetoothPrinter();
 
   const [isPrinting, setIsPrinting] = useState(false);
@@ -92,7 +93,28 @@ export function ReceiptPrint({
     }).format(date);
   };
 
-  const handlePrint = async () => {
+  const handlePrint = async (useRawBt: boolean = false) => {
+    if (useRawBt) {
+      setIsPrinting(true);
+      setPrintErrorMsg(null);
+      try {
+        const payload = buildReceiptPayload(
+          transaction,
+          storeName,
+          outletName,
+          cashierName,
+          paperWidth
+        );
+        printViaRawBt(payload);
+      } catch (err) {
+        console.error('Gagal mencetak via RawBT:', err);
+        setPrintErrorMsg(err instanceof Error ? err.message : 'Gagal mencetak via RawBT.');
+      } finally {
+        setIsPrinting(false);
+      }
+      return;
+    }
+
     if ((connectedDevice && printerCharacteristic) || connectedUsbPort || connectedUsbDevice) {
       setIsPrinting(true);
       setPrintErrorMsg(null);
@@ -451,8 +473,21 @@ export function ReceiptPrint({
               </div>
             )}
 
+            {/* Mobile/Android RawBT Action */}
+            <div className="mt-4 shrink-0 no-print print:hidden">
+              <button
+                type="button"
+                onClick={() => handlePrint(true)}
+                disabled={isPrinting}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 py-3 text-sm font-bold text-white transition hover:from-emerald-700 hover:to-teal-700 active:scale-[0.99] shadow-md shadow-emerald-900/10 disabled:opacity-65 disabled:cursor-not-allowed cursor-pointer"
+              >
+                <Smartphone className="h-4 w-4" />
+                Cetak via RawBT Android
+              </button>
+            </div>
+
             {/* Print and Close Actions */}
-            <div className="mt-4 flex gap-3 shrink-0 no-print print:hidden">
+            <div className="mt-3 flex gap-3 shrink-0 no-print print:hidden">
               <button
                 type="button"
                 onClick={onClose}
@@ -463,7 +498,7 @@ export function ReceiptPrint({
               </button>
               <button
                 type="button"
-                onClick={handlePrint}
+                onClick={() => handlePrint(false)}
                 disabled={isPrinting}
                 className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-slate-950 py-2.5 text-sm font-bold text-white transition hover:bg-slate-850 shadow-md disabled:opacity-65 cursor-pointer"
               >

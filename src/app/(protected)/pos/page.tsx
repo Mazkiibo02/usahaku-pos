@@ -589,6 +589,14 @@ export default function PosPage() {
           </div>
         </div>
 
+        {/* Android RawBT Info Helper */}
+        <div className="mb-3 flex items-start gap-2 rounded-xl bg-emerald-50/40 border border-emerald-100/60 p-3 text-[11px] text-emerald-800 leading-relaxed font-sans shadow-sm">
+          <Info className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-semibold">Pengguna Android?</span> Pasang aplikasi <strong className="font-bold">RawBT</strong> di Play Store untuk cetak instan tanpa pairing.
+          </div>
+        </div>
+
         {/* Shopping Cart List */}
         <div className="flex-1 overflow-y-auto pr-1 shrink-0 py-2">
           {cart.length === 0 ? (
