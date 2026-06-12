@@ -133,29 +133,33 @@ export function SubscriptionLock() {
       setPaymentState('waiting-payment');
 
       window.snap.pay(token, {
-        onSuccess: function (res: any) {
+        onSuccess: (res: any) => {
           console.log('Payment Success:', res);
           setPaymentState('success');
           setIsRenewing(false);
+          setActivePlanType(null);
           setTimeout(() => {
             window.location.reload();
           }, 3000);
         },
-        onPending: function (res: any) {
+        onPending: (res: any) => {
           console.log('Payment Pending:', res);
           setPaymentState('pending-confirmation');
           setIsRenewing(false);
+          setActivePlanType(null);
         },
-        onError: function (res: any) {
+        onError: (res: any) => {
           console.error('Payment Error:', res);
           setPaymentState('error');
           setErrorMessage('Terjadi kesalahan saat memproses pembayaran.');
           setIsRenewing(false);
+          setActivePlanType(null);
         },
-        onClose: function () {
+        onClose: () => {
           console.log('Payment checkout closed');
           setPaymentState('idle');
           setIsRenewing(false);
+          setActivePlanType(null);
         }
       });
     } catch (err: any) {
