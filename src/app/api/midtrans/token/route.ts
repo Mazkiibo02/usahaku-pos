@@ -111,23 +111,55 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 4.5. Check for existing active pending invoice (less than 24 hours old) to prevent transaction spamming
+    try {
+      const pendingInvoicesQuery = await adminDb.collection('invoices')
+        .where('tenantId', '==', tenantId)
+        .where('status', '==', 'PENDING')
+        .get();
+
+      const nowMillis = Date.now();
+      const twentyFourHoursAgo = nowMillis - 24 * 60 * 60 * 1000;
+      let activePendingInvoice: any = null;
+
+      for (const doc of pendingInvoicesQuery.docs) {
+        const data = doc.data();
+        if (!data.snapToken) continue;
+
+        const createdAt = data.createdAt;
+        let createdMillis = 0;
+        if (createdAt && typeof createdAt.toMillis === 'function') {
+          createdMillis = createdAt.toMillis();
+        } else if (createdAt instanceof Date) {
+          createdMillis = createdAt.getTime();
+        } else if (typeof createdAt === 'number') {
+          createdMillis = createdAt;
+        } else if (createdAt && typeof createdAt._seconds === 'number') {
+          createdMillis = createdAt._seconds * 1000;
+        }
+
+        if (createdMillis > twentyFourHoursAgo) {
+          activePendingInvoice = data;
+          break;
+        }
+      }
+
+      if (activePendingInvoice) {
+        // Scenario A: Active Pending Invoice Exists
+        console.log(`Found active pending invoice ${activePendingInvoice.invoiceId} for tenant ${tenantId}. Reusing cached snapToken.`);
+        return NextResponse.json({
+          token: activePendingInvoice.snapToken,
+          redirectUrl: activePendingInvoice.redirectUrl || '',
+          orderId: activePendingInvoice.invoiceId,
+        });
+      }
+    } catch (err) {
+      console.error('Error checking for existing pending invoices:', err);
+    }
+
     const orderId = `INV-${tenantId}-${Date.now()}`;
 
-    // 5. Save pending invoice in Firestore
-    const invoiceRef = adminDb.collection('invoices').doc(orderId);
-    await invoiceRef.set({
-      invoiceId: orderId,
-      tenantId,
-      amount: grossAmount,
-      planType: planName,
-      status: 'PENDING',
-      paymentType: 'pending',
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-      settlementTime: null,
-    });
-
-    // 6. Connect to Midtrans Snap API
+    // 5. Connect to Midtrans Snap API
     const isProduction = process.env.MIDTRANS_IS_PRODUCTION === 'true';
     const midtransUrl = isProduction
       ? 'https://app.midtrans.com/snap/v1/transactions'
@@ -174,16 +206,27 @@ export async function POST(req: NextRequest) {
     if (!midtransResponse.ok) {
       const errorText = await midtransResponse.text();
       console.error('Midtrans Snap API response error:', errorText);
-      
-      // Cleanup invoice document on failure
-      await invoiceRef.delete().catch((err: unknown) => {
-        console.error('Failed to cleanup invoice document after Midtrans failure:', err);
-      });
-
       return NextResponse.json({ error: 'Failed to initialize transaction with payment gateway' }, { status: 502 });
     }
 
     const midtransData = await midtransResponse.json();
+
+    // 6. Save pending invoice in Firestore with cached snapToken and redirectUrl
+    const invoiceRef = adminDb.collection('invoices').doc(orderId);
+    await invoiceRef.set({
+      invoiceId: orderId,
+      tenantId,
+      userId: decodedToken.uid,
+      amount: grossAmount,
+      planType: planName,
+      status: 'PENDING',
+      snapToken: midtransData.token,
+      redirectUrl: midtransData.redirect_url,
+      paymentType: 'pending',
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+      settlementTime: null,
+    });
 
     return NextResponse.json({
       token: midtransData.token,
