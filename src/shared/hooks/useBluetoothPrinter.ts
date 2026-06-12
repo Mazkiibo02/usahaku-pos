@@ -603,7 +603,7 @@ export const useBluetoothPrinterStore = create<BluetoothPrinterStoreState>((set,
         }
         base64Data = btoa(binary);
       }
-      window.location.href = `rawbt://base64,${base64Data}`;
+      window.location.href = `rawbt:base64,${base64Data}`;
     } catch (err) {
       console.error('RawBT printing failed:', err);
       const errorMsg = err instanceof Error ? err.message : 'Gagal mengirim data ke RawBT.';
