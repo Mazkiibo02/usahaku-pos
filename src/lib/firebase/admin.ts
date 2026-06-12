@@ -19,21 +19,23 @@ if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
 // Initialize Firebase Admin app singleton
 let app;
 if (!getApps().length) {
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY
-    ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
-    : undefined;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'usahaku-69700';
 
-  if (privateKey && process.env.FIREBASE_CLIENT_EMAIL) {
+  if (privateKey && clientEmail) {
     app = initializeApp({
       credential: cert({
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'usahaku-69700',
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: privateKey,
+        projectId,
+        clientEmail,
+        // Critical fix for Vercel multi-line newlines string handling:
+        privateKey: privateKey.replace(/\\n/g, '\n'),
       }),
     });
   } else {
+    // Fallback for emulator or default credentials (e.g. in local development / CLI)
     app = initializeApp({
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'usahaku-69700',
+      projectId,
     });
   }
 } else {
