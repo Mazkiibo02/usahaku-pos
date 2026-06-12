@@ -45,29 +45,6 @@ export function ReceiptPrint({
   const [isPrinting, setIsPrinting] = useState(false);
   const [printErrorMsg, setPrintErrorMsg] = useState<string | null>(null);
 
-  const handleConnectUsb = async () => {
-    try {
-      setPrintErrorMsg(null);
-      // Try Web Serial connection first
-      await connectUsbPrinter();
-    } catch (err: any) {
-      console.warn('Web Serial connection failed, prompting WebUSB...', err);
-      
-      // Check if they want to try WebUSB connection
-      const tryWebUsb = window.confirm(
-        'Koneksi Serial COM tidak berhasil atau dibatalkan.\n\nApakah Anda ingin mencoba menghubungkan langsung melalui WebUSB (Printer Class)?'
-      );
-      if (tryWebUsb) {
-        try {
-          await connectWebUsbPrinter();
-        } catch (usbErr: any) {
-          console.error('WebUSB connection failed:', usbErr);
-          setPrintErrorMsg(usbErr?.message || 'Gagal terhubung ke printer WebUSB.');
-        }
-      }
-    }
-  };
-
   // Fetch Tenant store name & logo
   useEffect(() => {
     async function fetchTenant() {
@@ -246,29 +223,29 @@ export function ReceiptPrint({
             </div>
 
             {/* USB Printer Config */}
-            <div className="mt-2 flex items-center justify-between rounded-xl border border-slate-150 bg-slate-50/50 p-3 shrink-0 text-sm no-print print:hidden">
-              <div className="flex items-center gap-2">
-                <Printer className={`h-4.5 w-4.5 ${connectedUsbPort || connectedUsbDevice ? 'text-blue-650 animate-pulse' : 'text-slate-400'}`} />
-                <div className="text-left font-sans">
-                  <span className="font-semibold text-slate-700 block text-xs">Printer USB:</span>
-                  {connectedUsbPort ? (
-                    <span className="inline-block rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[10px] font-extrabold text-blue-700 mt-0.5 animate-fadeIn">
-                      USB Serial Terhubung
+            <div className="mt-2 rounded-xl border border-slate-150 bg-slate-50/50 p-3 shrink-0 text-sm no-print print:hidden">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Printer className={`h-4.5 w-4.5 ${connectedUsbPort || connectedUsbDevice ? 'text-blue-650 animate-pulse' : 'text-slate-400'}`} />
+                  <div className="text-left font-sans">
+                    <span className="font-semibold text-slate-700 block text-xs">Printer USB:</span>
+                    {connectedUsbPort ? (
+                      <span className="inline-block rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[10px] font-extrabold text-blue-700 mt-0.5 animate-fadeIn">
+                        USB Serial Terhubung
+                      </span>
+                    ) : connectedUsbDevice ? (
+                      <span className="inline-block rounded-full bg-indigo-50 border border-indigo-100 px-2 py-0.5 text-[10px] font-extrabold text-indigo-700 mt-0.5 animate-fadeIn">
+                        WebUSB Terhubung
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-500 font-semibold block truncate max-w-[140px]">
+                        Terputus
                     </span>
-                  ) : connectedUsbDevice ? (
-                    <span className="inline-block rounded-full bg-indigo-50 border border-indigo-100 px-2 py-0.5 text-[10px] font-extrabold text-indigo-700 mt-0.5 animate-fadeIn">
-                      WebUSB Terhubung
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-slate-500 font-semibold block truncate max-w-[140px]">
-                      Terputus
-                    </span>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-              
-              <div className="flex gap-2">
-                {connectedUsbPort || connectedUsbDevice ? (
+
+                {(connectedUsbPort || connectedUsbDevice) && (
                   <button
                     type="button"
                     onClick={disconnectUsbPrinter}
@@ -276,24 +253,57 @@ export function ReceiptPrint({
                   >
                     Putuskan
                   </button>
-                ) : (
+                )}
+              </div>
+
+              {!(connectedUsbPort || connectedUsbDevice) && (
+                <div className="mt-2.5 flex flex-col gap-2 border-t border-slate-200/60 pt-2.5">
                   <button
                     type="button"
-                    onClick={handleConnectUsb}
+                    onClick={async () => {
+                      try {
+                        setPrintErrorMsg(null);
+                        await connectWebUsbPrinter();
+                      } catch (err: any) {
+                        setPrintErrorMsg(err?.message || 'Gagal terhubung via WebUSB.');
+                      }
+                    }}
                     disabled={isConnectingUsb}
-                    className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-slate-850 transition disabled:opacity-60 flex items-center gap-1 shadow-sm cursor-pointer"
+                    className="w-full rounded-lg bg-slate-900 py-1.8 text-xs font-bold text-white hover:bg-slate-850 transition disabled:opacity-60 flex items-center justify-center gap-1 shadow-sm cursor-pointer"
                   >
                     {isConnectingUsb ? (
                       <>
                         <Loader2 className="h-3 w-3 animate-spin text-white" />
-                        Konek...
+                        Menghubungkan...
                       </>
                     ) : (
-                      'Konek via USB'
+                      'Hubungkan via Kabel USB (Printer)'
                     )}
                   </button>
-                )}
-              </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        setPrintErrorMsg(null);
+                        await connectUsbPrinter();
+                      } catch (err: any) {
+                        setPrintErrorMsg(err?.message || 'Gagal terhubung via USB Serial/COM.');
+                      }
+                    }}
+                    disabled={isConnectingUsb}
+                    className="w-full rounded-lg border border-slate-200 bg-white py-1.8 text-xs font-bold text-slate-700 hover:bg-slate-50 transition disabled:opacity-60 flex items-center justify-center gap-1 shadow-sm cursor-pointer"
+                  >
+                    {isConnectingUsb ? (
+                      <>
+                        <Loader2 className="h-3 w-3 animate-spin text-slate-650" />
+                        Menghubungkan...
+                      </>
+                    ) : (
+                      'Hubungkan via Kabel USB (Serial/COM)'
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Scrollable Receipt Area */}

@@ -77,28 +77,6 @@ export default function PosPage() {
     connectWebUsbPrinter,
   } = useBluetoothPrinter();
   const [startingCashInput, setStartingCashInput] = useState<string>('');
-  
-  const handleConnectUsb = async () => {
-    try {
-      // Try Web Serial connection first
-      await connectUsbPrinter();
-      showToast('Printer USB Serial terhubung!', 'success');
-    } catch (err: any) {
-      console.warn('Web Serial connection failed, prompting WebUSB...', err);
-      const tryWebUsb = window.confirm(
-        'Koneksi Serial COM tidak berhasil atau dibatalkan.\n\nApakah Anda ingin mencoba menghubungkan langsung melalui WebUSB (Printer Class)?'
-      );
-      if (tryWebUsb) {
-        try {
-          await connectWebUsbPrinter();
-          showToast('Printer WebUSB terhubung!', 'success');
-        } catch (usbErr: any) {
-          console.error('WebUSB connection failed:', usbErr);
-          showToast(usbErr?.message || 'Gagal terhubung ke printer WebUSB.', 'error');
-        }
-      }
-    }
-  };
   const [isOpeningShift, setIsOpeningShift] = useState(false);
   
   // Page states
@@ -521,57 +499,92 @@ export default function PosPage() {
           <div className="border-t border-slate-200/60 my-2" />
 
           {/* USB Option */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
-                connectedUsbPort || connectedUsbDevice 
-                  ? 'bg-blue-50 text-blue-600 border border-blue-100' 
-                  : 'bg-slate-100 text-slate-400 border border-slate-200'
-              }`}>
-                <Printer className={`h-4 w-4 ${connectedUsbPort || connectedUsbDevice ? 'animate-pulse' : ''}`} />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
+                  connectedUsbPort || connectedUsbDevice 
+                    ? 'bg-blue-50 text-blue-600 border border-blue-100' 
+                    : 'bg-slate-100 text-slate-400 border border-slate-200'
+                }`}>
+                  <Printer className={`h-4 w-4 ${connectedUsbPort || connectedUsbDevice ? 'animate-pulse' : ''}`} />
+                </div>
+                <div className="text-left font-sans">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Printer USB</p>
+                  {connectedUsbPort ? (
+                    <span className="inline-block rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[9px] font-extrabold text-blue-700 mt-0.5 animate-fadeIn">
+                      USB Serial Terhubung
+                    </span>
+                  ) : connectedUsbDevice ? (
+                    <span className="inline-block rounded-full bg-indigo-50 border border-indigo-100 px-2 py-0.5 text-[9px] font-extrabold text-indigo-700 mt-0.5 animate-fadeIn">
+                      WebUSB Terhubung
+                    </span>
+                  ) : (
+                    <p className="text-xs font-bold text-slate-800">
+                      Belum Terhubung
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="text-left font-sans">
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Printer USB</p>
-                {connectedUsbPort ? (
-                  <span className="inline-block rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[9px] font-extrabold text-blue-700 mt-0.5 animate-fadeIn">
-                    USB Serial Terhubung
-                  </span>
-                ) : connectedUsbDevice ? (
-                  <span className="inline-block rounded-full bg-indigo-50 border border-indigo-100 px-2 py-0.5 text-[9px] font-extrabold text-indigo-700 mt-0.5 animate-fadeIn">
-                    WebUSB Terhubung
-                  </span>
-                ) : (
-                  <p className="text-xs font-bold text-slate-800">
-                    Belum Terhubung
-                  </p>
-                )}
-              </div>
+              
+              {(connectedUsbPort || connectedUsbDevice) && (
+                <button
+                  type="button"
+                  onClick={disconnectUsbPrinter}
+                  className="rounded-lg bg-slate-150 border border-slate-200 px-2.5 py-1 text-[10px] font-extrabold text-slate-650 hover:bg-slate-200 hover:text-slate-800 transition active:scale-95 shadow-sm cursor-pointer"
+                >
+                  Putuskan
+                </button>
+              )}
             </div>
-            
-            {connectedUsbPort || connectedUsbDevice ? (
-              <button
-                type="button"
-                onClick={disconnectUsbPrinter}
-                className="rounded-lg bg-slate-150 border border-slate-200 px-2.5 py-1 text-[10px] font-extrabold text-slate-650 hover:bg-slate-200 hover:text-slate-800 transition active:scale-95 shadow-sm cursor-pointer"
-              >
-                Putuskan
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleConnectUsb}
-                disabled={isConnectingUsb}
-                className="rounded-lg bg-slate-900 px-2.5 py-1 text-[10px] font-extrabold text-white hover:bg-slate-850 transition active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-1 shadow-sm cursor-pointer"
-              >
-                {isConnectingUsb ? (
-                  <>
-                    <Loader2 className="h-3 w-3 animate-spin text-white" />
-                    Konek...
-                  </>
-                ) : (
-                  'Konek USB'
-                )}
-              </button>
+
+            {!(connectedUsbPort || connectedUsbDevice) && (
+              <div className="flex flex-col gap-2 border-t border-slate-200/60 pt-2.5">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await connectWebUsbPrinter();
+                      showToast('Printer WebUSB terhubung!', 'success');
+                    } catch (err: any) {
+                      showToast(err?.message || 'Gagal terhubung via WebUSB.', 'error');
+                    }
+                  }}
+                  disabled={isConnectingUsb}
+                  className="w-full rounded-lg bg-slate-900 py-1.8 text-[10px] font-extrabold text-white hover:bg-slate-850 transition active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1 shadow-sm cursor-pointer"
+                >
+                  {isConnectingUsb ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin text-white" />
+                      Konek...
+                    </>
+                  ) : (
+                    'Hubungkan via Kabel USB (Printer)'
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await connectUsbPrinter();
+                      showToast('Printer USB Serial terhubung!', 'success');
+                    } catch (err: any) {
+                      showToast(err?.message || 'Gagal terhubung via USB Serial/COM.', 'error');
+                    }
+                  }}
+                  disabled={isConnectingUsb}
+                  className="w-full rounded-lg border border-slate-200 bg-white py-1.8 text-[10px] font-extrabold text-slate-700 hover:bg-slate-50 transition active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1 shadow-sm cursor-pointer"
+                >
+                  {isConnectingUsb ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin text-slate-650" />
+                      Konek...
+                    </>
+                  ) : (
+                    'Hubungkan via Kabel USB (Serial/COM)'
+                  )}
+                </button>
+              </div>
             )}
           </div>
         </div>
