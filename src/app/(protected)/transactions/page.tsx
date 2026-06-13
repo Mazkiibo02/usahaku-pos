@@ -22,6 +22,7 @@ import type { Transaction } from '@/src/features/transactions/types';
 import type { Outlet } from '@/src/features/outlets/types';
 import type { Cashier } from '@/src/features/cashiers/types';
 import { ReceiptPrint } from '@/src/features/transactions/components/ReceiptPrint';
+import { format } from 'date-fns';
 
 export default function TransactionsPage() {
   const { tenantId, user: currentUser, role, outletId: cashierOutletId, isLoading: authLoading } = useAuthStore();
@@ -39,6 +40,14 @@ export default function TransactionsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOutletId, setSelectedOutletId] = useState('ALL');
 
+  // Date range filters (default to current day / Today)
+  const [startDateStr, setStartDateStr] = useState<string>(() => {
+    return format(new Date(), 'yyyy-MM-dd');
+  });
+  const [endDateStr, setEndDateStr] = useState<string>(() => {
+    return format(new Date(), 'yyyy-MM-dd');
+  });
+
   // Modal receipt states
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
@@ -52,8 +61,9 @@ export default function TransactionsPage() {
 
     // Strict defensive check for cashier: both tenantId and cashierOutletId must be present
     if (role === 'cashier') {
-      if (!tenantId || !cashierOutletId || cashierOutletId.trim() === '') {
-        setIsLoading(true);
+      if (!cashierOutletId || cashierOutletId.trim() === '') {
+        setError('ID Outlet Kasir tidak valid atau tidak ditemukan.');
+        setIsLoading(false);
         return;
       }
     }
@@ -62,10 +72,13 @@ export default function TransactionsPage() {
     setIsLoading(true);
     setError(null);
 
+    const start = new Date(startDateStr + 'T00:00:00');
+    const end = new Date(endDateStr + 'T23:59:59.999');
+
     try {
       if (role === 'cashier') {
         const [txData, outletsData] = await Promise.all([
-          transactionService.getTransactions(tenantId, 100, cashierOutletId || undefined),
+          transactionService.getTransactions(tenantId, 100, cashierOutletId || undefined, start, end),
           outletService.getOutlets(tenantId),
         ]);
         setTransactions(txData);
@@ -85,7 +98,7 @@ export default function TransactionsPage() {
         }
       } else {
         const [txData, outletsData, cashiersData] = await Promise.all([
-          transactionService.getTransactions(tenantId, 100), // pull last 100 records
+          transactionService.getTransactions(tenantId, 100, undefined, start, end),
           outletService.getOutlets(tenantId),
           cashierService.getCashiers(tenantId),
         ]);
@@ -102,7 +115,7 @@ export default function TransactionsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [tenantId, role, cashierOutletId, currentUser, authLoading]);
+  }, [tenantId, role, cashierOutletId, currentUser, authLoading, startDateStr, endDateStr]);
 
   useEffect(() => {
     if (tenantId) {
@@ -308,6 +321,28 @@ export default function TransactionsPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-lg border border-slate-200 bg-slate-50/50 pl-10 pr-4 py-2 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-slate-400 focus:bg-white"
           />
+        </div>
+
+        {/* Date Filter */}
+        <div className="flex items-center space-x-2 shrink-0">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-100 bg-slate-50/50 text-slate-400">
+            <Calendar className="h-4 w-4" />
+          </div>
+          <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 shadow-sm text-sm">
+            <input
+              type="date"
+              value={startDateStr}
+              onChange={(e) => setStartDateStr(e.target.value)}
+              className="bg-transparent font-semibold text-slate-700 focus:outline-none cursor-pointer w-[115px] sm:w-auto"
+            />
+            <span className="text-slate-300 font-semibold px-0.5 text-xs">s/d</span>
+            <input
+              type="date"
+              value={endDateStr}
+              onChange={(e) => setEndDateStr(e.target.value)}
+              className="bg-transparent font-semibold text-slate-700 focus:outline-none cursor-pointer w-[115px] sm:w-auto"
+            />
+          </div>
         </div>
 
         {/* Branch Filter */}
