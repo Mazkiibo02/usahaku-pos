@@ -346,11 +346,16 @@ export default function PosPage() {
       const itemsPayload = cart.map((item) => ({
         productId: item.product.id,
         quantity: item.quantity,
+        name: item.product.name,
+        price: item.product.price,
+        stock: item.product.stock,
       }));
 
       const displayName = user?.displayName || user?.email || 'Kasir';
 
       const res = await posService.processTransaction({
+        tenantId: tenantId || '',
+        cashierId: user?.uid || '',
         items: itemsPayload,
         outletId: activeOutletId,
         customerName: customerName.trim(),

@@ -14,6 +14,24 @@ export interface Product {
   imageUrl?: string | null;
   createdAt: Date | Timestamp;
   updatedAt: Date | Timestamp;
+  requiresReview?: boolean;
+  reviewReason?: string;
+}
+
+export interface StockMutation {
+  id?: string;
+  tenantId: string;
+  outletId: string;
+  productId: string;
+  productName: string;
+  type: "SALE" | "RESTOCK" | "ADJUSTMENT" | "WASTE";
+  quantityChanged: number; // negative for sales
+  previousStock: number;
+  newStock: number;
+  referenceId: string; // transactionId
+  notes: string;
+  createdBy: string;
+  createdAt: any; // Timestamp
 }
 
 export const productFormSchema = z.object({

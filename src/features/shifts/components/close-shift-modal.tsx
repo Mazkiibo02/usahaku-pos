@@ -27,6 +27,7 @@ export function CloseShiftModal({ isOpen, onClose, onSuccess }: CloseShiftModalP
   const { tenantId } = useAuthStore();
   const { activeShift, closeShift } = useShiftStore();
   const [actualEndingCashInput, setActualEndingCashInput] = useState<string>('');
+  const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -89,8 +90,10 @@ export function CloseShiftModal({ isOpen, onClose, onSuccess }: CloseShiftModalP
     try {
       await closeShift(tenantId, activeShift.id, {
         actualEndingCash,
-        expectedEndingCash,
+        notes,
       });
+      setNotes('');
+      setActualEndingCashInput('');
       if (onSuccess) {
         onSuccess();
       }
@@ -215,6 +218,20 @@ export function CloseShiftModal({ isOpen, onClose, onSuccess }: CloseShiftModalP
                       className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 pl-10 pr-4 py-3.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-slate-450 focus:bg-white font-extrabold"
                     />
                   </div>
+                </div>
+
+                {/* Input: Catatan Perubahan */}
+                <div className="space-y-1">
+                  <label className="text-xs font-extrabold text-slate-700 flex items-center gap-1">
+                    Catatan Perubahan / Alasan Selisih
+                  </label>
+                  <textarea
+                    placeholder="Masukkan alasan jika ada selisih kas atau catatan lainnya..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={3}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-slate-450 focus:bg-white font-medium resize-none"
+                  />
                 </div>
 
                 {/* Variance Display */}

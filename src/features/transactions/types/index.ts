@@ -25,6 +25,9 @@ export interface Transaction {
   outletName?: string;
   cashierName?: string;
   shiftId?: string;
+  requiresReview?: boolean;
+  reviewReason?: string;
+  status?: string;
 }
 
 export interface TenantSubscription {

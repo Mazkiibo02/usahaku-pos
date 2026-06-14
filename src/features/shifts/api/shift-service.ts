@@ -3,13 +3,14 @@ import {
   doc,
   getDocs,
   addDoc,
-  updateDoc,
   query,
   where,
   serverTimestamp,
   limit,
 } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '@/src/lib/firebase/functions';
 import type { Shift } from '../types';
 
 export const shiftService = {
@@ -72,17 +73,31 @@ export const shiftService = {
     shiftId: string,
     data: {
       actualEndingCash: number;
-      expectedEndingCash: number;
+      notes: string;
     }
   ): Promise<void> {
     if (!tenantId) throw new Error('Tenant ID is required');
     if (!shiftId) throw new Error('Shift ID is required');
-    const shiftDocRef = doc(db, 'tenants', tenantId, 'shifts', shiftId);
-    await updateDoc(shiftDocRef, {
-      endTime: serverTimestamp(),
-      actualEndingCash: data.actualEndingCash,
-      expectedEndingCash: data.expectedEndingCash,
-      status: 'CLOSED',
-    });
+    
+    const closeShiftSessionFn = httpsCallable<{
+      tenantId: string;
+      shiftId: string;
+      actualEndingCash: number;
+      notes: string;
+    }, { message: string }>(functions, 'closeShiftSession');
+
+    try {
+      await closeShiftSessionFn({
+        tenantId,
+        shiftId,
+        actualEndingCash: data.actualEndingCash,
+        notes: data.notes,
+      });
+    } catch (error: any) {
+      if (error && error.message) {
+        throw new Error(error.message);
+      }
+      throw error;
+    }
   },
 };

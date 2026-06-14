@@ -2,6 +2,7 @@ import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
 import { FieldValue } from "firebase-admin/firestore";
 import { onRequest, onCall } from "firebase-functions/v2/https";
+import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { defineSecret } from "firebase-functions/params";
 import * as logger from "firebase-functions/logger";
 import * as crypto from "crypto";
@@ -1263,6 +1264,273 @@ export const checkPaymentStatus = onCall(
         "internal",
         "Terjadi kesalahan saat menyinkronkan pembayaran."
       );
+    }
+  }
+);
+
+interface CloseShiftSessionPayload {
+  tenantId: string;
+  shiftId: string;
+  actualEndingCash: number;
+  notes: string;
+}
+
+export const closeShiftSession = functions.https.onCall(
+  async (request: functions.https.CallableRequest<CloseShiftSessionPayload>) => {
+    const { data, auth } = request;
+
+    // 1. Auth Guard
+    if (!auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "Authentication is required to close a shift session."
+      );
+    }
+
+    const tenantId = data?.tenantId;
+    const shiftId = data?.shiftId;
+    const actualEndingCash = data?.actualEndingCash;
+    const notes = data?.notes ?? "";
+
+    if (!tenantId || !shiftId || typeof actualEndingCash !== "number") {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Missing or invalid required fields: tenantId, shiftId, actualEndingCash (number)."
+      );
+    }
+
+    // Ensure user belongs to the specified tenant
+    const userTenantId = auth.token.tenantId;
+    if (userTenantId !== tenantId) {
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        "You do not have permission to close shifts for this tenant."
+      );
+    }
+
+    const db = admin.firestore();
+
+    try {
+      const result = await db.runTransaction(async (transaction) => {
+        const shiftRef = db.collection("tenants").doc(tenantId).collection("shifts").doc(shiftId);
+        const shiftSnap = await transaction.get(shiftRef);
+
+        if (!shiftSnap.exists) {
+          throw new functions.https.HttpsError(
+            "not-found",
+            "The specified shift does not exist."
+          );
+        }
+
+        const shiftData = shiftSnap.data();
+        if (!shiftData) {
+          throw new functions.https.HttpsError(
+            "internal",
+            "Shift data is empty."
+          );
+        }
+
+        if (shiftData.status !== "OPEN") {
+          throw new functions.https.HttpsError(
+            "failed-precondition",
+            "The shift is already closed (current status: " + shiftData.status + ")."
+          );
+        }
+
+        const expectedEndingCash = typeof shiftData.expectedEndingCash === "number"
+          ? shiftData.expectedEndingCash
+          : 0;
+
+        const discrepancy = actualEndingCash - expectedEndingCash;
+
+        transaction.update(shiftRef, {
+          status: "CLOSED",
+          actualEndingCash,
+          discrepancy,
+          notes,
+          endTime: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return {
+          shiftId,
+          discrepancy,
+        };
+      });
+
+      return {
+        message: "Shift closed successfully.",
+        shiftId: result.shiftId,
+        discrepancy: result.discrepancy,
+      };
+
+    } catch (error: any) {
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      functions.logger.error("closeShiftSession failed", {
+        uid: auth.uid,
+        tenantId,
+        shiftId,
+        errorMessage: error?.message || "Unknown error",
+        errorStack: error?.stack,
+      });
+
+      throw new functions.https.HttpsError(
+        "internal",
+        error?.message || "Failed to close shift session. Please try again."
+      );
+    }
+  }
+);
+
+/**
+ * Trigger latar belakang 2nd Gen Firestore yang terpanggil secara otomatis ketika
+ * ada dokumen transaksi baru yang tersinkronisasi/dibuat di /transactions/{transactionId}.
+ * Bertanggung jawab melakukan rekonsiliasi data stok, memicu audit kejanggalan stok negatif (overdraft),
+ * serta memperbarui agregasi modal laci kas (shift) dan dasbor statistik harian secara aman di backend.
+ */
+export const reconcileOfflineStock = onDocumentCreated(
+  {
+    document: "transactions/{transactionId}",
+  },
+  async (event) => {
+    const snapshot = event.data;
+    if (!snapshot) {
+      logger.info("No transaction data associated with event.");
+      return;
+    }
+
+    const transactionData = snapshot.data();
+    const transactionId = event.params.transactionId;
+    const tenantId = transactionData.tenantId;
+    const shiftId = transactionData.shiftId;
+    const items = transactionData.items || [];
+    const totalAmount = transactionData.totalAmount || 0;
+    const paymentMethod = transactionData.paymentMethod || "Cash";
+
+    if (!tenantId || items.length === 0) {
+      logger.warn("Transaction lacks tenantId or items", { transactionId });
+      return;
+    }
+
+    const db = admin.firestore();
+
+    try {
+      await db.runTransaction(async (transaction) => {
+        // 1. Fetch current server state of involved products
+        const uniqueProductIds = Array.from(new Set(items.map((item: any) => item.productId))) as string[];
+        const productRefs = uniqueProductIds.map(id => db.collection("products").doc(id));
+        const productSnaps = await Promise.all(productRefs.map(ref => transaction.get(ref)));
+
+        // 2. Fetch active shift if shiftId is provided
+        let shiftSnap = null;
+        let shiftRef = null;
+        if (shiftId) {
+          shiftRef = db.collection("tenants").doc(tenantId).collection("shifts").doc(shiftId);
+          shiftSnap = await transaction.get(shiftRef);
+        }
+
+        // 3. Fetch daily rollup stats
+        let txDate = new Date();
+        if (transactionData.createdAt) {
+          if (typeof transactionData.createdAt.toDate === "function") {
+            txDate = transactionData.createdAt.toDate();
+          } else if (transactionData.createdAt instanceof Date) {
+            txDate = transactionData.createdAt;
+          } else if (typeof transactionData.createdAt.seconds === "number") {
+            txDate = new Date(transactionData.createdAt.seconds * 1000);
+          }
+        }
+        const YYYY_MM_DD = txDate.toISOString().split('T')[0];
+        const dailyStatRef = db.collection("stats").doc(tenantId).collection("daily").doc(YYYY_MM_DD);
+        const dailyStatSnap = await transaction.get(dailyStatRef);
+
+        // WRITE PHASE
+        // a. Update active shift totals
+        if (shiftRef && shiftSnap && shiftSnap.exists) {
+          const paymentMethodStr = paymentMethod.toUpperCase();
+          const shiftUpdateData: Record<string, any> = {};
+          if (paymentMethodStr === "CASH") {
+            shiftUpdateData.totalCashSales = admin.firestore.FieldValue.increment(totalAmount);
+          } else if (paymentMethodStr === "QRIS") {
+            shiftUpdateData.totalQrisSales = admin.firestore.FieldValue.increment(totalAmount);
+          }
+          if (Object.keys(shiftUpdateData).length > 0) {
+            transaction.update(shiftRef, shiftUpdateData);
+          }
+        }
+
+        // b. Update daily rollup stats
+        if (!dailyStatSnap.exists) {
+          const productsSold: Record<string, number> = {};
+          for (const item of items) {
+            productsSold[item.productId] = (productsSold[item.productId] || 0) + item.quantity;
+          }
+          transaction.set(dailyStatRef, {
+            date: YYYY_MM_DD,
+            totalRevenue: totalAmount,
+            totalTransactions: 1,
+            productsSold,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        } else {
+          const currentData = dailyStatSnap.data() || {};
+          const currentProductsSold = currentData.productsSold || {};
+          const productsSold = { ...currentProductsSold };
+          for (const item of items) {
+            productsSold[item.productId] = (productsSold[item.productId] || 0) + item.quantity;
+          }
+          const currentRevenue = typeof currentData.totalRevenue === 'number' ? currentData.totalRevenue : 0;
+          const currentTransactions = typeof currentData.totalTransactions === 'number' ? currentData.totalTransactions : 0;
+
+          transaction.update(dailyStatRef, {
+            totalRevenue: currentRevenue + totalAmount,
+            totalTransactions: currentTransactions + 1,
+            productsSold,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+
+        // c. Check if any product's stock has dropped below 0
+        const negativeProducts = productSnaps.filter(snap => {
+          if (!snap.exists) return false;
+          const data = snap.data();
+          const stock = data?.stock ?? 0;
+          return stock < 0;
+        });
+
+        if (negativeProducts.length > 0) {
+          logger.warn("Negative stock detected during offline synchronization reconciliation", {
+            transactionId,
+            negativeProductIds: negativeProducts.map(p => p.id),
+          });
+
+          // Update transaction document
+          const transactionRef = db.collection("transactions").doc(transactionId);
+          transaction.update(transactionRef, {
+            requiresReview: true,
+            reviewReason: "Negative stock detected during offline synchronization reconciliation",
+          });
+
+          // Update product documents
+          for (const prodSnap of negativeProducts) {
+            transaction.update(prodSnap.ref, {
+              requiresReview: true,
+              reviewReason: "Negative stock detected during offline synchronization reconciliation",
+            });
+          }
+        }
+      });
+
+      logger.info("Successfully reconciled transaction offline stock, shift and daily stats", { transactionId });
+    } catch (error: any) {
+      logger.error("Error running reconcileOfflineStock transaction trigger", {
+        transactionId,
+        errorMessage: error?.message || "Unknown error",
+        errorStack: error?.stack,
+      });
     }
   }
 );

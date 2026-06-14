@@ -20,7 +20,7 @@ interface ShiftState {
     shiftId: string,
     data: {
       actualEndingCash: number;
-      expectedEndingCash: number;
+      notes: string;
     }
   ) => Promise<void>;
   clearShift: () => void;

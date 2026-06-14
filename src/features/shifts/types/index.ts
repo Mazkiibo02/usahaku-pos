@@ -13,4 +13,6 @@ export interface Shift {
   totalCashSales: number; // Incremented during the shift
   totalQrisSales: number; // Incremented during the shift
   status: 'OPEN' | 'CLOSED';
+  discrepancy?: number;
+  notes?: string;
 }
