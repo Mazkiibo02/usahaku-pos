@@ -19,6 +19,7 @@ const midtransServerKeySecret = defineSecret("MIDTRANS_SERVER_KEY");
 
 interface OnboardTenantPayload {
   tenantName?: string;
+  name?: string;
 }
 
 export interface TenantSubscription {
@@ -100,6 +101,8 @@ export const onboardTenant = functions.https.onCall(
       claimsUpdated = true;
 
       await db.collection("users").doc(uid).set({
+        uid,
+        name: data?.name || userRecord.displayName || "",
         email,
         role: "owner",
         tenantId,

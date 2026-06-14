@@ -8,11 +8,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, AlertTriangle, Info, Loader2 } from 'lucide-react';
 
 import { useAuth } from '@/src/features/auth/hooks/use-auth';
-import { auth, functions } from '@/src/lib/firebase';
-import { sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { auth, db, functions } from '@/src/lib/firebase';
+import { sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, type User } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useRouter } from 'next/navigation';
+import { OnboardingModal } from './onboarding-modal';
 
 const loginSchema = z.object({
   email: z.email('Please enter a valid email address.'),
@@ -51,6 +53,8 @@ export function LoginForm() {
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const [googleUser, setGoogleUser] = useState<User | null>(null);
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
@@ -61,38 +65,35 @@ export function LoginForm() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // Force refreshing the token ensures we get the latest custom claims from Firebase
-      const idTokenResult = await user.getIdTokenResult(true);
-      let tenantId = idTokenResult.claims.tenantId as string | undefined;
-      let role = idTokenResult.claims.role as string | undefined;
+      // Query root Firestore users collection using authenticated user's uid
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDocSnap = await getDoc(userDocRef);
 
-      if (!tenantId) {
-        // Completely new user registering via Google for the first time
-        // Invoke the default tenant creation/onboarding logic
-        const onboardTenantFn = httpsCallable<{ tenantName: string }, { message: string; tenantId: string }>(
-          functions,
-          'onboardTenant'
-        );
-        const defaultTenantName = `${user.displayName || 'Saya'} POS`;
-        await onboardTenantFn({ tenantName: defaultTenantName });
-
-        // Force refresh ID token again to get the updated custom claims (tenantId, role)
+      if (userDocSnap.exists()) {
+        // Case 1: User Exists
+        // Force refreshing the token ensures we get the latest custom claims from Firebase
         await user.getIdToken(true);
-        const updatedTokenResult = await user.getIdTokenResult();
-        tenantId = (updatedTokenResult.claims.tenantId as string) ?? null;
-        role = (updatedTokenResult.claims.role as string) ?? null;
-      }
+        const idTokenResult = await user.getIdTokenResult();
+        const tenantId = (idTokenResult.claims.tenantId as string) ?? null;
+        const role = (idTokenResult.claims.role as string) ?? null;
+        const outletId = (idTokenResult.claims.outletId as string) ?? null;
 
-      // Coordinate the successful auth result with the Zustand useAuthStore
-      useAuthStore.getState().setAuth(user, role || 'owner', tenantId || null, null);
+        // Coordinate the successful auth result with the Zustand useAuthStore
+        useAuthStore.getState().setAuth(user, role, tenantId, outletId);
 
-      showToast('Berhasil masuk dengan Google!', 'success');
+        showToast('Berhasil masuk dengan Google!', 'success');
 
-      // Redirection based on role
-      if (role === 'cashier') {
-        router.replace('/pos');
+        // Redirection based on role
+        if (role === 'cashier') {
+          router.replace('/pos');
+        } else {
+          router.replace('/dashboard');
+        }
       } else {
-        router.replace('/dashboard');
+        // Case 2: User Does Not Exist (New Owner Registration)
+        // Block redirection and trigger onboarding modal
+        setGoogleUser(user);
+        setShowOnboardingModal(true);
       }
     } catch (error: any) {
       console.error('[Google Sign-In Error]', error);
@@ -302,6 +303,15 @@ export function LoginForm() {
           {isGoogleLoading ? 'Menghubungkan ke Google...' : 'Masuk dengan Google'}
         </button>
       </form>
+
+      <OnboardingModal
+        isOpen={showOnboardingModal}
+        firebaseUser={googleUser}
+        onCancel={() => {
+          setShowOnboardingModal(false);
+          setGoogleUser(null);
+        }}
+      />
     </>
   );
 }

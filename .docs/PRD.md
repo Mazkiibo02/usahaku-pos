@@ -1,46 +1,39 @@
 # Product Requirements Document (PRD)
-**Project Name:** Usahaku POS (Point of Sale & Business Analytics)
-**Target Audience:** MSMEs, Store Owners, and Cashiers (Staff).
-**Current Phase:** Phase 10 (SaaS Monetization & Production Deployment)
+**Nama Proyek:** Usahaku POS (Point of Sale & Business Analytics)
+**Target Audiens:** UMKM, Pemilik Toko, dan Kasir (Staf).
+**Fase Saat Ini:** Fase 10 (SaaS Monetization & Production Deployment - Terstabilisasi)
 
-## Project Overview
-Usahaku POS is a Multi-Tenant, Progressive Web App (PWA) Point of Sale tailored for Indonesian MSMEs (UMKM). This application provides real-time cashier transaction management, thermal receipt printing, and a business analytics dashboard for store owners. It operates on a tiered SaaS Subscription model with strict resource gatekeeping.
+## Sinopsis Proyek
+Usahaku POS adalah aplikasi Multi-Tenant, Progressive Web App (PWA) Kasir (Point of Sale) yang dirancang khusus untuk UMKM Indonesia. Aplikasi ini menyediakan manajemen transaksi kasir real-time, pencetakan struk thermal fisik/digital, dan dasbor analitik bisnis untuk pemilik toko. Aplikasi ini beroperasi menggunakan model Langganan SaaS bertingkat dengan sistem pembatasan sumber daya (*gatekeeping*) yang ketat.
 
-## SaaS Tiering & Pricing Structure
-To facilitate a Product-Led Growth (PLG) strategy, new tenants are onboarded automatically into a **30-day Free Trial** with a default allowance of **maxOutlets: 2**. After the trial expires or when an owner decides to upgrade, they can choose from the following tiers:
-* **1-Outlet Tier:** Rp 25.000 / month (Strictly limits access to 1 active outlet).
-* **2-Outlets Tier:** Rp 50.000 / month (Limits access to 2 active outlets).
-* **4-Outlets Tier:** Rp 100.000 / month (Limits access to 4 active outlets).
+## Struktur Paket & Harga SaaS
+Untuk memfasilitasi strategi Product-Led Growth (PLG), pengguna baru (tenant) akan langsung mendapatkan **30-Hari Free Trial (Uji Coba Gratis)** secara otomatis saat pendaftaran dengan batas bawaan **maxOutlets: 2**. Setelah masa uji coba habis atau pemilik memutuskan upgrade, mereka dapat memilih paket berikut:
+* **Paket 1-Outlet:** Rp 25.000 / bulan (Membatasi akses hanya untuk 1 outlet aktif).
+* **Paket 2-Outlets:** Rp 50.000 / bulan (Membatasi akses hingga 2 outlet aktif).
+* **Paket 4-Outlets:** Rp 100.000 / bulan (Membatasi akses hingga 4 outlet aktif).
 
-## Milestone Status (COMPLETED)
-* **Authentication & Tenant Onboarding:** Successfully implemented using Firebase Auth and Cloud Functions. Onboarding initializes a 30-day trial with `maxOutlets: 2` and `outletsCount: 0`.
-* **Multi-Tenant Role-Based Access Control (RBAC):** Access rights separation between Owners and Cashiers using Firebase Custom Claims (`tenantId` and `role`). All system users are consolidated under a single root-level `users` collection with specific role querying (`role == 'cashier'`) to maintain structural integrity.
-* **Fixed Backend Cashier Creation Sync:** Refactored the `createStaffAccount` Cloud Function to write master records directly into the root-level `users` collection instead of the legacy `staff` path, resolving the reactive "Total Kasir" 0-count mismatch on the frontend.
-* **Role-Based Layout Guard & Redirection:** Implemented strict route guards on the frontend. Users with the `cashier` role bypass owner-scoped aggregation dashboards and are routed straight to a clean POS/Shift layout, eliminating "Missing or insufficient permissions" console crashes caused by unauthorized owner hooks.
-* **Cashier Shift Operational Flow:** Configured frontend tracking and secure database access for the opening/closing shift operations. Cashiers can input initial drawer cash and view reactive shift states safely.
-* **Owner Analytics Permission Alignment:** Aligned the main analytics query and the `/stats/{tenantId}/daily` subcollection access control parameters, curing the owner dashboard from permission failures and empty state freezes.
-* **Core POS System:** Shopping cart calculation, product management, and real-time transaction checkout.
-* **Analytics Dashboard:** Visualization of daily revenue trends and average order value using Recharts. Optimized with defensive security rules to prevent empty-state/null crashes for freshly created tenants.
-* **White-labeling:** Custom store logo upload via Firebase Storage, integrated into printed receipts.
-* **Thermal Print Engine:** Execution of 58mm thermal receipt printing via pure CSS `@media print` layout overrides.
-* **Progressive Web App (PWA):** Manifest and Service Worker configuration for offline installation and full-screen standalone mode.
-* **Marketing Landing Page:** Root (`/`) route transformed into a high-converting landing page with a Bento Grid layout and WhatsApp Business CTA (`+6285117821129`).
-* **SaaS Paywall Phase 1, 2 & 3 (Midtrans & Fail-Safe Manual Sync):**
-    * Implemented a global reactive UI interceptor (`SubscriptionLock.tsx`) displaying a 3-column pricing tier grid.
-    * Created `generateSnapToken` (2nd-Gen Callable Cloud Function) to enforce server-side pricing verification.
-    * Created `midtransWebhook` (2nd-Gen HTTP Cloud Function) with SHA512 HMAC signature verification.
-    * **Fail-Safe Synchronization (Langkah 3):** Developed the `checkPaymentStatus` 2nd-Gen Callable Cloud Function acting as a secure manual fallback for delayed webhooks. Integrated with dual-layer 15-second backend and `localStorage`-driven frontend throttling. Implemented reactive ID token forcing (`getIdToken(true)`) to instantly unlock the application UI upon successful settlement without full page reloads.
-* **Multi-Outlet Gatekeeping:**
-    * Enforced atomic increment/decrement of `outletsCount` via Firestore `writeBatch` on creation/deletion.
-    * Implemented frontend UI blocking (warning banners and disabled buttons) and backend server validation (`firestore.rules`) preventing creation when `outletsCount >= maxOutlets`.
-* **Production Deployment & Defensive UI:** Frontend successfully hosted on Vercel with automatic pipeline triggers linked to the `staging` production branch. Implemented fluid responsive wrappers and overflow containment across management sub-pages to prevent horizontal layout shifting.
+## Status Pencapaian Fitur (COMPLETED)
+* **Autentikasi & Onboarding Tenant:** Berhasil diimplementasikan menggunakan Firebase Auth dan Cloud Functions. Sistem otomatis memberikan 30 hari trial dengan `maxOutlets: 2` dan `outletsCount: 0`.
+* **Multi-Tenant Role-Based Access Control (RBAC):** Pemisahan hak akses Pemilik (Owner) dan Kasir (Cashier) menggunakan Firebase Custom Claims (`tenantId` dan `role`). Semua data user disatukan di bawah koleksi root `users` untuk menjaga integritas data.
+* **Sinkronisasi Pembuatan Kasir:** Fungsi Cloud Function `createStaffAccount` menulis data langsung ke koleksi root `users` untuk memperbaiki masalah visual pencatatan "Total Kasir" di frontend.
+* **Proteksi Layout & Alur Kasir:** Kasir otomatis diarahkan langsung ke halaman kasir/shift dan memblokir dasbor analitik grafik pemilik untuk mencegah error "Missing or insufficient permissions".
+* **Sistem Kasir Utama (POS Core):** Kalkulasi keranjang belanja, manajemen produk, manajemen shift (modal awal & akhir laci kas), serta checkout transaksi real-time.
+* **Halaman Utama (Landing Page) Baru:** Mengubah rute utama (`/`) menjadi halaman pemasaran premium berbasis Bento Grid, menghapus klaim keliru "Gratis Selamanya", mengomunikasikan skema *30-Days Trial*, dan menyediakan tombol CTA WhatsApp Business terintegrasi.
+* **Sistem Gerbang Pembayaran Midtrans (Fase 1, 2 & 3):**
+    * Integrasi komponen `SubscriptionLock.tsx` sebagai paywall reaktif global yang menampilkan 3 kolom paket langganan.
+    * Cloud Function `generateSnapToken` (2nd-Gen) untuk verifikasi harga produk di sisi server.
+    * Cloud Function `midtransWebhook` (2nd-Gen) dilengkapi verifikasi tanda tangan SHA512 HMAC dan Firestore Transaction Guard untuk mencegah race-condition data.
+    * **Fitur Fail-Safe Manual Sync:** Fungsi `checkPaymentStatus` (2nd-Gen) sebagai jalur alternatif aman jika webhook Midtrans mengalami penundaan (*delay/lag*). Dilengkapi pembatasan eksekusi (*debounce*) 15 detik di sisi server via `lastCheckedAt` dan di sisi client via `localStorage`. Menggunakan pembaruan paksa reaktif ID Token (`getIdToken(true)`) untuk membuka aplikasi seketika tanpa refresh halaman.
+* **Arsitektur Pengaman Pembayaran & Anti-Spam (Idempotency):** Implementasi proteksi penumpukan invoice pending pada endpoint `/api/midtrans/token`. Sistem mendeteksi jika pengguna memiliki invoice aktif berstatus `PENDING` yang berusia kurang dari 24 jam di Firestore. Jika ditemukan, sistem akan **menggunakan kembali (*reuse*) snapToken lama**, sehingga Virtual Account yang sama tetap terkunci tanpa memicu spam pembuatan invoice baru di Midtrans. Didukung oleh *automated unit tests* (`scratch/test-route-logic.ts`).
+* **Stabilisasi UX Callback Midtrans Snap:** Mengubah seluruh fungsi penanganan (callback) `window.snap.pay` menjadi *arrow functions* di halaman Pengaturan dan `SubscriptionLock.tsx`. Fungsi ini secara reaktif mereset status `isRenewing` menjadi `false` ketika user sengaja menutup modal pembayaran (*onClose*), gagal (*onError*), atau tertunda (*onPending*), sehingga tombol upgrade tidak terkunci/beku.
+* **Sub-Sistem Cetak Struk Thermal Multi-Jalur Universal:**
+    * **Web Bluetooth API:** Sistem pencarian langsung (*single-target query*) yang memprioritaskan UUID chip ISSC (`49535343-fe7d-4ae5-8fa9-9fafd205e455`) dengan jeda stabilisasi 1 detik untuk menghentikan loop kueri massal yang dapat membuat chip printer murah seharga 90 ribuan mengalami *crash/firmware panic*.
+    * **Web Serial API:** Dukungan koneksi kabel USB bebas driver berbasis komunikasi Serial Virtual COM (Baud rate 9600/115200) sebagai jalur alternatif super stabil di perangkat desktop/laptop.
+    * **WebUSB API (Interface Class 7 Fallback):** Menghapus filter ketat pada Serial Port dan menambahkan deteksi langsung perangkat keras kelas USB Printer (`interfaceClass: 7`). Memisahkan tombol aksi koneksi di UI secara mandiri untuk mematuhi aturan ketat *Chromium User Gesture Requirement* dan menghindari `SecurityError`.
+    * **Integrasi Jembatan Android RawBT:** Mengimplementasikan protokol pengalihan skema URL kustom (`rawbt:base64,[DATA]`) untuk mengompres data biner struk dari `escPosEncoder.ts` menjadi string Base64. Ini membebaskan pengguna *smartphone* Android dari batasan HTTPS Mixed Content di Chrome Mobile dan memberikan kompabilitas pencetakan 100% instan untuk semua jenis printer thermal murah di pasar Indonesia tanpa proses pairing Bluetooth browser yang rumit.
+* **Fitur Berbagi Struk Digital via Gambar (WhatsApp/Platform Lain):** Integrasi pustaka rasterisasi grafis (`html-to-image`) untuk "memotret" komponen pratinjau struk HTML menjadi file gambar `.png` murni di latar belakang. Menggunakan **Web Share API (`navigator.share`)** untuk memicu penelusuran *Share Sheet* bawaan sistem operasi ponsel agar kasir dapat membagikan struk berwujud gambar estetik langsung ke WhatsApp pelanggan (mirip aplikasi M-Banking/E-Wallet modern), dilengkapi fungsi unduh otomatis (*download fallback*) jika dibuka lewat perangkat desktop.
+* **Kredensial Firebase Admin Serverless (Vercel Fix):** Memperbaiki error `Could not load the default credentials` pada runtime serverless Vercel dengan menuliskan inisialisasi eksplisit sertifikat akun layanan (*Service Account Key*) menggunakan variabel lingkungan (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, dan penanganan baris baru multiline pada `FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')`).
 
-## Next Steps (IN PROGRESS / PENDING)
-* **Cashier Transaction History Access Security Refinement:** Re-architecting `firestore.rules` and the frontend page query (`app/dashboard/transactions/page.tsx`) to allow cashiers tenant-isolated, read-only access to the `invoices` collection. This allows cashiers to view their past shift sales and utilize the pre-existing **"Cetak Ulang Struk" (Reprint Receipt)** button when thermal paper roll issues arise, without exposing master store analytics.
-* **Mobile UI Responsiveness:** Testing and adjusting the layout of POS components, preview modals, and navigation for small touch screens.
-* **Real-Device PWA Testing:** Validating "Add to Home Screen" installation and offline fallback support via local network IP access.
-* **Feature Refinements:** Evaluation and implementation of more robust stock/inventory management logic prior to release.
-
-## Security & Data Privacy
-* Transaction and user data isolation across stores (tenants) must be fully protected at the Firestore Security Rules level.
-* Cashiers are strictly prohibited from accessing store financial aggregates, master settings, or staff management.
+## Langkah Selanjutnya (IN PROGRESS / PENDING)
+* **Refinement Keamanan Akses Riwayat Transaksi Kasir:** Menyempurnakan berkas `firestore.rules` dan kueri halaman transaksi (`app/dashboard/transactions/page.tsx`) agar kasir dapat membaca dokumen koleksi `invoices` yang terisolasi sesuai ID Tenant & ID Outlet mereka untuk kebutuhan cetak ulang (*reprint*) tanpa mengekspos data agregat keuangan toko keseluruhan.
+* **Pengujian Real-Device PWA:** Menguji installasi ikon aplikasi "Add to Home Screen" langsung dari jaringan IP lokal untuk memastikan fungsionalitas offline berjalan lancar.
