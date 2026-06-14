@@ -40,6 +40,26 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "Usahaku POS",
   },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  openGraph: {
+    title: "Usahaku POS",
+    description: "Sistem Kasir Pintar untuk UMKM",
+    url: "https://usahakupos.my.id",
+    siteName: "Usahaku POS",
+    locale: "id_ID",
+    type: "website",
+    images: [
+      {
+        url: "/images/og-landing.png",
+        width: 1200,
+        height: 630,
+        alt: "Usahaku POS",
+      }
+    ],
+  },
 };
 
 export default function RootLayout({
