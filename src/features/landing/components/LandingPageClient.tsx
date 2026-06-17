@@ -1693,7 +1693,7 @@ export default function LandingPageClient() {
 
                   {/* Mock Results Panel */}
                   <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-xl relative overflow-hidden border border-slate-800">
-                    <div className="absolute top-0 right-0 w-36 h-36 rounded-full bg-indigo-500/10 blur-[40px] pointer-events-none" />
+                    <div className="absolute top-0 right-0 w-36 h-36 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none" />
                     
                     <div className="relative z-10 space-y-4">
                       <div className="flex justify-between items-center border-b border-slate-850 pb-3">

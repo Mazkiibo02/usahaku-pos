@@ -3,6 +3,7 @@ import {
   doc,
   getDocs,
   addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   query,
@@ -36,24 +37,43 @@ export const productService = {
     });
   },
 
-  async createProduct(tenantId: string, data: ProductFormValues): Promise<string> {
+  async createProduct(tenantId: string, data: ProductFormValues, customProductId?: string): Promise<string> {
     if (!tenantId) {
       throw new Error('Tenant ID is required');
     }
-    const productsRef = collection(db, 'products');
-    const docRef = await addDoc(productsRef, {
-      tenantId,
-      name: data.name,
-      description: data.description ?? '',
-      price: data.price,
-      stock: data.stock,
-      sku: data.sku ?? '',
-      category: data.category,
-      isAvailable: data.isAvailable ?? true,
-      imageUrl: data.imageUrl ?? null,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
+    
+    let docRef;
+    if (customProductId) {
+      docRef = doc(db, 'products', customProductId);
+      await setDoc(docRef, {
+        tenantId,
+        name: data.name,
+        description: data.description ?? '',
+        price: data.price,
+        stock: data.stock,
+        sku: data.sku ?? '',
+        category: data.category,
+        isAvailable: data.isAvailable ?? true,
+        imageUrl: data.imageUrl ?? null,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    } else {
+      const productsRef = collection(db, 'products');
+      docRef = await addDoc(productsRef, {
+        tenantId,
+        name: data.name,
+        description: data.description ?? '',
+        price: data.price,
+        stock: data.stock,
+        sku: data.sku ?? '',
+        category: data.category,
+        isAvailable: data.isAvailable ?? true,
+        imageUrl: data.imageUrl ?? null,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    }
 
     if (data.category && data.category.trim() !== '') {
       try {

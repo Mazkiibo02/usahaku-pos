@@ -4,10 +4,14 @@ import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, Upload } from 'lucide-react';
 
 import { productFormSchema, type ProductFormValues, type Product } from '../types';
 import { productService } from '../api/product-service';
+import { compressImage } from '@/src/lib/utils/compress-image';
+import { db, storage } from '@/src/lib/firebase';
+import { collection, doc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 type ProductFormProps = {
   isOpen: boolean;
@@ -37,6 +41,13 @@ export function ProductForm({
   const [categories, setCategories] = useState<string[]>([]);
   const [isCategoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // States for Image Upload and Compression
+  const [compressedImage, setCompressedImage] = useState<Blob | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -83,6 +94,7 @@ export function ProductForm({
       setValue('isAvailable', product.isAvailable);
       setValue('imageUrl', product.imageUrl ?? '');
       setDisplayPrice(formatRupiah(product.price));
+      setPreviewUrl(product.imageUrl ?? null);
     } else {
       setValue('name', '');
       setValue('description', '');
@@ -93,9 +105,20 @@ export function ProductForm({
       setValue('isAvailable', true);
       setValue('imageUrl', '');
       setDisplayPrice('');
+      setPreviewUrl(null);
     }
+    setCompressedImage(null);
     setError(null);
   }, [product, setValue]);
+
+  // Cleanup object URLs to avoid memory leaks
+  useEffect(() => {
+    return () => {
+      if (previewUrl && previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   // Fetch tenant categories on open
   useEffect(() => {
@@ -135,13 +158,101 @@ export function ProductForm({
     setValue('price', numericValue, { shouldValidate: true });
   };
 
+  // Image Selection and Compression Handler
+  const handleFileChange = async (file: File) => {
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setError('File yang dipilih harus berupa gambar.');
+      return;
+    }
+
+    try {
+      setIsCompressing(true);
+      setError(null);
+
+      // Instantly generate a local preview URL from the original file for speed/smoothness
+      const localUrl = URL.createObjectURL(file);
+      setPreviewUrl(localUrl);
+
+      // Perform compression
+      const compressed = await compressImage(file);
+      setCompressedImage(compressed);
+    } catch (err: any) {
+      console.error('Gagal memproses gambar:', err);
+      setError('Gagal memproses gambar. Silakan coba berkas lain.');
+    } finally {
+      setIsCompressing(false);
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setIsDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setIsDragActive(false);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      await handleFileChange(file);
+    }
+  };
+
+  const onButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleRemoveImage = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (previewUrl && previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(null);
+    setCompressedImage(null);
+    setValue('imageUrl', null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const onSubmit = async (data: ProductFormValues) => {
     setError(null);
     try {
+      let imageUrl = data.imageUrl;
+      // Pre-allocate product ID if creating new, or use existing product ID
+      const productId = isEditMode && product ? product.id : doc(collection(db, 'products')).id;
+
+      if (compressedImage) {
+        // Upload image to Firebase Storage: /tenants/{tenantId}/products/{productId}.jpg
+        const storageRef = ref(storage, `tenants/${tenantId}/products/${productId}.jpg`);
+        await uploadBytes(storageRef, compressedImage, {
+          contentType: 'image/jpeg',
+        });
+        // Fetch secure download URL
+        imageUrl = await getDownloadURL(storageRef);
+      }
+
+      const payload = {
+        ...data,
+        imageUrl: imageUrl || null,
+      };
+
       if (isEditMode && product) {
-        await productService.updateProduct(tenantId, product.id, data);
+        await productService.updateProduct(tenantId, product.id, payload);
       } else {
-        await productService.createProduct(tenantId, data);
+        await productService.createProduct(tenantId, payload, productId);
       }
       onSuccess();
       onClose();
@@ -331,19 +442,94 @@ export function ProductForm({
                 </div>
               </div>
 
-              {/* Image URL */}
+              {/* Image Upload Zone */}
               <div className="space-y-1">
-                <label htmlFor="imageUrl" className="block text-sm font-semibold text-slate-700">
-                  URL Gambar Produk <span className="text-xs font-normal text-slate-400">(Opsional)</span>
+                <label className="block text-sm font-semibold text-slate-700">
+                  Gambar Produk <span className="text-xs font-normal text-slate-400">(Opsional)</span>
                 </label>
-                <input
-                  id="imageUrl"
-                  type="text"
-                  placeholder="Contoh: https://example.com/gambar.jpg"
-                  {...register('imageUrl')}
-                  disabled={isSubmitting}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5 disabled:cursor-not-allowed disabled:opacity-70"
-                />
+                <div
+                  onDragEnter={handleDrag}
+                  onDragOver={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDrop={handleDrop}
+                  onClick={onButtonClick}
+                  className={`group relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition-all duration-300 cursor-pointer overflow-hidden ${
+                    isDragActive
+                      ? 'border-slate-950 bg-slate-50 ring-4 ring-slate-950/5 scale-[1.02]'
+                      : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50/50'
+                  }`}
+                >
+                  {/* Hidden File Input */}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/*"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleFileChange(e.target.files[0]);
+                      }
+                    }}
+                    className="hidden"
+                    disabled={isSubmitting}
+                  />
+
+                  {previewUrl ? (
+                    // Preview State
+                    <div className="relative w-full flex flex-col items-center">
+                      <div className="relative aspect-square w-32 overflow-hidden rounded-xl border border-slate-200 shadow-md">
+                        <img
+                          src={previewUrl}
+                          alt="Pratinjau Produk"
+                          className="h-full w-full object-cover"
+                        />
+                        {isCompressing && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-slate-900/40 backdrop-blur-[1px]">
+                            <Loader2 className="h-6 w-6 animate-spin text-white" />
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="mt-3 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onButtonClick();
+                          }}
+                          disabled={isSubmitting}
+                          className="rounded-lg bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 border border-slate-200 hover:bg-slate-100 transition disabled:opacity-50"
+                        >
+                          Ubah Gambar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          disabled={isSubmitting}
+                          className="rounded-lg bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 border border-rose-100 hover:bg-rose-100 transition disabled:opacity-50"
+                        >
+                          Hapus Gambar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    // Empty / Prompt State
+                    <div className="flex flex-col items-center">
+                      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 text-slate-500 border border-slate-100 group-hover:scale-110 transition duration-300">
+                        {isCompressing ? (
+                          <Loader2 className="h-6 w-6 animate-spin text-slate-900" />
+                        ) : (
+                          <Upload className="h-6 w-6" />
+                        )}
+                      </div>
+                      <p className="text-sm font-semibold text-slate-800">
+                        {isCompressing ? 'Memproses gambar...' : 'Pilih atau Seret Gambar'}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Mendukung berkas gambar. Otomatis dikompresi &lt; 100KB.
+                      </p>
+                    </div>
+                  )}
+                </div>
                 {errors.imageUrl && (
                   <p className="text-xs font-medium text-rose-600">{errors.imageUrl.message}</p>
                 )}
