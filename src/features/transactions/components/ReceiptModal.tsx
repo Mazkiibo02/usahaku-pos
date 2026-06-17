@@ -88,7 +88,7 @@ export function ReceiptModal({
                 
                 {/* Lunas / PAID Watermark Stamp */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden z-10">
-                  <div className="border-4 border-dashed border-emerald-600/30 text-emerald-600/30 font-black text-3xl py-2 px-5 rounded-2xl uppercase tracking-widest rotate-15 border-dashed">
+                  <div className="border-4 border-dashed border-emerald-600/30 text-emerald-600/30 font-black text-3xl py-2 px-5 rounded-2xl uppercase tracking-widest rotate-15">
                     LUNAS / PAID
                   </div>
                 </div>

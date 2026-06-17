@@ -329,17 +329,18 @@ service cloud.firestore {
     // =========================================================
 
     match /invoices/{invoiceId} {
-      allow read: if (isOwner() && (resource == null || resource.data.tenantId == myTenantId()))
-                  || (isCashier() && (resource == null || (resource.data.tenantId == myTenantId() && resource.data.outletId == myOutletId())));
+      allow read: if isTenantMember()
+                  && isSameTenant();
 
-      allow create: if (isOwner() && isWritingToMyTenant())
-                    || (isCashier() && isWritingToMyTenant() && request.resource.data.outletId == myOutletId());
-
-      allow update: if isOwner()
-                    && (resource == null || resource.data.tenantId == myTenantId())
+      allow create: if isTenantMember()
                     && isWritingToMyTenant();
 
-      allow delete: if false;
+      allow update: if isOwner()
+                    && isSameTenant()
+                    && isWritingToMyTenant();
+
+      allow delete: if isOwner()
+                    && isSameTenant();
     }
 
 

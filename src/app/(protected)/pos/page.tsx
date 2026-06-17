@@ -1092,7 +1092,7 @@ export default function PosPage() {
   }
 
   return (
-    <div className="relative mx-auto flex h-[calc(100vh-theme(spacing.16)-3rem)] max-w-7xl flex-col gap-6 overflow-hidden lg:flex-row">
+    <div className="relative mx-auto flex h-[calc(100vh-(--spacing(16))-3rem)] max-w-7xl flex-col gap-6 overflow-hidden lg:flex-row">
       
       {/* Floating Animated Toast Banner */}
       <div className="pointer-events-none fixed right-6 top-20 z-50 flex flex-col gap-3">
@@ -1300,7 +1300,7 @@ export default function PosPage() {
       </div>
 
       {/* RIGHT COLUMN: Shopping Cart Panel - Hidden on mobile, flex on desktop/tablet landscape */}
-      <div className="hidden lg:flex w-full flex-col gap-4 border-t border-slate-200 bg-white p-4 shadow-xl lg:w-96 lg:rounded-3xl lg:border lg:border-slate-100 lg:p-6 lg:shadow-md shrink-0 h-full lg:h-[calc(100vh-theme(spacing.16)-3rem)] overflow-hidden font-sans">
+      <div className="hidden lg:flex w-full flex-col gap-4 border-t border-slate-200 bg-white p-4 shadow-xl lg:w-96 lg:rounded-3xl lg:border lg:border-slate-100 lg:p-6 lg:shadow-md shrink-0 h-full lg:h-[calc(100vh-(--spacing(16))-3rem)] overflow-hidden font-sans">
         {renderCartContent()}
       </div>
 
