@@ -25,7 +25,9 @@ import {
   X,
   Check,
   Star,
-  Play
+  Play,
+  Sparkles,
+  ChefHat
 } from 'lucide-react';
 
 // Types for interactive simulator
@@ -1483,6 +1485,294 @@ export default function LandingPageClient() {
                 Tentu saja. Dengan mendaftar sebagai Owner, Anda dapat membuat beberapa tenant/outlet dan mengundang kasir atau manajer yang berbeda untuk mengelola tiap cabang secara mandiri dari satu akun dashboard pusat Anda.
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* HPP CALCULATOR BRIDGING FEATURE SECTION */}
+      <section className="py-20 sm:py-28 bg-white border-t border-slate-200/60 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+            
+            {/* Column 1: Copywriting & Navigation CTA */}
+            <div className="lg:col-span-6 space-y-6 lg:pr-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs sm:text-sm font-bold mb-2">
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                </span>
+                Fitur Baru: Kalkulator Harga Pokok Penjualan
+              </div>
+              
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 leading-tight">
+                Hitung HPP &amp; Simulasi Harga Jual Otomatis,{' '}
+                <span className="bg-clip-text text-transparent bg-linear-to-r from-indigo-600 via-violet-600 to-indigo-850">
+                  Bebas Boncos!
+                </span>
+              </h2>
+              
+              <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-medium">
+                Gunakan Kalkulator HPP interaktif kami secara gratis. Simulasikan margin keuntungan, biaya bahan baku, hingga operasional menu kuliner Anda langsung dari landing page.
+              </p>
+              
+              <div className="pt-2">
+                <Link
+                  href="/tools/kalkulator-hpp"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-base sm:text-lg rounded-2xl shadow-xl shadow-indigo-500/20 hover:shadow-2xl hover:shadow-indigo-500/35 transform hover:-translate-y-1 active:scale-98 transition-all duration-300"
+                >
+                  Coba Kalkulator HPP Gratis →
+                </Link>
+              </div>
+
+              {/* Trust/Proof items */}
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-slate-505 text-xs sm:text-sm font-bold pt-4 border-t border-slate-100">
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4.5 h-4.5 text-indigo-600 shrink-0" />
+                  Simulasi Margin Real-time
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4.5 h-4.5 text-indigo-600 shrink-0" />
+                  Rekomendasi Harga Otomatis
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4.5 h-4.5 text-indigo-600 shrink-0" />
+                  Tanpa Pendaftaran &amp; Gratis
+                </span>
+              </div>
+            </div>
+            
+            {/* Column 2: The Visual Simulation Mockup */}
+            <div className="lg:col-span-6 flex justify-center">
+              <div className="w-full max-w-lg bg-slate-50 border border-slate-200/80 rounded-3xl p-5 sm:p-6 shadow-xl hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-500 relative overflow-hidden group">
+                {/* Decorative glow in the card */}
+                <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-indigo-500/5 blur-3xl pointer-events-none" />
+                
+                {/* Interactive Simulator Lookalike Container */}
+                <div className="space-y-5">
+                  
+                  {/* Mock Ingredients Container */}
+                  <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
+                    <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-650">
+                          <ChefHat className="w-3.5 h-3.5" />
+                        </div>
+                        <span className="text-xs font-black text-slate-800 tracking-wide uppercase">
+                          Bahan Baku Resep
+                        </span>
+                      </div>
+                      <span className="text-[10px] bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded">
+                        Nasi Goreng Spesial
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="hidden md:grid grid-cols-12 gap-2.5 text-[9px] font-black tracking-wider text-slate-400 uppercase px-2 mb-1">
+                        <div className="col-span-4">Nama Bahan</div>
+                        <div className="col-span-3">Harga Grosir</div>
+                        <div className="col-span-2">Takaran Beli</div>
+                        <div className="col-span-2">Dipakai</div>
+                        <div className="col-span-1 text-right">Biaya</div>
+                      </div>
+
+                      {/* Mock Ingredient Row 1 */}
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center py-2 px-2 bg-slate-50/50 rounded-xl">
+                        <div className="col-span-4">
+                          <div className="w-full bg-white border border-slate-205 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 truncate">
+                            Nasi Putih
+                          </div>
+                        </div>
+                        <div className="col-span-3">
+                          <div className="relative">
+                            <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-slate-400 text-xs font-bold">Rp</span>
+                            <div className="w-full bg-white border border-slate-205 rounded-xl pl-8 pr-2.5 py-1.5 text-xs font-semibold text-slate-700">
+                              12.000
+                            </div>
+                          </div>
+                        </div>
+                        <div className="col-span-2">
+                          <div className="flex gap-1">
+                            <div className="w-2/3 bg-white border border-slate-205 rounded-xl px-1.5 py-1.5 text-xs font-semibold text-slate-700 text-center">
+                              1000
+                            </div>
+                            <div className="w-1/3 bg-white border border-slate-205 rounded-xl px-0.5 py-1.5 text-[10px] font-bold text-slate-500 text-center">
+                              g
+                            </div>
+                          </div>
+                        </div>
+                        <div className="col-span-2">
+                          <div className="relative">
+                            <div className="w-full bg-white border border-slate-205 rounded-xl pr-7 pl-2 py-1.5 text-xs font-semibold text-slate-700 text-center">
+                              250
+                            </div>
+                            <span className="absolute inset-y-0 right-0 pr-2 flex items-center text-slate-400 text-[10px] font-bold">g</span>
+                          </div>
+                        </div>
+                        <div className="col-span-1 text-right font-extrabold text-slate-800 text-xs">
+                          Rp 3.000
+                        </div>
+                      </div>
+
+                      {/* Mock Ingredient Row 2 */}
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center py-2 px-2 bg-slate-50/50 rounded-xl">
+                        <div className="col-span-4">
+                          <div className="w-full bg-white border border-slate-205 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 truncate">
+                            Daging Ayam Suwir
+                          </div>
+                        </div>
+                        <div className="col-span-3">
+                          <div className="relative">
+                            <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-slate-400 text-xs font-bold">Rp</span>
+                            <div className="w-full bg-white border border-slate-205 rounded-xl pl-8 pr-2.5 py-1.5 text-xs font-semibold text-slate-700">
+                              42.000
+                            </div>
+                          </div>
+                        </div>
+                        <div className="col-span-2">
+                          <div className="flex gap-1">
+                            <div className="w-2/3 bg-white border border-slate-205 rounded-xl px-1.5 py-1.5 text-xs font-semibold text-slate-700 text-center">
+                              1000
+                            </div>
+                            <div className="w-1/3 bg-white border border-slate-205 rounded-xl px-0.5 py-1.5 text-[10px] font-bold text-slate-500 text-center">
+                              g
+                            </div>
+                          </div>
+                        </div>
+                        <div className="col-span-2">
+                          <div className="relative">
+                            <div className="w-full bg-white border border-slate-205 rounded-xl pr-7 pl-2 py-1.5 text-xs font-semibold text-slate-700 text-center">
+                              100
+                            </div>
+                            <span className="absolute inset-y-0 right-0 pr-2 flex items-center text-slate-400 text-[10px] font-bold">g</span>
+                          </div>
+                        </div>
+                        <div className="col-span-1 text-right font-extrabold text-slate-800 text-xs">
+                          Rp 4.200
+                        </div>
+                      </div>
+
+                      {/* Mock Ingredient Row 3 */}
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center py-2 px-2 bg-slate-50/50 rounded-xl">
+                        <div className="col-span-4">
+                          <div className="w-full bg-white border border-slate-205 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 truncate">
+                            Telur Ayam
+                          </div>
+                        </div>
+                        <div className="col-span-3">
+                          <div className="relative">
+                            <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-slate-400 text-xs font-bold">Rp</span>
+                            <div className="w-full bg-white border border-slate-205 rounded-xl pl-8 pr-2.5 py-1.5 text-xs font-semibold text-slate-700">
+                              17.600
+                            </div>
+                          </div>
+                        </div>
+                        <div className="col-span-2">
+                          <div className="flex gap-1">
+                            <div className="w-2/3 bg-white border border-slate-205 rounded-xl px-1.5 py-1.5 text-xs font-semibold text-slate-700 text-center">
+                              20
+                            </div>
+                            <div className="w-1/3 bg-white border border-slate-205 rounded-xl px-0.5 py-1.5 text-[10px] font-bold text-slate-500 text-center">
+                              butir
+                            </div>
+                          </div>
+                        </div>
+                        <div className="col-span-2">
+                          <div className="relative">
+                            <div className="w-full bg-white border border-slate-205 rounded-xl pr-7 pl-2 py-1.5 text-xs font-semibold text-slate-700 text-center">
+                              1
+                            </div>
+                            <span className="absolute inset-y-0 right-0 pr-2 flex items-center text-slate-400 text-[10px] font-bold">butir</span>
+                          </div>
+                        </div>
+                        <div className="col-span-1 text-right font-extrabold text-slate-800 text-xs">
+                          Rp 880
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mock Results Panel */}
+                  <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-xl relative overflow-hidden border border-slate-800">
+                    <div className="absolute top-0 right-0 w-36 h-36 rounded-full bg-indigo-500/10 blur-[40px] pointer-events-none" />
+                    
+                    <div className="relative z-10 space-y-4">
+                      <div className="flex justify-between items-center border-b border-slate-850 pb-3">
+                        <h4 className="font-extrabold text-[10px] text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-indigo-400" /> Hasil Rekomendasi
+                        </h4>
+                      </div>
+
+                      {/* Highlight 1: Total HPP */}
+                      <div className="space-y-0.5">
+                        <span className="text-[10px] text-slate-400 font-bold">Total Cost / HPP per Serving</span>
+                        <div className="text-xl font-black text-indigo-350 tracking-tight">Rp 9.620</div>
+                        <div className="text-[9px] text-slate-500 font-bold space-x-1.5">
+                          <span>Bahan Baku: Rp 8.080</span>
+                          <span>•</span>
+                          <span>Overhead: Rp 1.540</span>
+                        </div>
+                      </div>
+
+                      {/* Highlight 2: Recommended Selling Price */}
+                      <div className="space-y-0.5 pt-3 border-t border-slate-850 flex justify-between items-end">
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold">Rekomendasi Harga Jual</span>
+                          <div className="text-2xl font-black text-white tracking-tight">Rp 19.240</div>
+                        </div>
+                        <div className="bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-lg text-xs font-black border border-emerald-500/20 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 block animate-pulse"></span>
+                          +50% Margin
+                        </div>
+                      </div>
+
+                      {/* Price Structure Bar */}
+                      <div className="space-y-2 pt-2 border-t border-slate-850">
+                        <span className="text-[9px] text-slate-400 font-black uppercase tracking-wider block">Struktur Pembentuk Harga</span>
+                        
+                        <div className="h-4.5 w-full bg-slate-800 rounded-lg overflow-hidden flex text-[8px] font-black">
+                          <div
+                            style={{ width: '42%' }}
+                            className="bg-purple-600 flex items-center justify-center min-w-[20px]"
+                            title="Bahan Baku: 42%"
+                          >
+                            42%
+                          </div>
+                          <div
+                            style={{ width: '8%' }}
+                            className="bg-indigo-500 flex items-center justify-center min-w-[15px]"
+                            title="Overhead: 8%"
+                          >
+                            8%
+                          </div>
+                          <div
+                            style={{ width: '50%' }}
+                            className="bg-emerald-500 flex items-center justify-center min-w-[20px]"
+                            title="Margin: 50%"
+                          >
+                            50%
+                          </div>
+                        </div>
+
+                        {/* Chart Legend */}
+                        <div className="flex justify-between text-[9px] font-bold text-slate-400">
+                          <span className="flex items-center gap-1">
+                            <span className="w-2 h-2 rounded bg-purple-600 inline-block"></span> Bahan Baku (42%)
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="w-2 h-2 rounded bg-indigo-500 inline-block"></span> Overhead (8%)
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="w-2 h-2 rounded bg-emerald-500 inline-block"></span> Margin (50%)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+            
           </div>
         </div>
       </section>
