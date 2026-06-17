@@ -466,24 +466,26 @@ export default function PosPage() {
       };
       setCompletedTx(tempTx);
 
-      // Try physical hardware printing inside try-catch so it won't crash
-      if (connectedDevice || connectedUsbPort || connectedUsbDevice) {
-        try {
-          await printReceipt(
+      // Show digital receipt modal first to guarantee it opens immediately
+      setIsReceiptOpen(true);
+
+      // Completely isolate the hardware printer invocation from the transaction flow
+      try {
+        if (connectedDevice || connectedUsbPort || connectedUsbDevice) {
+          printReceipt(
             tempTx,
             storeName,
             activeOutletName,
             displayName,
             '58mm'
-          );
-        } catch (printErr) {
-          console.error("Gagal mencetak secara fisik:", printErr);
-          showToast("Printer terputus atau gagal mencetak secara fisik.", "warning");
+          ).catch((printErr) => {
+            console.error("Physical print bypassed:", printErr);
+            showToast("Printer terputus atau gagal mencetak secara fisik.", "warning");
+          });
         }
+      } catch (printErr) {
+        console.error("Physical print bypassed:", printErr);
       }
-
-      // Show digital receipt modal
-      setIsReceiptOpen(true);
     } catch (err: any) {
       showToast(err.message || 'Transaksi pembayaran gagal.', 'error');
     } finally {
