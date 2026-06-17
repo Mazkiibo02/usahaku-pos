@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { auth } from '@/src/lib/firebase/auth';
 import { functions } from '@/src/lib/firebase/functions';
 import { useAuthStore } from '@/src/stores/authStore';
+import { useAuth } from '@/src/features/auth/hooks/use-auth';
 
 const onboardingSchema = z.object({
   tenantName: z
@@ -44,6 +45,7 @@ function getOnboardingErrorMessage(error: unknown) {
 
 export function OnboardingForm() {
   const router = useRouter();
+  const { refresh } = useAuth();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     register,
@@ -67,17 +69,8 @@ export function OnboardingForm() {
       );
       await onboardTenant({ tenantName: data.tenantName });
 
-      // Force token refresh
-      const currentUser = auth.currentUser;
-      if (currentUser) {
-        await currentUser.getIdToken(true);
-        const idTokenResult = await currentUser.getIdTokenResult();
-        const tenantId = (idTokenResult.claims.tenantId as string) ?? null;
-        const role = (idTokenResult.claims.role as string) ?? null;
-
-        // Update Zustand store
-        useAuthStore.getState().setAuth(currentUser, role, tenantId);
-      }
+      // Force token refresh and sync auth states
+      await refresh();
 
       router.push('/dashboard');
     } catch (error) {

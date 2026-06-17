@@ -54,8 +54,8 @@ export async function getCurrentIdTokenResult(forceRefresh = false): Promise<IdT
   return getIdTokenResult(currentUser, forceRefresh);
 }
 
-export async function mapFirebaseUserToAppUser(firebaseUser: User): Promise<AppUser> {
-  const tokenResult = await getIdTokenResult(firebaseUser);
+export async function mapFirebaseUserToAppUser(firebaseUser: User, forceRefresh = false): Promise<AppUser> {
+  const tokenResult = await getIdTokenResult(firebaseUser, forceRefresh);
   const claims = mapClaimsToAuthClaims(tokenResult.claims);
 
   return {

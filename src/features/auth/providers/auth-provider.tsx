@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { onAuthStateChanged, type User } from 'firebase/auth';
+import { onIdTokenChanged, type User } from 'firebase/auth';
 
 import { auth } from '@/src/lib/firebase';
 import { useAuthStore } from '@/src/stores/authStore';
@@ -33,6 +33,7 @@ type AuthContextValue = {
   signInWithGoogle: typeof signInWithGoogle;
   signInWithEmail: typeof signInWithEmail;
   signOut: typeof signOutUser;
+  refresh: () => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -47,7 +48,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (nextFirebaseUser) => {
+    const unsubscribe = onIdTokenChanged(auth, async (nextFirebaseUser) => {
       setFirebaseUser(nextFirebaseUser);
       
       const { setAuth, setLoading: setStoreLoading } = useAuthStore.getState();
@@ -78,6 +79,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return () => unsubscribe();
   }, []);
 
+  const refresh = useCallback(async () => {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      await currentUser.getIdToken(true);
+      const nextUser = await mapFirebaseUserToAppUser(currentUser, true);
+      setUser(nextUser);
+      const { setAuth } = useAuthStore.getState();
+      setAuth(currentUser, nextUser.role, nextUser.tenantId, nextUser.outletId);
+    }
+  }, []);
+
   const signOut = useCallback(async () => {
     await signOutUser();
   }, []);
@@ -98,8 +110,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       signInWithGoogle,
       signInWithEmail,
       signOut,
+      refresh,
     };
-  }, [firebaseUser, loading, signOut, user]);
+  }, [firebaseUser, loading, signOut, user, refresh]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

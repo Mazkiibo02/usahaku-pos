@@ -11,8 +11,8 @@ import { useRouter } from 'next/navigation';
 import type { User } from 'firebase/auth';
 
 import { functions } from '@/src/lib/firebase';
-import { useAuthStore } from '@/src/stores/authStore';
 import { signOutUser } from '@/src/features/auth/services/auth.service';
+import { useAuth } from '@/src/features/auth/hooks/use-auth';
 
 const onboardingSchema = z.object({
   tenantName: z
@@ -31,6 +31,7 @@ interface OnboardingModalProps {
 
 export function OnboardingModal({ isOpen, firebaseUser, onCancel }: OnboardingModalProps) {
   const router = useRouter();
+  const { refresh } = useAuth();
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
@@ -65,16 +66,10 @@ export function OnboardingModal({ isOpen, firebaseUser, onCancel }: OnboardingMo
         name: firebaseUser.displayName || undefined
       });
 
-      // 2. Force token refresh to apply Custom Claims
-      await firebaseUser.getIdToken(true);
-      const idTokenResult = await firebaseUser.getIdTokenResult();
-      const tenantId = (idTokenResult.claims.tenantId as string) ?? null;
-      const role = (idTokenResult.claims.role as string) ?? null;
-
-      // 3. Update Zustand Store
-      useAuthStore.getState().setAuth(firebaseUser, role, tenantId, null);
-
-      // 4. Redirect to dashboard
+      // 2. Force token refresh and sync auth states
+      await refresh();
+      
+      // 3. Redirect to dashboard
       router.replace('/dashboard');
     } catch (error: any) {
       console.error('[Onboarding Error]', error);

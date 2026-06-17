@@ -15,6 +15,7 @@ import { registerWithEmail } from '@/src/features/auth/services/auth.service';
 import { auth, db, functions } from '@/src/lib/firebase';
 import { useAuthStore } from '@/src/stores/authStore';
 import { OnboardingModal } from './onboarding-modal';
+import { useAuth } from '@/src/features/auth/hooks/use-auth';
 
 const registerSchema = z.object({
   tenantName: z
@@ -57,6 +58,7 @@ function getRegisterErrorMessage(error: unknown) {
 
 export function RegisterForm() {
   const router = useRouter();
+  const { refresh } = useAuth();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
@@ -91,15 +93,9 @@ export function RegisterForm() {
 
       if (userDocSnap.exists()) {
         // Case 1: User Exists
-        // Force refreshing the token ensures we get the latest custom claims from Firebase
-        await user.getIdToken(true);
-        const idTokenResult = await user.getIdTokenResult();
-        const tenantId = (idTokenResult.claims.tenantId as string) ?? null;
-        const role = (idTokenResult.claims.role as string) ?? null;
-        const outletId = (idTokenResult.claims.outletId as string) ?? null;
-
-        // Coordinate the successful auth result with the Zustand useAuthStore
-        useAuthStore.getState().setAuth(user, role, tenantId, outletId);
+        // Force refreshing the token ensures we get the latest custom claims from Firebase and updates contexts
+        await refresh();
+        const role = useAuthStore.getState().role;
 
         // Redirection based on role
         if (role === 'cashier') {
@@ -144,16 +140,10 @@ export function RegisterForm() {
       );
       await onboardTenant({ tenantName: values.tenantName });
 
-      // 3. Force token refresh to fetch updated claims (tenantId, role)
-      await currentUser.getIdToken(true);
-      const idTokenResult = await currentUser.getIdTokenResult();
-      const tenantId = (idTokenResult.claims.tenantId as string) ?? null;
-      const role = (idTokenResult.claims.role as string) ?? null;
+      // 3. Force token refresh and sync auth states
+      await refresh();
 
-      // 4. Update state in Zustand auth store
-      useAuthStore.getState().setAuth(currentUser, role, tenantId);
-
-      // 5. Redirect to Dashboard
+      // 4. Redirect to Dashboard
       router.replace('/dashboard');
     } catch (error) {
       console.error('[register] Pendaftaran gagal:', error);
