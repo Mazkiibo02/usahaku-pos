@@ -1,5 +1,6 @@
 import { collection, doc, writeBatch, serverTimestamp, increment } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/firestore';
+import { auth } from '@/src/lib/firebase/auth';
 
 export interface TransactionItemPayload {
   productId: string;
@@ -45,6 +46,12 @@ export const posService = {
     }
     if (payload.items.length === 0) {
       throw new Error('Transaction must contain at least one item');
+    }
+
+    // Force a fresh check/refresh of the current user's ID token right before batch execution.
+    // This maintains token freshness and ensures that claims like myOutletId() do not resolve to null.
+    if (auth.currentUser) {
+      await auth.currentUser.getIdToken();
     }
 
     const batch = writeBatch(db);

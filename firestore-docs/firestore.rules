@@ -47,9 +47,11 @@ service cloud.firestore {
       return resource.data.tenantId == myTenantId();
     }
 
-    // Cek apakah data yang akan ditulis milik tenant yang sama
+    // Cek apakah data yang akan ditulis/dibaca milik tenant yang sama
     function isWritingToMyTenant() {
-      return request.resource.data.tenantId == myTenantId();
+      return request.resource != null
+        ? request.resource.data.tenantId == myTenantId()
+        : (resource != null && resource.data.tenantId == myTenantId());
     }
 
     // Pastikan tenant aktif (tidak expired/suspended) — baca dari tenants doc
@@ -195,36 +197,16 @@ service cloud.firestore {
     // =========================================================
 
     match /products/{productId} {
-      allow read: if isTenantMember()
-                  && isSameTenant();
-
-      allow create: if isOwner()
-                    && isWritingToMyTenant()
-                    // Validasi: harga dan stok harus angka dan tidak boleh negatif
-                    && request.resource.data.price is number
-                    && request.resource.data.price >= 0
-                    && request.resource.data.stock is number
-                    && request.resource.data.stock >= 0;
-
-      allow update: if isSameTenant()
-                    && request.resource.data.tenantId == resource.data.tenantId
-                    && (
-                      // Owner can update everything
-                      (isOwner()
-                       && request.resource.data.productId == resource.data.productId
-                       && request.resource.data.price is number
-                       && request.resource.data.price >= 0
-                       && request.resource.data.stock is number
-                       && request.resource.data.stock >= 0)
-                      ||
-                      // Cashier can only update the 'stock' and 'updatedAt' fields
-                      (isCashier()
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock', 'updatedAt'])
-                       && request.resource.data.stock is number)
-                    );
-
-      allow delete: if isOwner()
-                    && isSameTenant();
+      allow read: if isTenantMember() && isWritingToMyTenant();
+      allow create, delete: if isOwner() && isWritingToMyTenant();
+      allow update: if isTenantMember() && isWritingToMyTenant() && (
+        isOwner() || 
+        (
+          isCashier() && 
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock', 'updatedAt']) &&
+          request.resource.data.stock < resource.data.stock
+        )
+      );
     }
 
 
@@ -277,26 +259,11 @@ service cloud.firestore {
     // =========================================================
 
     match /stockMutations/{mutationId} {
-      allow read: if (isOwner() && (resource == null || resource.data.tenantId == myTenantId()))
-                  || (isCashier() && (resource == null || (resource.data.tenantId == myTenantId() && resource.data.outletId == myOutletId())));
-
-      allow create: if isTenantMember()
-                    && isWritingToMyTenant()
-                    // Kasir hanya bisa mencatat mutasi di outlet yang ditugaskan (claims validated)
-                    && (
-                      isOwner()
-                      ||
-                      (isCashier() && request.resource.data.tenantId == myTenantId() && request.resource.data.outletId == myOutletId())
-                    )
-                    // Validasi field wajib ada
-                    && request.resource.data.keys().hasAll([
-                      'tenantId', 'outletId', 'productId', 'productName',
-                      'type', 'quantityChanged', 'previousStock', 'newStock',
-                      'referenceId', 'notes', 'createdBy', 'createdAt'
-                    ])
-                    && request.resource.data.type == 'SALE'
-                    && request.resource.data.createdBy == request.auth.uid;
-
+      allow read: if (isOwner() && resource.data.tenantId == myTenantId()) || (isCashier() && resource.data.tenantId == myTenantId() && resource.data.outletId == myOutletId());
+      allow create: if isTenantMember() && isWritingToMyTenant() && (
+        isOwner() ||
+        (isCashier() && request.resource.data.tenantId == myTenantId() && request.resource.data.outletId == myOutletId())
+      );
       allow update, delete: if false;
     }
 
