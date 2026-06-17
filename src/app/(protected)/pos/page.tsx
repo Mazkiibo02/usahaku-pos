@@ -110,7 +110,8 @@ export default function PosPage() {
 
   // Checkout custom fields state
   const [customerName, setCustomerName] = useState<string>('');
-  const [discount, setDiscount] = useState<number>(0);
+  const [discountType, setDiscountType] = useState<'fixed' | 'percentage'>('fixed');
+  const [discountValue, setDiscountValue] = useState<number>(0);
   const [taxType, setTaxType] = useState<string>('NONE'); // 'NONE' or 'PPN11'
   const [paymentMethod, setPaymentMethod] = useState<string>('Cash'); // 'Cash' or 'QRIS'
   const [shippingCost, setShippingCost] = useState<number>(0);
@@ -295,8 +296,20 @@ export default function PosPage() {
   }, [cart]);
 
   const discountVal = useMemo(() => {
-    return Math.min(cartSubtotal, Math.max(0, discount));
-  }, [cartSubtotal, discount]);
+    if (discountType === 'percentage') {
+      const percentage = Math.min(100, Math.max(0, discountValue));
+      return Math.round((cartSubtotal * percentage) / 100);
+    } else {
+      return Math.min(cartSubtotal, Math.max(0, discountValue));
+    }
+  }, [cartSubtotal, discountType, discountValue]);
+
+  // Safely clamp discountValue to current subtotal/bounds if items are updated/removed
+  useEffect(() => {
+    if (discountType === 'fixed' && discountValue > cartSubtotal) {
+      setDiscountValue(cartSubtotal);
+    }
+  }, [cartSubtotal, discountType, discountValue]);
 
   const taxRate = useMemo(() => {
     return taxType === 'PPN11' ? 0.11 : 0;
@@ -405,7 +418,8 @@ export default function PosPage() {
       // Reset cart, inputs, and refresh product stocks
       setCart([]);
       setCustomerName('');
-      setDiscount(0);
+      setDiscountType('fixed');
+      setDiscountValue(0);
       setTaxType('NONE');
       setPaymentMethod('Cash');
       setShippingCost(0);
@@ -686,18 +700,72 @@ export default function PosPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-xs font-extrabold text-slate-700">Diskon (Rp)</label>
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="Rp0"
-                  value={discount === 0 ? '' : discount}
-                  onChange={(e) => {
-                    const val = parseFloat(e.target.value);
-                    setDiscount(isNaN(val) ? 0 : val);
-                  }}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs text-slate-900 placeholder-slate-400 outline-none transition focus:border-slate-400 focus:bg-white font-semibold"
-                />
+                <label className="text-xs font-extrabold text-slate-700">Diskon</label>
+                <div className="relative flex items-center rounded-lg border border-slate-200 bg-slate-50/50 outline-none transition focus-within:border-slate-400 focus-within:bg-white overflow-hidden">
+                  {discountType === 'fixed' && (
+                    <span className="pl-2.5 text-xs font-extrabold text-slate-450 select-none">Rp</span>
+                  )}
+                  <input
+                    type="number"
+                    min="0"
+                    max={discountType === 'percentage' ? 100 : cartSubtotal}
+                    placeholder={discountType === 'fixed' ? '0' : '0%'}
+                    value={discountValue === 0 ? '' : discountValue}
+                    onChange={(e) => {
+                      const rawVal = e.target.value;
+                      if (rawVal === '') {
+                        setDiscountValue(0);
+                        return;
+                      }
+                      let val = parseFloat(rawVal);
+                      if (isNaN(val)) {
+                        setDiscountValue(0);
+                        return;
+                      }
+                      if (discountType === 'percentage') {
+                        if (val > 100) val = 100;
+                        if (val < 0) val = 0;
+                      } else {
+                        if (val > cartSubtotal) val = cartSubtotal;
+                        if (val < 0) val = 0;
+                      }
+                      setDiscountValue(val);
+                    }}
+                    className={`w-full bg-transparent py-2 text-xs text-slate-900 outline-none font-semibold ${
+                      discountType === 'fixed' ? 'pl-1 pr-2' : 'px-2.5'
+                    }`}
+                  />
+                  <div className="flex items-center border-l border-slate-200 shrink-0 h-8 p-1 gap-0.5 bg-slate-100/60 font-sans">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDiscountType('fixed');
+                        setDiscountValue((prev) => Math.min(cartSubtotal, prev));
+                      }}
+                      className={`rounded px-1.5 py-0.5 text-[10px] font-extrabold transition-all cursor-pointer ${
+                        discountType === 'fixed'
+                          ? 'bg-slate-950 text-white shadow-sm'
+                          : 'text-slate-500 hover:bg-slate-200/60'
+                      }`}
+                    >
+                      Rp
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDiscountType('percentage');
+                        setDiscountValue((prev) => Math.min(100, prev));
+                      }}
+                      className={`rounded px-1.5 py-0.5 text-[10px] font-extrabold transition-all cursor-pointer ${
+                        discountType === 'percentage'
+                          ? 'bg-slate-950 text-white shadow-sm'
+                          : 'text-slate-500 hover:bg-slate-200/60'
+                      }`}
+                    >
+                      %
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-1">
