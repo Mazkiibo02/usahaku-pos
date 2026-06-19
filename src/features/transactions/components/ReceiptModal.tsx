@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Printer, Check, Loader2 } from 'lucide-react';
 import type { Transaction } from '../types';
@@ -23,8 +23,9 @@ export function ReceiptModal({
   onPrintManual,
 }: ReceiptModalProps) {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [isSharing, setIsSharing] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
+  const receiptFileRef = useRef<File | null>(null);
 
   useEffect(() => {
     async function fetchTenant() {
@@ -46,51 +47,96 @@ export function ReceiptModal({
     }
   }, [isOpen, transaction]);
 
-  const shareReceiptAsWhatsApp = async () => {
+  // Pre-rasterize receipt image in background on mount/logoUrl change
+  useEffect(() => {
+    let active = true;
+
+    async function generateImage() {
+      if (!isOpen || !transaction) return;
+      
+      // Wait for a short moment to ensure DOM is fully rendered and styled, and images are loaded
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      
+      if (!active) return;
+      
+      const element = document.getElementById('success-receipt-container');
+      if (!element) return;
+
+      setIsGenerating(true);
+      try {
+        const blob = await toBlob(element, {
+          cacheBust: true,
+          backgroundColor: '#ffffff',
+          style: {
+            margin: '0',
+            boxShadow: 'none',
+            border: 'none',
+          },
+        });
+
+        if (!blob) {
+          throw new Error('Gagal menghasilkan gambar struk.');
+        }
+
+        if (!active) return;
+
+        const file = new File([blob], `struk-${transaction.id.slice(-8).toUpperCase()}.png`, {
+          type: 'image/png',
+        });
+
+        receiptFileRef.current = file;
+        setShareError(null);
+      } catch (err) {
+        console.error('Gagal pre-render gambar struk:', err);
+      } finally {
+        if (active) {
+          setIsGenerating(false);
+        }
+      }
+    }
+
+    if (isOpen && transaction) {
+      generateImage();
+    } else {
+      receiptFileRef.current = null;
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [isOpen, transaction, logoUrl]);
+
+  const shareReceiptAsWhatsApp = () => {
     if (!transaction) return;
-    const element = document.getElementById('success-receipt-container');
-    if (!element) {
-      setShareError('Elemen struk tidak ditemukan.');
+    
+    if (!receiptFileRef.current) {
+      setShareError('Struk sedang dipersiapkan, silakan coba lagi dalam beberapa saat.');
       return;
     }
 
-    setIsSharing(true);
     setShareError(null);
 
     try {
-      // Convert HTML element to PNG blob
-      const blob = await toBlob(element, {
-        cacheBust: true,
-        backgroundColor: '#ffffff',
-        style: {
-          margin: '0',
-          boxShadow: 'none',
-          border: 'none',
-        },
-      });
-
-      if (!blob) {
-        throw new Error('Gagal menghasilkan gambar struk.');
-      }
-
-      // Create file from blob
-      const file = new File([blob], `struk-${transaction.id.slice(-8).toUpperCase()}.png`, {
-        type: 'image/png',
-      });
+      const file = receiptFileRef.current;
 
       // Check for Web Share API support
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
+        navigator.share({
           files: [file],
           title: 'Struk Belanja',
           text: `Terima kasih telah berbelanja di ${storeName}!`,
+        }).catch((err) => {
+          console.error('navigator.share failed:', err);
+          if (err instanceof Error && err.name !== 'AbortError') {
+            setShareError(`Gagal membagikan struk: ${err.message}`);
+          }
         });
       } else {
         // Fallback for browsers/platforms not supporting file sharing (e.g. desktop Chrome)
-        const url = URL.createObjectURL(blob);
+        const url = URL.createObjectURL(file);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `struk-${transaction.id.slice(-8).toUpperCase()}.png`;
+        a.download = file.name;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -101,8 +147,6 @@ export function ReceiptModal({
       setShareError(
         err instanceof Error ? err.message : 'Terjadi kesalahan saat memproses gambar struk.'
       );
-    } finally {
-      setIsSharing(false);
     }
   };
 
@@ -317,13 +361,13 @@ export function ReceiptModal({
               <button
                 type="button"
                 onClick={shareReceiptAsWhatsApp}
-                disabled={isSharing}
+                disabled={isGenerating}
                 className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 font-bold text-white text-xs py-3.5 transition active:scale-[0.98] disabled:opacity-60 cursor-pointer shadow-md shadow-emerald-950/10"
               >
-                {isSharing ? (
+                {isGenerating ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin text-white" />
-                    Sedang Memproses...
+                    Sedang Mempersiapkan Struk...
                   </>
                 ) : (
                   <>
