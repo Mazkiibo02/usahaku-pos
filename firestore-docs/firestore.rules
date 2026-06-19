@@ -49,9 +49,7 @@ service cloud.firestore {
 
     // Cek apakah data yang akan ditulis/dibaca milik tenant yang sama
     function isWritingToMyTenant() {
-      return request.resource != null
-        ? request.resource.data.tenantId == myTenantId()
-        : (resource != null && resource.data.tenantId == myTenantId());
+      return request.resource.data.tenantId == myTenantId();
     }
 
     // Pastikan tenant aktif (tidak expired/suspended) — baca dari tenants doc
@@ -197,7 +195,7 @@ service cloud.firestore {
     // =========================================================
 
     match /products/{productId} {
-      allow read: if isTenantMember() && isWritingToMyTenant();
+      allow read: if isTenantMember() && isSameTenant();
       allow create, delete: if isOwner() && isWritingToMyTenant();
       allow update: if isTenantMember() && isWritingToMyTenant() && (
         isOwner() || 

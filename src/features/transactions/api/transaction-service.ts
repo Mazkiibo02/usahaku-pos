@@ -32,7 +32,7 @@ export const transactionService = {
       throw new Error('Tenant ID is required');
     }
 
-    const transactionsRef = collection(db, 'transactions');
+    const transactionsRef = collection(db, 'invoices');
     const queryConstraints: QueryConstraint[] = [where('tenantId', '==', tenantId)];
 
     if (outletId && outletId.trim() !== '') {
@@ -77,7 +77,7 @@ export const transactionService = {
     const startTimestamp = new Date(startDateStr + 'T00:00:00');
     const endTimestamp = new Date(endDateStr + 'T23:59:59.999');
 
-    const transactionsRef = collection(db, 'transactions');
+    const transactionsRef = collection(db, 'invoices');
     let q;
 
     if (outletId && outletId.trim() !== '') {

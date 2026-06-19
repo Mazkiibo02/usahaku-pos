@@ -53,7 +53,7 @@ const functions = getFunctions(app, 'us-central1');
 const storage = getStorage(app);
 
 // ONLY connect to emulator if running locally
-if (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
+if (process.env.NEXT_PUBLIC_USE_BASE_EMULATOR === 'true' || process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
   // Prevent double-connection errors in Next.js fast refresh
   const globalWithEmulators = globalThis as typeof globalThis & { _emulatorsStarted?: boolean };
 

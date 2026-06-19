@@ -1,8 +1,11 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Printer, Check, CreditCard, User, Clock, FileText, MapPin } from 'lucide-react';
+import { X, Printer, Check, Loader2 } from 'lucide-react';
 import type { Transaction } from '../types';
+import { transactionService } from '../api/transaction-service';
+import { toBlob } from 'html-to-image';
 
 type ReceiptModalProps = {
   isOpen: boolean;
@@ -19,6 +22,90 @@ export function ReceiptModal({
   storeName,
   onPrintManual,
 }: ReceiptModalProps) {
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchTenant() {
+      if (!transaction?.tenantId) return;
+      try {
+        const tenant = await transactionService.getTenantDetails(transaction.tenantId);
+        if (tenant.logoUrl) {
+          setLogoUrl(tenant.logoUrl);
+        } else {
+          setLogoUrl(null);
+        }
+      } catch (err) {
+        console.error('Gagal mengambil logo tenant:', err);
+      }
+    }
+
+    if (isOpen && transaction) {
+      fetchTenant();
+    }
+  }, [isOpen, transaction]);
+
+  const shareReceiptAsWhatsApp = async () => {
+    if (!transaction) return;
+    const element = document.getElementById('success-receipt-container');
+    if (!element) {
+      setShareError('Elemen struk tidak ditemukan.');
+      return;
+    }
+
+    setIsSharing(true);
+    setShareError(null);
+
+    try {
+      // Convert HTML element to PNG blob
+      const blob = await toBlob(element, {
+        cacheBust: true,
+        backgroundColor: '#ffffff',
+        style: {
+          margin: '0',
+          boxShadow: 'none',
+          border: 'none',
+        },
+      });
+
+      if (!blob) {
+        throw new Error('Gagal menghasilkan gambar struk.');
+      }
+
+      // Create file from blob
+      const file = new File([blob], `struk-${transaction.id.slice(-8).toUpperCase()}.png`, {
+        type: 'image/png',
+      });
+
+      // Check for Web Share API support
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Struk Belanja',
+          text: `Terima kasih telah berbelanja di ${storeName}!`,
+        });
+      } else {
+        // Fallback for browsers/platforms not supporting file sharing (e.g. desktop Chrome)
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `struk-${transaction.id.slice(-8).toUpperCase()}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      console.error('Gagal memproses bagikan gambar:', err);
+      setShareError(
+        err instanceof Error ? err.message : 'Terjadi kesalahan saat memproses gambar struk.'
+      );
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   if (!transaction) return null;
 
   // IDR Currency Formatter
@@ -84,51 +171,53 @@ export function ReceiptModal({
             {/* Receipt Scroller Frame */}
             <div className="flex-1 overflow-y-auto py-4 px-1 flex justify-center items-start">
               {/* DIGITAL THERMAL SLIP CONTAINER */}
-              <div className="relative w-full bg-white px-5 py-6 shadow-md rounded-2xl border border-slate-200 text-slate-800 font-mono text-xs break-all overflow-hidden">
+              <div 
+                id="success-receipt-container"
+                className="relative w-full bg-white px-5 py-6 shadow-md rounded-2xl border border-slate-200 text-slate-800 font-mono text-xs break-all overflow-hidden"
+              >
                 
-                {/* Lunas / PAID Watermark Stamp */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden z-10">
-                  <div className="border-4 border-dashed border-emerald-600/30 text-emerald-600/30 font-black text-3xl py-2 px-5 rounded-2xl uppercase tracking-widest rotate-15">
-                    LUNAS / PAID
-                  </div>
-                </div>
-
                 {/* Slip Header */}
                 <div className="text-center space-y-1 mb-4">
+                  {logoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={logoUrl}
+                      alt="Logo Toko"
+                      crossOrigin="anonymous"
+                      className="grayscale contrast-200 mix-blend-multiply max-w-[40mm] mx-auto mb-2 object-contain"
+                    />
+                  )}
                   <h3 className="text-base font-black uppercase tracking-tight text-slate-900">{storeName}</h3>
                   <div className="flex items-center justify-center gap-1 text-[10px] text-slate-500 font-sans font-bold uppercase">
-                    <MapPin className="h-3 w-3" />
                     <span>{transaction.outletName || 'Cabang Utama'}</span>
                   </div>
                 </div>
 
                 {/* Dashed Separator */}
-                <div className="border-t border-dashed border-slate-350 my-3" />
+                <div className="border-t border-dashed border-black/20 my-3" />
 
                 {/* Metadata Details */}
-                <div className="space-y-1.5 text-[10px] uppercase font-sans text-slate-600">
+                <div className="space-y-1 text-[10px] uppercase font-sans text-slate-600">
                   <div className="flex justify-between">
-                    <span className="flex items-center gap-1"><FileText className="h-3.5 w-3.5 text-slate-400" /> ID STRUK:</span>
+                    <span>ID STRUK:</span>
                     <span className="font-mono font-bold text-slate-900">{transaction.id.slice(-8).toUpperCase()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5 text-slate-400" /> TANGGAL:</span>
+                    <span>TANGGAL:</span>
                     <span className="text-slate-900 font-semibold">{formatDate(transaction.createdAt)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="flex items-center gap-1"><User className="h-3.5 w-3.5 text-slate-400" /> KASIR:</span>
+                    <span>KASIR:</span>
                     <span className="text-slate-900 font-semibold truncate max-w-[150px]">{transaction.cashierName || 'Kasir'}</span>
                   </div>
-                  {transaction.customerName && (
-                    <div className="flex justify-between">
-                      <span className="flex items-center gap-1"><User className="h-3.5 w-3.5 text-slate-400" /> PELANGGAN:</span>
-                      <span className="text-slate-900 font-extrabold truncate max-w-[150px]">{transaction.customerName}</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between">
+                    <span>PELANGGAN:</span>
+                    <span className="text-slate-900 font-extrabold truncate max-w-[150px]">{transaction.customerName || 'UMUM'}</span>
+                  </div>
                 </div>
 
                 {/* Dashed Separator */}
-                <div className="border-t border-dashed border-slate-350 my-3" />
+                <div className="border-t border-dashed border-black/20 my-3" />
 
                 {/* Items List Header */}
                 <div className="grid grid-cols-12 font-bold text-[10px] uppercase pb-1 mb-1 font-sans text-slate-400">
@@ -156,7 +245,7 @@ export function ReceiptModal({
                 </div>
 
                 {/* Dashed Separator */}
-                <div className="border-t border-dashed border-slate-350 my-3" />
+                <div className="border-t border-dashed border-black/20 my-3" />
 
                 {/* Billing Breakdown */}
                 <div className="space-y-1.5 py-1 uppercase font-sans text-[10px] text-slate-600">
@@ -190,22 +279,22 @@ export function ReceiptModal({
                   )}
                   
                   {/* Final Total */}
-                  <div className="flex justify-between text-xs font-black border-t border-dashed border-slate-300 pt-2 mt-1.5 text-slate-900">
-                    <span>TOTAL BAYAR</span>
+                  <div className="flex justify-between text-xs font-black border-t border-dashed border-black/20 pt-2 mt-1.5 text-slate-900">
+                    <span>TOTAL AKHIR</span>
                     <span className="font-black text-sm text-slate-900 font-mono">{formatPrice(transaction.totalAmount)}</span>
                   </div>
 
                   {/* Payment Method */}
                   {transaction.paymentMethod && (
-                    <div className="flex justify-between text-[9px] text-slate-400 font-bold mt-2">
-                      <span className="flex items-center gap-1"><CreditCard className="h-3 w-3 text-slate-400" /> METODE PEMBAYARAN:</span>
+                    <div className="flex justify-between text-[9px] text-slate-500 font-bold mt-2">
+                      <span>METODE PEMBAYARAN:</span>
                       <span className="text-slate-700 font-extrabold">{transaction.paymentMethod}</span>
                     </div>
                   )}
                 </div>
 
                 {/* Dashed Separator */}
-                <div className="border-t border-dashed border-slate-350 my-4" />
+                <div className="border-t border-dashed border-black/20 my-4" />
 
                 {/* Receipt Footer */}
                 <div className="text-center space-y-1 text-[10px] font-sans font-bold text-slate-400 uppercase">
@@ -215,25 +304,57 @@ export function ReceiptModal({
               </div>
             </div>
 
+            {/* Sharing Error alert */}
+            {shareError && (
+              <div className="mt-3 rounded-lg bg-rose-50 border border-rose-100 p-2 text-center text-xs text-rose-700 font-semibold shrink-0 animate-fadeIn">
+                {shareError}
+              </div>
+            )}
+
             {/* Action Buttons Footer */}
-            <div className="mt-4 flex gap-3 shrink-0">
+            <div className="mt-4 flex flex-col gap-2 shrink-0">
+              {/* Kirim WhatsApp button */}
               <button
                 type="button"
-                onClick={onPrintManual}
-                className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-100 font-bold text-slate-700 text-xs py-3.5 transition active:scale-[0.98] cursor-pointer shadow-sm"
+                onClick={shareReceiptAsWhatsApp}
+                disabled={isSharing}
+                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 font-bold text-white text-xs py-3.5 transition active:scale-[0.98] disabled:opacity-60 cursor-pointer shadow-md shadow-emerald-950/10"
               >
-                <Printer className="h-4 w-4 text-slate-500" />
-                Cetak Manual
+                {isSharing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin text-white" />
+                    Sedang Memproses...
+                  </>
+                ) : (
+                  <>
+                    {/* SVG WhatsApp Icon */}
+                    <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
+                      <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.333 4.99L2 22l5.188-1.359a9.926 9.926 0 0 0 4.82 1.242h.004c5.506 0 9.99-4.478 9.99-9.986 0-2.67-1.037-5.18-2.92-7.067C17.199 3.037 14.683 2 12.012 2zm5.795 14.193c-.319.897-1.579 1.647-2.179 1.71-.599.064-1.199.314-3.856-.732-3.397-1.341-5.586-4.793-5.756-5.018-.17-.225-1.355-1.802-1.355-3.44 0-1.637.854-2.438 1.159-2.766.305-.328.67-.409.897-.409.226 0 .452.003.649.012.203.01.474-.077.74.567.273.657.927 2.26 1.007 2.423.08.163.169.263-.293.409-.124.146-.263.328-.113.585.15.257.662 1.092 1.417 1.764.975.867 1.796 1.137 2.056 1.267.26.13.409.11.56-.062.15-.173.655-.76.83-1.02.176-.26.353-.217.596-.127.243.09 1.547.73 1.81.86.263.13.438.196.503.308.065.113.065.656-.254 1.553z" />
+                    </svg>
+                    Kirim WhatsApp
+                  </>
+                )}
               </button>
-              
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-slate-900 hover:bg-slate-800 font-black text-white text-xs py-3.5 transition active:scale-[0.98] cursor-pointer shadow-lg shadow-slate-900/10"
-              >
-                <Check className="h-4 w-4" />
-                Tutup / Selesai
-              </button>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={onPrintManual}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-100 font-bold text-slate-700 text-xs py-3.5 transition active:scale-[0.98] cursor-pointer shadow-sm"
+                >
+                  <Printer className="h-4 w-4 text-slate-500" />
+                  Cetak Manual
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-slate-900 hover:bg-slate-800 font-black text-white text-xs py-3.5 transition active:scale-[0.98] cursor-pointer shadow-lg shadow-slate-900/10"
+                >
+                  <Check className="h-4 w-4" />
+                  Tutup / Selesai
+                </button>
+              </div>
             </div>
           </motion.div>
         </div>

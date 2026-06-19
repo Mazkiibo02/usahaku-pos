@@ -397,20 +397,26 @@ export default function PosPage() {
 
   // Process checkout API invocation
   const handleCheckout = async () => {
+    const items = cart;
+    console.log("=== CHECKOUT INITIATED ===", { activeOutletId, itemsCount: items?.length, cashierRole: user?.role });
+
     if (cart.length === 0) {
       showToast('Keranjang belanja kosong!', 'warning');
       return;
     }
+    console.log("Passed guard 1: cart is not empty");
 
     if (!activeOutletId) {
       showToast('Silakan pilih cabang outlet terlebih dahulu.', 'warning');
       return;
     }
+    console.log("Passed guard 2: activeOutletId is valid");
 
     if (!activeShift) {
       showToast('Shift kerja tidak aktif. Silakan buka shift terlebih dahulu.', 'warning');
       return;
     }
+    console.log("Passed guard 3: activeShift is valid");
 
     setIsCheckingOut(true);
     try {
@@ -424,6 +430,7 @@ export default function PosPage() {
 
       const displayName = user?.displayName || user?.email || 'Kasir';
 
+      console.log("=== FIRING FIRESTORE TRANSACTION BATCH ===");
       const res = await posService.processTransaction({
         tenantId: tenantId || '',
         cashierId: user?.uid || '',
@@ -438,6 +445,7 @@ export default function PosPage() {
         cashierName: displayName,
         shiftId: activeShift.id,
       });
+      console.log("=== FIRESTORE BATCH SUCCESS ===");
 
       // Create a completed transaction object for printing
       const tempTx: Transaction = {
@@ -487,6 +495,7 @@ export default function PosPage() {
         console.error("Physical print bypassed:", printErr);
       }
     } catch (err: any) {
+      console.error("!!! CHECKOUT DATABASE ERROR !!!", err);
       showToast(err.message || 'Transaksi pembayaran gagal.', 'error');
     } finally {
       setIsCheckingOut(false);

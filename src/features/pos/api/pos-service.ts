@@ -1,4 +1,4 @@
-import { collection, doc, writeBatch, serverTimestamp, increment } from 'firebase/firestore';
+import { collection, doc, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/firestore';
 import { auth } from '@/src/lib/firebase/auth';
 
@@ -33,9 +33,8 @@ export interface ProcessTransactionResponse {
 
 export const posService = {
   /**
-   * Memproses transaksi checkout secara lokal (Offline-First) menggunakan writeBatch.
-   * Ini langsung menyimpan data ke cache offline Firestore (persistentLocalCache)
-   * dan akan disinkronisasikan otomatis saat perangkat terhubung kembali.
+   * Memproses transaksi checkout secara atomik menggunakan runTransaction.
+   * Melakukan validasi stok real-time (Read-First) sebelum menulis data.
    */
   async processTransaction(payload: ProcessTransactionPayload): Promise<ProcessTransactionResponse> {
     if (!payload.tenantId) {
@@ -48,14 +47,11 @@ export const posService = {
       throw new Error('Transaction must contain at least one item');
     }
 
-    // Force a fresh check/refresh of the current user's ID token right before batch execution.
-    // This maintains token freshness and ensures that claims like myOutletId() do not resolve to null.
+    // Force a fresh check/refresh of the current user's ID token right before execution.
+    // This maintains token freshness and ensures that claims like tenantId and role are fully synchronized.
     if (auth.currentUser) {
-      await auth.currentUser.getIdToken();
+      await auth.currentUser.getIdToken(true);
     }
-
-    const batch = writeBatch(db);
-    const txRef = doc(collection(db, 'transactions'));
 
     // 1. Calculate pricing details client-side
     const subtotal = payload.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -72,75 +68,83 @@ export const posService = {
     const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
     const receiptNumber = `REC-${payload.outletId.substring(0, 4).toUpperCase()}-${datePart}-${randomPart}`;
 
-    // 2. Set the new transaction document in /transactions (COMPLETED status, paid paymentStatus)
-    const transactionPayload = {
-      transactionId: txRef.id,
-      tenantId: payload.tenantId,
-      outletId: payload.outletId,
-      outletName: payload.outletName || "",
-      cashierId: payload.cashierId,
-      cashierName: payload.cashierName || "Kasir",
-      items: payload.items.map(item => ({
-        productId: item.productId,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-      })),
-      subtotal,
-      discount: finalDiscount,
-      taxRate: taxRateVal,
-      taxAmount: taxAmount,
-      shippingCost: shippingCostVal,
-      paymentMethod: payload.paymentMethod || "Cash",
-      customerName: payload.customerName || "",
-      totalAmount,
-      createdAt: serverTimestamp(),
-      shiftId: payload.shiftId,
-      status: "COMPLETED",
-      paymentStatus: "paid",
-      receiptNumber,
-    };
-    batch.set(txRef, transactionPayload);
-
-    // 3. Update products & create stock mutations for each item
-    for (const item of payload.items) {
-      const productRef = doc(db, 'products', item.productId);
-      const mutationRef = doc(collection(db, 'stockMutations'));
-
-      // Decrement stock dynamically
-      batch.update(productRef, {
-        stock: increment(-item.quantity),
-        updatedAt: serverTimestamp(),
-      });
-
-      // Track the stock mutation as SALE
-      const previousStock = item.stock;
-      const newStock = previousStock - item.quantity;
-
-      const mutationPayload = {
-        tenantId: payload.tenantId,
-        outletId: payload.outletId,
-        productId: item.productId,
-        productName: item.name,
-        type: "SALE",
-        quantityChanged: -item.quantity,
-        previousStock,
-        newStock,
-        referenceId: txRef.id,
-        notes: "Offline POS Checkout Sale",
-        createdBy: payload.cashierId,
-        createdAt: serverTimestamp(),
-      };
-      batch.set(mutationRef, mutationPayload);
-    }
+    const invoiceRef = doc(collection(db, 'invoices'));
 
     try {
-      // Execute the batch locally
-      await batch.commit();
+      await runTransaction(db, async (transaction) => {
+        // --- READ PHASE ---
+        const productRefs = payload.items.map(item => doc(db, 'products', item.productId));
+        const productSnaps = await Promise.all(productRefs.map(ref => transaction.get(ref)));
+
+        // --- VALIDATION PHASE ---
+        for (let i = 0; i < payload.items.length; i++) {
+          const item = payload.items[i];
+          const snap = productSnaps[i];
+          if (!snap.exists()) {
+            throw new Error(`Produk tidak ditemukan: ${item.name}`);
+          }
+          const productData = snap.data();
+          const currentStock = productData.stock ?? 0;
+          if (currentStock < item.quantity) {
+            throw new Error(`Stok produk "${item.name}" tidak mencukupi (Tersedia: ${currentStock}, Diminta: ${item.quantity})`);
+          }
+        }
+
+        // --- WRITE PHASE ---
+        // 1. Mutate product documents to reduce stock & create mutation logs
+        for (let i = 0; i < payload.items.length; i++) {
+          const item = payload.items[i];
+          const snap = productSnaps[i];
+          const productData = snap.data();
+          const currentStock = productData?.stock ?? 0;
+          const newStock = currentStock - item.quantity;
+          const productRef = snap.ref;
+
+          transaction.update(productRef, {
+            stock: newStock,
+            updatedAt: serverTimestamp(),
+          });
+        }
+
+        // Common Payload for both Invoice and Transaction
+        const commonPayload = {
+          tenantId: payload.tenantId,
+          outletId: payload.outletId,
+          outletName: payload.outletName || "",
+          cashierId: payload.cashierId,
+          cashierName: payload.cashierName || "Kasir",
+          items: payload.items.map(item => ({
+            productId: item.productId,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+          })),
+          subtotal,
+          discount: finalDiscount,
+          taxRate: taxRateVal,
+          taxAmount,
+          shippingCost: shippingCostVal,
+          paymentMethod: payload.paymentMethod || "Cash",
+          customerName: payload.customerName || "",
+          totalAmount,
+          createdAt: serverTimestamp(),
+          shiftId: payload.shiftId,
+          status: "COMPLETED",
+          paymentStatus: "paid",
+          receiptNumber,
+        };
+
+        // 2. Write new document to /invoices collection
+        transaction.set(invoiceRef, {
+          invoiceId: invoiceRef.id,
+          ...commonPayload,
+        });
+
+      });
 
       return {
         message: "Transaction completed successfully.",
-        transactionId: txRef.id,
+        transactionId: invoiceRef.id,
         totalAmount,
       };
     } catch (error: any) {
