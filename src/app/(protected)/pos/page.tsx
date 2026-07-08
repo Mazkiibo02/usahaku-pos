@@ -359,7 +359,7 @@ export default function PosPage() {
     if (!completedTx) return;
     if (connectedDevice || connectedUsbPort || connectedUsbDevice) {
       try {
-        const displayName = completedTx.cashierName || user?.displayName || user?.email || 'Kasir';
+        const displayName = completedTx.cashierName || user?.displayName || 'Kasir';
         await printReceipt(
           completedTx,
           storeName,
@@ -431,7 +431,7 @@ export default function PosPage() {
         stock: item.product.stock,
       }));
 
-      const displayName = user?.displayName || user?.email || 'Kasir';
+      const displayName = user?.displayName || 'Kasir';
 
       console.log("=== FIRING FIRESTORE TRANSACTION BATCH ===");
       const res = await posService.processTransaction({
@@ -1033,7 +1033,7 @@ export default function PosPage() {
 
     setIsOpeningShift(true);
     try {
-      const displayName = user.displayName || user.email || 'Kasir';
+      const displayName = user.displayName || 'Kasir';
       const shiftCashierName = role === 'owner' ? `${displayName} (Owner)` : displayName;
 
       await openShift(tenantId, {
@@ -1436,7 +1436,7 @@ export default function PosPage() {
           isOpen={isReceiptPrintOpen}
           onClose={() => setIsReceiptPrintOpen(false)}
           transaction={completedTx}
-          cashierName={completedTx.cashierName || user?.displayName || user?.email || 'Kasir'}
+          cashierName={completedTx.cashierName || user?.displayName || 'Kasir'}
           outletName={activeOutletName}
         />
       )}

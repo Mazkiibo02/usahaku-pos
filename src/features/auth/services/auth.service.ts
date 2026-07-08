@@ -11,10 +11,13 @@ import {
   type User,
 } from 'firebase/auth';
 
-import { auth } from '@/src/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+
+import { auth, db } from '@/src/lib/firebase';
 import type { AppUser, AuthClaims, UserRole } from '@/src/types/auth';
 
 const googleProvider = new GoogleAuthProvider();
+const displayNameCache = new Map<string, string>();
 
 function isUserRole(value: unknown): value is UserRole {
   return value === 'owner' || value === 'cashier';
@@ -58,10 +61,32 @@ export async function mapFirebaseUserToAppUser(firebaseUser: User, forceRefresh 
   const tokenResult = await getIdTokenResult(firebaseUser, forceRefresh);
   const claims = mapClaimsToAuthClaims(tokenResult.claims);
 
+  let displayName = firebaseUser.displayName;
+
+  if (!displayName) {
+    if (!forceRefresh && displayNameCache.has(firebaseUser.uid)) {
+      displayName = displayNameCache.get(firebaseUser.uid) || null;
+    } else {
+      try {
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          const userData = userDocSnap.data();
+          if (userData?.name) {
+            displayName = userData.name;
+            displayNameCache.set(firebaseUser.uid, userData.name);
+          }
+        }
+      } catch (error) {
+        console.error('[auth.service] Failed to fetch user displayName from Firestore:', error);
+      }
+    }
+  }
+
   return {
     uid: firebaseUser.uid,
     email: firebaseUser.email,
-    displayName: firebaseUser.displayName,
+    displayName,
     photoURL: firebaseUser.photoURL,
     tenantId: claims.tenantId,
     role: claims.role,
