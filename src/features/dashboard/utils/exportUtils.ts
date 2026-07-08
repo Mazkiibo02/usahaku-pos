@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { format } from 'date-fns';
+import { format, isSameWeek, isSameMonth, isSameYear } from 'date-fns';
 
 import type { Transaction } from '@/src/features/transactions/types';
 import type { Outlet } from '@/src/features/outlets/types';
@@ -66,7 +66,88 @@ export function exportDashboardToExcel(
       };
     });
 
+    // Calculate dynamic time-based aggregates
+    const now = new Date();
+    let weeklyTotal = 0;
+    let monthlyTotal = 0;
+    let yearlyTotal = 0;
+
+    transactions.forEach((tx) => {
+      if (!tx.createdAt) return;
+      const d = (tx.createdAt as any).toDate ? (tx.createdAt as any).toDate() : new Date(tx.createdAt as any);
+      const amount = tx.totalAmount || 0;
+
+      if (isSameWeek(d, now, { weekStartsOn: 1 })) {
+        weeklyTotal += amount;
+      }
+      if (isSameMonth(d, now)) {
+        monthlyTotal += amount;
+      }
+      if (isSameYear(d, now)) {
+        yearlyTotal += amount;
+      }
+    });
+
     const wsTransactions = XLSX.utils.json_to_sheet(formattedTransactions);
+
+    // Apply currency mask format on existing data in Column E (Pendapatan (IDR))
+    const range = XLSX.utils.decode_range(wsTransactions['!ref'] || 'A1:E1');
+    for (let r = range.s.r + 1; r <= range.e.r; r++) {
+      const cellRef = XLSX.utils.encode_cell({ r, c: 4 }); // Column E is index 4
+      if (wsTransactions[cellRef]) {
+        wsTransactions[cellRef].z = '"Rp"#,##0';
+      }
+    }
+
+    // Append summary rows with a 2-row blank margin (startRow is N + 4, where N = formattedTransactions.length)
+    const startRow = formattedTransactions.length + 4; // 1-indexed row number
+
+    const summaryStyleText = {
+      font: { bold: true, name: 'Calibri' },
+      fill: { fgColor: { rgb: 'F2F2F2' } },
+      border: {
+        bottom: { style: 'double', color: { rgb: '000000' } }
+      }
+    };
+
+    const summaryStyleVal = {
+      font: { bold: true, name: 'Calibri' },
+      alignment: { horizontal: 'right' },
+      fill: { fgColor: { rgb: 'F2F2F2' } },
+      border: {
+        bottom: { style: 'double', color: { rgb: '000000' } }
+      }
+    };
+
+    const cols = ['A', 'B', 'C', 'D', 'E'];
+
+    const addSummaryRow = (rowNum: number, label: string, value: number) => {
+      cols.forEach((col) => {
+        const cellRef = `${col}${rowNum}`;
+        (wsTransactions as any)[cellRef] = {
+          v: col === 'A' ? label : '',
+          t: 's',
+          s: summaryStyleText
+        };
+      });
+      // Column E gets the number and currency format mask
+      const valCellRef = `E${rowNum}`;
+      (wsTransactions as any)[valCellRef] = {
+        v: value,
+        t: 'n',
+        z: '"Rp"#,##0',
+        s: summaryStyleVal
+      };
+    };
+
+    addSummaryRow(startRow, 'TOTAL PENDAPATAN MINGGU INI', weeklyTotal);
+    addSummaryRow(startRow + 1, 'TOTAL PENDAPATAN BULAN INI', monthlyTotal);
+    addSummaryRow(startRow + 2, 'TOTAL PENDAPATAN TAHUN INI', yearlyTotal);
+
+    // Update range bounds
+    range.e.r = startRow + 2 - 1; // 0-indexed row number of last summary row
+    wsTransactions['!ref'] = XLSX.utils.encode_range(range);
+
     XLSX.utils.book_append_sheet(wb, wsTransactions, 'Laporan Penjualan');
 
     // 3. Generate Filename containing Date Range

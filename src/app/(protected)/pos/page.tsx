@@ -96,6 +96,9 @@ export default function PosPage() {
   
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
+
+  // Temporary input quantities state for manual input
+  const [tempQuantities, setTempQuantities] = useState<Record<string, string>>({});
   
   // Floating Toast Notification state
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
@@ -723,9 +726,64 @@ export default function PosPage() {
                           >
                             <Minus className="h-3.5 w-3.5" />
                           </button>
-                          <span className="w-8 text-center text-xs font-bold text-slate-800">
-                            {item.quantity}
-                          </span>
+                          <input
+                            type="number"
+                            value={tempQuantities[item.product.id] !== undefined ? tempQuantities[item.product.id] : item.quantity}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === '' || /^\d+$/.test(val)) {
+                                setTempQuantities((prev) => ({
+                                  ...prev,
+                                  [item.product.id]: val,
+                                }));
+
+                                const parsed = parseInt(val, 10);
+                                if (!isNaN(parsed) && parsed > 0) {
+                                  const targetQty = Math.min(parsed, item.product.stock);
+                                  setCart((prevCart) =>
+                                    prevCart.map((c) =>
+                                      c.product.id === item.product.id
+                                        ? { ...c, quantity: targetQty }
+                                        : c
+                                    )
+                                  );
+
+                                  if (parsed > item.product.stock) {
+                                    setTempQuantities((prev) => ({
+                                      ...prev,
+                                      [item.product.id]: String(item.product.stock),
+                                    }));
+                                    showToast(`Batas maksimum stok tercapai: ${item.product.stock} produk.`, 'warning');
+                                  }
+                                }
+                              }
+                            }}
+                            onBlur={() => {
+                              const tempVal = tempQuantities[item.product.id];
+                              if (tempVal !== undefined) {
+                                const parsed = parseInt(tempVal, 10);
+                                let finalQty = 1;
+                                if (!isNaN(parsed) && parsed > 0) {
+                                  finalQty = Math.min(parsed, item.product.stock);
+                                }
+
+                                setCart((prevCart) =>
+                                  prevCart.map((c) =>
+                                    c.product.id === item.product.id
+                                      ? { ...c, quantity: finalQty }
+                                      : c
+                                  )
+                                );
+
+                                setTempQuantities((prev) => {
+                                  const copy = { ...prev };
+                                  delete copy[item.product.id];
+                                  return copy;
+                                });
+                              }
+                            }}
+                            className="w-8 text-center text-xs font-bold text-slate-800 bg-transparent focus:outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                          />
                           <button
                             type="button"
                             onClick={() => incrementCartItem(item.product.id, item.product.stock)}
