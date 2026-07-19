@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, AlertTriangle, Info, Loader2 } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Info, Loader2, Eye, EyeOff } from 'lucide-react';
 
 import { useAuth } from '@/src/features/auth/hooks/use-auth';
 import { auth, db, functions } from '@/src/lib/firebase';
@@ -55,6 +55,7 @@ export function LoginForm() {
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [googleUser, setGoogleUser] = useState<User | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
@@ -252,15 +253,29 @@ export function LoginForm() {
               )}
             </button>
           </div>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            {...register('password')}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
-            placeholder="Enter your password"
-            disabled={isSubmitting || isResettingPassword || isGoogleLoading}
-          />
+          <div className="relative w-full">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              {...register('password')}
+              className="w-full rounded-lg border border-slate-300 bg-white pl-3 pr-10 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+              placeholder="Enter your password"
+              disabled={isSubmitting || isResettingPassword || isGoogleLoading}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              disabled={isSubmitting || isResettingPassword || isGoogleLoading}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {showPassword ? (
+                <EyeOff className="h-5 w-5" />
+              ) : (
+                <Eye className="h-5 w-5" />
+              )}
+            </button>
+          </div>
           {errors.password ? <p className="text-xs text-rose-600">{errors.password.message}</p> : null}
         </div>
 
