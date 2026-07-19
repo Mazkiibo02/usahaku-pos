@@ -516,6 +516,20 @@ export function ReceiptPrint({
                       <span className="text-black font-bold">{transaction.paymentMethod}</span>
                     </div>
                   )}
+                  {(transaction.paymentMethod === 'Cash' || transaction.paymentMethod === 'Tunai') && transaction.cashTendered !== undefined && (
+                    <>
+                      <div className="flex justify-between text-[9px] text-slate-500 font-semibold mt-1">
+                        <span>TUNAI</span>
+                        <span className="text-black font-bold">{formatPrice(transaction.cashTendered)}</span>
+                      </div>
+                      {transaction.changeAmount !== undefined && (
+                        <div className="flex justify-between text-[9px] text-slate-500 font-semibold mt-1">
+                          <span>KEMBALIAN</span>
+                          <span className="text-black font-bold">{formatPrice(transaction.changeAmount)}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
 
                 {/* Dashed line */}

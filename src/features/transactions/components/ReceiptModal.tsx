@@ -335,6 +335,20 @@ export function ReceiptModal({
                       <span className="text-slate-700 font-extrabold">{transaction.paymentMethod}</span>
                     </div>
                   )}
+                  {(transaction.paymentMethod === 'Cash' || transaction.paymentMethod === 'Tunai') && transaction.cashTendered !== undefined && (
+                    <>
+                      <div className="flex justify-between text-[9px] text-slate-500 font-bold mt-2">
+                        <span>TUNAI:</span>
+                        <span className="text-slate-700 font-extrabold font-mono">{formatPrice(transaction.cashTendered)}</span>
+                      </div>
+                      {transaction.changeAmount !== undefined && (
+                        <div className="flex justify-between text-[9px] text-slate-500 font-bold mt-2">
+                          <span>KEMBALIAN:</span>
+                          <span className="text-slate-700 font-extrabold font-mono">{formatPrice(transaction.changeAmount)}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
 
                 {/* Dashed Separator */}

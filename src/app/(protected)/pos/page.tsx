@@ -118,6 +118,7 @@ export default function PosPage() {
   const [taxType, setTaxType] = useState<string>('NONE'); // 'NONE' or 'PPN11'
   const [paymentMethod, setPaymentMethod] = useState<string>('Cash'); // 'Cash' or 'QRIS'
   const [shippingCost, setShippingCost] = useState<number>(0);
+  const [cashTendered, setCashTendered] = useState<number | ''>('');
   
   // Mobile Cart modal state
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
@@ -387,6 +388,7 @@ export default function PosPage() {
     setTaxType('NONE');
     setPaymentMethod('Cash');
     setShippingCost(0);
+    setCashTendered('');
     setIsCartOpen(false);
     setIsReceiptOpen(false);
     setCompletedTx(null);
@@ -433,6 +435,10 @@ export default function PosPage() {
 
       const displayName = user?.displayName || 'Kasir';
 
+      const isCash = paymentMethod === 'Cash';
+      const parsedCashTendered = isCash && typeof cashTendered === 'number' ? cashTendered : undefined;
+      const calculatedChange = isCash && typeof cashTendered === 'number' ? (cashTendered - cartTotal) : undefined;
+
       console.log("=== FIRING FIRESTORE TRANSACTION BATCH ===");
       const res = await posService.processTransaction({
         tenantId: tenantId || '',
@@ -447,6 +453,8 @@ export default function PosPage() {
         outletName: activeOutletName,
         cashierName: displayName,
         shiftId: activeShift.id,
+        cashTendered: parsedCashTendered,
+        changeAmount: calculatedChange,
       });
       console.log("=== FIRESTORE BATCH SUCCESS ===");
 
@@ -474,6 +482,8 @@ export default function PosPage() {
         outletName: activeOutletName,
         cashierName: displayName,
         shiftId: activeShift.id,
+        cashTendered: parsedCashTendered,
+        changeAmount: calculatedChange,
       };
       setCompletedTx(tempTx);
 
@@ -954,6 +964,44 @@ export default function PosPage() {
 
         {/* Order Billing breakdown and Checkout Button */}
         <div className="flex-none border-t border-slate-100 bg-white pt-4 space-y-4">
+          {paymentMethod === 'Cash' && (
+            <div className="space-y-1 bg-slate-50/55 p-3 rounded-xl border border-slate-150 animate-fadeIn">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-extrabold text-slate-700">Uang Diterima</label>
+                <div className="flex items-center gap-1.5">
+                  {[20000, 50000, 100000].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setCashTendered(preset)}
+                      className="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-200 bg-white text-slate-650 hover:bg-slate-50 cursor-pointer"
+                    >
+                      {preset / 1000}rb
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Rp 0"
+                  value={cashTendered}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    setCashTendered(isNaN(val) ? '' : val);
+                  }}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 placeholder-slate-400 outline-none transition focus:border-slate-400 font-bold"
+                />
+              </div>
+              {cashTendered !== '' && cashTendered >= cartTotal && (
+                <div className="flex items-center justify-between text-xs font-bold text-emerald-600 pt-1 animate-fadeIn">
+                  <span>Kembalian</span>
+                  <span>{formatPrice(cashTendered - cartTotal)}</span>
+                </div>
+              )}
+            </div>
+          )}
           <div className="space-y-1.5 text-sm font-semibold">
             <div className="flex items-center justify-between text-slate-500 text-xs">
               <span>Subtotal Produk</span>
@@ -995,7 +1043,12 @@ export default function PosPage() {
           <button
             type="button"
             onClick={handleCheckout}
-            disabled={isCheckingOut || cart.length === 0 || !activeOutletId}
+            disabled={
+              isCheckingOut || 
+              cart.length === 0 || 
+              !activeOutletId ||
+              (paymentMethod === 'Cash' && (cashTendered === '' || cashTendered < cartTotal))
+            }
             className="flex w-full items-center justify-center rounded-xl bg-slate-900 py-3.5 text-sm font-bold text-white transition hover:bg-slate-850 focus:outline-none focus:ring-2 focus:ring-slate-950/20 disabled:cursor-not-allowed disabled:opacity-60 shadow-lg shadow-slate-950/10 cursor-pointer"
           >
             {isCheckingOut ? (

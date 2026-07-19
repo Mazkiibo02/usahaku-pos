@@ -28,6 +28,8 @@ export interface Transaction {
   requiresReview?: boolean;
   reviewReason?: string;
   status?: string;
+  cashTendered?: number;
+  changeAmount?: number;
 }
 
 export interface TenantSubscription {

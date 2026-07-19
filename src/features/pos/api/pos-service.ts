@@ -23,6 +23,8 @@ export interface ProcessTransactionPayload {
   outletName?: string;
   cashierName?: string;
   shiftId: string;
+  cashTendered?: number;
+  changeAmount?: number;
 }
 
 export interface ProcessTransactionResponse {
@@ -132,6 +134,8 @@ export const posService = {
           status: "COMPLETED",
           paymentStatus: "paid",
           receiptNumber,
+          ...(payload.cashTendered !== undefined ? { cashTendered: payload.cashTendered } : {}),
+          ...(payload.changeAmount !== undefined ? { changeAmount: payload.changeAmount } : {}),
         };
 
         // 2. Write new document to /transactions collection

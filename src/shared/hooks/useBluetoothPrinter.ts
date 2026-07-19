@@ -205,6 +205,12 @@ export function buildReceiptPayload(
   if (transaction.paymentMethod) {
     encoder.line(formatLeftRight('METODE PEMBAYARAN', transaction.paymentMethod, width));
   }
+  if ((transaction.paymentMethod === 'Cash' || transaction.paymentMethod === 'Tunai') && transaction.cashTendered !== undefined) {
+    encoder.line(formatLeftRight('TUNAI', formatPriceText(transaction.cashTendered), width));
+    if (transaction.changeAmount !== undefined) {
+      encoder.line(formatLeftRight('KEMBALIAN', formatPriceText(transaction.changeAmount), width));
+    }
+  }
   encoder.line('-'.repeat(width));
 
   // Footer (Centered)
