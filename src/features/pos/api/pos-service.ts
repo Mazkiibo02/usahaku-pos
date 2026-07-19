@@ -68,7 +68,7 @@ export const posService = {
     const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
     const receiptNumber = `REC-${payload.outletId.substring(0, 4).toUpperCase()}-${datePart}-${randomPart}`;
 
-    const invoiceRef = doc(collection(db, 'invoices'));
+    const transactionRef = doc(collection(db, 'transactions'));
 
     try {
       await runTransaction(db, async (transaction) => {
@@ -134,9 +134,9 @@ export const posService = {
           receiptNumber,
         };
 
-        // 2. Write new document to /invoices collection
-        transaction.set(invoiceRef, {
-          invoiceId: invoiceRef.id,
+        // 2. Write new document to /transactions collection
+        transaction.set(transactionRef, {
+          transactionId: transactionRef.id,
           ...commonPayload,
         });
 
@@ -144,7 +144,7 @@ export const posService = {
 
       return {
         message: "Transaction completed successfully.",
-        transactionId: invoiceRef.id,
+        transactionId: transactionRef.id,
         totalAmount,
       };
     } catch (error: any) {
