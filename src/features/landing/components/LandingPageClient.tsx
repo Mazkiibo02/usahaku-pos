@@ -220,19 +220,26 @@ export default function LandingPageClient() {
 
               <div className="relative max-w-4xl mx-auto">
                 <Image
-                  src="/images/mockup-dashboard-laptop.png"
+                  src="/images/mockup-dashboard-laptop.webp"
                   alt="Dashboard Usahaku POS"
                   width={1200}
                   height={800}
                   className="w-full h-auto object-contain rounded-xl drop-shadow-2xl"
-                  priority
+                  priority={true}
+                  fetchPriority="high"
+                  loading="eager"
+                  sizes="(max-width: 768px) 100vw, 50vw"
                 />
                 <Image
-                  src="/images/mockup-kasir-hp.png"
+                  src="/images/mockup-kasir-hp.webp"
                   alt="Simulator Kasir HP"
                   width={400}
                   height={800}
                   className="absolute -bottom-10 -left-10 w-2/3 max-w-[280px] sm:max-w-[340px] h-auto z-10 drop-shadow-2xl"
+                  priority={true}
+                  fetchPriority="high"
+                  loading="eager"
+                  sizes="(max-width: 768px) 66vw, 340px"
                 />
               </div>
             </div>
@@ -527,11 +534,12 @@ export default function LandingPageClient() {
                 {/* Graphic Mockup Desktop */}
                 <div className="flex justify-center">
                   <Image
-                    src="/images/mockup-kasir-desktop.png"
+                    src="/images/mockup-kasir-desktop.webp"
                     alt="Usahaku POS Desktop"
                     width={1000}
                     height={600}
                     className="w-full h-auto object-contain rounded-2xl drop-shadow-2xl"
+                    sizes="(max-width: 1024px) 100vw, 50vw"
                   />
                 </div>
               </div>
@@ -543,11 +551,12 @@ export default function LandingPageClient() {
                 {/* Left Column: Graphic Mockup Dashboard */}
                 <div className="flex justify-center order-2 lg:order-1">
                   <Image
-                    src="/images/mockup-dashboard-laptop.png"
+                    src="/images/mockup-dashboard-laptop.webp"
                     alt="Dashboard Usahaku POS"
                     width={1000}
                     height={600}
                     className="w-full h-auto object-contain rounded-2xl drop-shadow-2xl"
+                    sizes="(max-width: 1024px) 100vw, 50vw"
                   />
                 </div>
 
@@ -699,11 +708,12 @@ export default function LandingPageClient() {
               <div className="lg:col-span-6 flex justify-center">
                 <div className="relative max-w-md w-full">
                   <Image
-                    src="/images/mockup-hpp-hp.png"
+                    src="/images/mockup-hpp-hp.webp"
                     alt="Kalkulator HPP"
                     width={500}
                     height={800}
                     className="w-full h-auto object-contain rounded-2xl drop-shadow-2xl"
+                    sizes="(max-width: 1024px) 100vw, 500px"
                   />
                 </div>
               </div>
