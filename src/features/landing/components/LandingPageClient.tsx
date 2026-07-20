@@ -224,7 +224,7 @@ export default function LandingPageClient() {
                   alt="Dashboard Usahaku POS"
                   width={1200}
                   height={800}
-                  className="w-full h-auto object-contain rounded-xl shadow-2xl"
+                  className="w-full h-auto object-contain rounded-xl drop-shadow-2xl"
                   priority
                 />
                 <Image
@@ -531,7 +531,7 @@ export default function LandingPageClient() {
                     alt="Usahaku POS Desktop"
                     width={1000}
                     height={600}
-                    className="w-full h-auto object-contain rounded-2xl shadow-xl border border-slate-200"
+                    className="w-full h-auto object-contain rounded-2xl drop-shadow-2xl"
                   />
                 </div>
               </div>
@@ -547,7 +547,7 @@ export default function LandingPageClient() {
                     alt="Dashboard Usahaku POS"
                     width={1000}
                     height={600}
-                    className="w-full h-auto object-contain rounded-2xl shadow-xl border border-slate-200"
+                    className="w-full h-auto object-contain rounded-2xl drop-shadow-2xl"
                   />
                 </div>
 
@@ -703,7 +703,7 @@ export default function LandingPageClient() {
                     alt="Kalkulator HPP"
                     width={500}
                     height={800}
-                    className="w-full h-auto object-contain rounded-2xl shadow-xl border border-slate-200"
+                    className="w-full h-auto object-contain rounded-2xl drop-shadow-2xl"
                   />
                 </div>
               </div>
