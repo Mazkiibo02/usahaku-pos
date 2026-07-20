@@ -36,6 +36,11 @@ export const OWNER_NAV_LINKS: NavigationItem[] = [
     icon: Users,
   },
   {
+    title: 'Transaksi',
+    href: '/transactions',
+    icon: ReceiptText,
+  },
+  {
     title: 'Pengaturan',
     href: '/dashboard/settings',
     icon: Settings,
