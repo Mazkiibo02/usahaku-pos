@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import {
   Smartphone,
   Laptop,
@@ -14,13 +15,10 @@ import {
   ShieldCheck,
   DollarSign,
   Store,
-  BarChart3,
   Receipt,
-  FileSpreadsheet,
   Lock,
   RefreshCw,
   LogIn,
-  ChevronRight,
   Menu,
   X,
   Check,
@@ -47,6 +45,9 @@ const INITIAL_PRODUCTS: Product[] = [
   { id: '5', name: 'Pisang Goreng Keju', price: 12000, category: 'food', emoji: '🍌' },
   { id: '6', name: 'Jus Alpukat Kocok', price: 17000, category: 'drink', emoji: '🥑' },
 ];
+
+const DemoSection = dynamic(() => import('./DemoSection'), { ssr: false });
+const ShowcaseSection = dynamic(() => import('./ShowcaseSection'), { ssr: false });
 
 export default function LandingPageClient() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -240,8 +241,9 @@ export default function LandingPageClient() {
         )}
       </header>
 
-      {/* HERO SECTION */}
-      <section className="relative pt-8 pb-16 sm:pb-24 lg:pt-16 lg:pb-32 overflow-hidden">
+      <main className="flex-1">
+        {/* HERO SECTION */}
+        <section className="relative pt-8 pb-16 sm:pb-24 lg:pt-16 lg:pb-32 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-4xl mx-auto">
             {/* Promo Badge */}
@@ -336,7 +338,7 @@ export default function LandingPageClient() {
                   <div className="p-4 sm:p-6 space-y-4 font-sans text-slate-200">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="text-sm font-bold text-slate-400">Ringkasan Penjualan</h4>
+                        <p className="text-sm font-bold text-slate-400">Ringkasan Penjualan</p>
                         <p className="text-xs text-slate-500">Cabang Kemang • Hari Ini</p>
                       </div>
                       <div className="flex gap-2">
@@ -571,7 +573,7 @@ export default function LandingPageClient() {
                             className="bg-white p-2.5 rounded-xl border border-slate-200/80 hover:border-indigo-400 hover:shadow-sm text-left relative transition-all active:scale-95 group/item"
                           >
                             <span className="text-lg block mb-1">{prod.emoji}</span>
-                            <h5 className="font-bold text-[10px] text-slate-800 line-clamp-1 group-hover/item:text-indigo-600">{prod.name}</h5>
+                            <p className="font-bold text-[10px] text-slate-800 line-clamp-1 group-hover/item:text-indigo-600">{prod.name}</p>
                             <p className="text-[9px] text-slate-500 font-semibold mt-0.5">Rp {prod.price.toLocaleString('id-ID')}</p>
                             
                             {inCartCount > 0 && (
@@ -652,7 +654,7 @@ export default function LandingPageClient() {
                           <Check className="w-6 h-6 stroke-[3px]" />
                         </div>
                         <div>
-                          <h4 className="font-black text-xs text-slate-800">Transaksi Berhasil!</h4>
+                          <p className="font-black text-xs text-slate-800">Transaksi Berhasil!</p>
                           <p className="text-[8px] text-slate-400 font-bold mt-0.5">{receiptCode}</p>
                         </div>
                         
@@ -903,547 +905,23 @@ export default function LandingPageClient() {
       </section>
 
       {/* DETAILED INTERACTIVE DEMO / WORKFLOW SECTION */}
-      <section id="demo" className="py-20 sm:py-28 bg-slate-900 text-white relative overflow-hidden">
-        {/* Glow */}
-        <div className="absolute top-0 right-0 w-[40%] aspect-square rounded-full bg-indigo-500/10 blur-[150px] pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-[40%] aspect-square rounded-full bg-violet-500/10 blur-[150px] pointer-events-none" />
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <span className="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-400 text-xs font-bold tracking-wider uppercase mb-3 inline-block">
-              Demo Interaktif Aplikasi
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-4">
-              Coba Langsung Simulasi Transaksi
-            </h2>
-            <p className="text-sm sm:text-base text-slate-400 font-medium">
-              Gunakan simulator kasir interaktif di bawah ini untuk melihat kecepatan transaksi dan fleksibilitas mode offline kami.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            
-            {/* Steps & Explanatory Left side */}
-            <div className="lg:col-span-5 space-y-8">
-              
-              <div className="space-y-4">
-                <h3 className="text-2xl font-black">Bagaimana Cara Kerjanya?</h3>
-                <p className="text-sm text-slate-400 leading-relaxed">
-                  Kami menghilangkan kerumitan sistem POS tradisional. Anda bisa mendaftar dan mulai berjualan langsung dalam beberapa ketukan.
-                </p>
-              </div>
-
-              {/* Step list cards */}
-              <div className="space-y-4">
-                {/* Step 1 */}
-                <div className="bg-slate-800/50 border border-slate-800 p-4 rounded-2xl flex gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-white shrink-0">
-                    1
-                  </div>
-                  <div>
-                    <h5 className="font-bold text-sm text-white">Tambahkan Produk Anda</h5>
-                    <p className="text-xs text-slate-400 mt-1">Masukkan nama, harga, dan gambar/emoji produk. Atur kategori menu agar mudah ditemukan kasir.</p>
-                  </div>
-                </div>
-
-                {/* Step 2 */}
-                <div className="bg-slate-800/50 border border-slate-800 p-4 rounded-2xl flex gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-white shrink-0">
-                    2
-                  </div>
-                  <div>
-                    <h5 className="font-bold text-sm text-white">Mulai Buka Shift Kasir</h5>
-                    <p className="text-xs text-slate-400 mt-1">Masukkan nominal modal awal pada laci uang sebagai rekaman awal sebelum melayani transaksi.</p>
-                  </div>
-                </div>
-
-                {/* Step 3 */}
-                <div className="bg-slate-800/50 border border-slate-800 p-4 rounded-2xl flex gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-white shrink-0">
-                    3
-                  </div>
-                  <div>
-                    <h5 className="font-bold text-sm text-white">Kasir Siap Transaksi</h5>
-                    <p className="text-xs text-slate-400 mt-1">Ketuk menu di layar handphone untuk menambah ke keranjang, cetak struk via bluetooth atau kirim online.</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <Link
-                  href="/register"
-                  className="inline-flex items-center gap-2 bg-linear-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 text-white font-bold px-6 py-3.5 rounded-xl shadow-lg transition-all"
-                >
-                  Mulai Buat Toko Anda Sekarang
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
-
-            </div>
-
-            {/* Simulated Live POS App Right side */}
-            <div className="lg:col-span-7 flex justify-center">
-              <div className="bg-slate-800/40 border border-slate-800 rounded-3xl p-6 w-full max-w-md relative">
-                
-                {/* Floating offline simulation trigger */}
-                <div className="flex justify-between items-center bg-slate-900 border border-slate-800 p-3 rounded-xl mb-6">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span className="text-xs font-bold text-slate-300">Simulator Dashboard</span>
-                  </div>
-                  <button
-                    onClick={() => setIsPhoneOffline(!isPhoneOffline)}
-                    className={`text-[10px] font-bold px-3 py-1 rounded transition-colors ${
-                      isPhoneOffline
-                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                        : 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/20'
-                    }`}
-                  >
-                    {isPhoneOffline ? "Simulasi Online kembali" : "Simulasi Putuskan Koneksi (Offline)"}
-                  </button>
-                </div>
-
-                {/* Smartphone Emulator container */}
-                <div className="bg-slate-955 rounded-[2.5rem] p-3 border-4 border-slate-800 max-w-[280px] mx-auto shadow-2xl">
-                  
-                  {/* Phone Internal Screen */}
-                  <div className="bg-slate-50 rounded-4xl overflow-hidden aspect-9/19 flex flex-col justify-between text-slate-800 relative select-none">
-                    
-                    {/* Status Bar */}
-                    <div className="bg-white pt-5 pb-2 px-4 flex items-center justify-between border-b border-slate-200">
-                      <span className="text-[9px] font-bold text-slate-505">14:58</span>
-                      <div className="flex items-center gap-1">
-                        {isPhoneOffline ? (
-                          <span className="flex items-center gap-0.5 text-[8px] bg-rose-500 text-white font-extrabold px-1 rounded">
-                            <WifiOff className="w-2 h-2" /> OFFLINE
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-0.5 text-[8px] bg-emerald-50 text-emerald-600 font-extrabold px-1 rounded">
-                            <Wifi className="w-2 h-2" /> ONLINE
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Simulator Menu */}
-                    <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                      <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider px-1">Ketuk menu di bawah</p>
-                      
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {INITIAL_PRODUCTS.map((prod) => {
-                          const count = phoneCart.find(item => item.product.id === prod.id)?.quantity || 0;
-                          return (
-                            <button
-                              key={prod.id}
-                              onClick={() => addToPhoneCart(prod)}
-                              className="bg-white p-2 rounded-lg border border-slate-200 hover:border-indigo-400 text-left relative transition-all active:scale-95 text-slate-700"
-                            >
-                              <span className="text-base block mb-0.5">{prod.emoji}</span>
-                              <h6 className="font-bold text-[9px] line-clamp-1">{prod.name}</h6>
-                              <p className="text-[8px] text-slate-400 mt-0.5">Rp {prod.price.toLocaleString('id-ID')}</p>
-                              {count > 0 && (
-                                <span className="absolute top-1 right-1 bg-indigo-600 text-white text-[8px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                                  {count}
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Bottom Cart Drawer */}
-                    <div className="bg-white border-t border-slate-200 p-2">
-                      {phoneCart.length === 0 ? (
-                        <div className="py-3 text-center text-[9px] text-slate-400 font-semibold italic">
-                          Keranjang kosong
-                        </div>
-                      ) : (
-                        <div className="space-y-1.5">
-                          <div className="max-h-[50px] overflow-y-auto space-y-0.5">
-                            {phoneCart.map((item) => (
-                              <div key={item.product.id} className="flex justify-between items-center text-[8px] bg-slate-50 px-1.5 py-0.5 rounded">
-                                <span className="font-semibold text-slate-700 line-clamp-1 w-2/3">{item.product.name}</span>
-                                <span className="font-bold text-slate-800">x{item.quantity}</span>
-                              </div>
-                            ))}
-                          </div>
-
-                          <div className="flex justify-between items-center border-t border-slate-100 pt-1 text-[9px]">
-                            <span className="text-[8px] text-slate-400 font-bold">Total</span>
-                            <span className="font-black text-indigo-600">Rp {totalPhoneCart.toLocaleString('id-ID')}</span>
-                          </div>
-
-                          <button
-                            onClick={handlePhoneCheckout}
-                            className="w-full bg-indigo-600 text-white font-bold py-1.5 rounded-lg text-[9px] text-center"
-                          >
-                            Simulasi Bayar
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Successful Checkout Popup */}
-                    {showPhoneReceipt && (
-                      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 z-40">
-                        <div className="bg-white w-full rounded-xl p-3 shadow-xl text-center space-y-2 border border-slate-100 max-w-[200px]">
-                          <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
-                            <Check className="w-5 h-5 stroke-[3px]" />
-                          </div>
-                          <div>
-                            <h4 className="font-black text-[10px] text-slate-800">Struk Terbit!</h4>
-                            <p className="text-[8px] text-slate-400 font-bold">{receiptCode}</p>
-                          </div>
-                          <div className="border-t border-b border-dashed border-slate-200 py-1 text-left text-[8px] font-mono text-slate-500">
-                            {phoneCart.map((item) => (
-                              <div key={item.product.id} className="flex justify-between">
-                                <span>{item.product.name} x{item.quantity}</span>
-                                <span>{(item.product.price * item.quantity).toLocaleString('id-ID')}</span>
-                              </div>
-                            ))}
-                          </div>
-                          <button
-                            onClick={() => {
-                              setShowPhoneReceipt(false);
-                              clearPhoneCart();
-                            }}
-                            className="w-full bg-slate-950 text-white font-bold py-1 rounded text-[8px]"
-                          >
-                            Tutup
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                  </div>
-
-                </div>
-
-                {/* Hand pointing to simulator */}
-                <div className="absolute -left-6 bottom-16 bg-slate-955/95 border border-slate-800 text-white px-3 py-1.5 rounded-xl shadow-lg items-center gap-2 max-w-[140px] hidden md:flex animate-bounce">
-                  <Play className="w-3 h-3 text-indigo-400 shrink-0 fill-current" />
-                  <span className="text-[9px] font-bold">Coba klik menu & bayar</span>
-                </div>
-
-              </div>
-            </div>
-
-          </div>
-
-        </div>
-      </section>
+      <DemoSection
+        isPhoneOffline={isPhoneOffline}
+        setIsPhoneOffline={setIsPhoneOffline}
+        phoneCart={phoneCart}
+        addToPhoneCart={addToPhoneCart}
+        phonePendingSync={phonePendingSync}
+        showPhoneReceipt={showPhoneReceipt}
+        setShowPhoneReceipt={setShowPhoneReceipt}
+        receiptCode={receiptCode}
+        clearPhoneCart={clearPhoneCart}
+        handlePhoneCheckout={handlePhoneCheckout}
+        totalPhoneCart={totalPhoneCart}
+        INITIAL_PRODUCTS={INITIAL_PRODUCTS}
+      />
 
       {/* DETAILED SCREEN / UI SHOWCASE SECTION */}
-      <section id="showcase" className="py-20 sm:py-28 relative z-10 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="text-center max-w-3xl mx-auto mb-20">
-            <h2 className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-3">Tampilan Antarmuka</h2>
-            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-              Didesain Untuk Kecepatan Kasir & Ketelitian Owner
-            </h3>
-            <p className="text-base sm:text-lg text-slate-500 font-medium mt-4">
-              Kami membagi fokus menjadi dua area khusus yang saling terintegrasi secara real-time.
-            </p>
-            
-            {/* Tab switch button */}
-            <div className="flex justify-center mt-8">
-              <div className="bg-slate-100 p-1 rounded-2xl flex gap-1 border border-slate-200">
-                <button
-                  onClick={() => setActiveTab('checkout')}
-                  className={`px-6 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${
-                    activeTab === 'checkout'
-                      ? 'bg-white text-indigo-600 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-850'
-                  }`}
-                >
-                  🚀 Layar Kasir (POS)
-                </button>
-                <button
-                  onClick={() => setActiveTab('analytics')}
-                  className={`px-6 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${
-                    activeTab === 'analytics'
-                      ? 'bg-white text-indigo-600 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-850'
-                  }`}
-                >
-                  📊 Dashboard Owner
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* TAB CONTENT A: Layar Kasir */}
-          {activeTab === 'checkout' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center animate-fadeIn">
-              {/* Text */}
-              <div className="space-y-6 lg:pr-8">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-bold">
-                  <Smartphone className="w-3.5 h-3.5" />
-                  Kecepatan Transaksi Utama
-                </div>
-                <h4 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                  Checkout Kilat yang Responsif & Sentuh-Ramah
-                </h4>
-                <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
-                  Layar POS dirancang khusus untuk meminimalkan jumlah ketukan saat melayani pelanggan yang mengantre. Cocok untuk perangkat smartphone Android/iOS maupun tablet kasir.
-                </p>
-                <ul className="space-y-3.5">
-                  <li className="flex items-start gap-3">
-                    <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 mt-0.5">
-                      <Check className="w-3.5 h-3.5 stroke-[3px]" />
-                    </div>
-                    <div>
-                      <h6 className="font-extrabold text-slate-850 text-sm">Responsif & Bebas Lag</h6>
-                      <p className="text-xs text-slate-500 mt-0.5">Teknologi Single Page Application (SPA) memastikan perpindahan menu instan.</p>
-                    </div>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 mt-0.5">
-                      <Check className="w-3.5 h-3.5 stroke-[3px]" />
-                    </div>
-                    <div>
-                      <h6 className="font-extrabold text-slate-850 text-sm">Pencarian Menu & Filter Cepat</h6>
-                      <p className="text-xs text-slate-500 mt-0.5">Cari produk berdasarkan nama atau filter berdasarkan kategori instan dalam satu ketukan.</p>
-                    </div>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 mt-0.5">
-                      <Check className="w-3.5 h-3.5 stroke-[3px]" />
-                    </div>
-                    <div>
-                      <h6 className="font-extrabold text-slate-850 text-sm">Metode Pembayaran Fleksibel</h6>
-                      <p className="text-xs text-slate-500 mt-0.5">Mendukung Tunai, Transfer Bank, QRIS, dan pencatatan kas bon (hutang) pelanggan.</p>
-                    </div>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Graphic Mockup checkout layout */}
-              <div className="bg-slate-50 rounded-3xl border border-slate-200 p-4 sm:p-6 shadow-xl relative overflow-hidden">
-                <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-inner flex flex-col min-h-[380px]">
-                  
-                  {/* Mock POS Tablet View Header */}
-                  <div className="bg-slate-900 px-4 py-3 text-white flex items-center justify-between text-xs font-bold">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 bg-indigo-500 rounded-full"></span>
-                      Usahaku POS - Mode Kasir
-                    </span>
-                    <span className="text-slate-400">Kasir: Fitri Indah</span>
-                  </div>
-
-                  {/* Tablet POS Simulator Layout */}
-                  <div className="grid grid-cols-12 flex-1 min-h-0 text-slate-800">
-                    
-                    {/* Left: Products Grid (8 cols) */}
-                    <div className="col-span-8 p-3 border-r border-slate-200 space-y-3 bg-slate-55/30">
-                      <div className="flex gap-2">
-                        <span className="px-2.5 py-1 bg-indigo-600 text-white rounded-md text-[10px] font-bold">Semua</span>
-                        <span className="px-2.5 py-1 bg-white border border-slate-200 rounded-md text-[10px] font-bold text-slate-505">Makanan</span>
-                        <span className="px-2.5 py-1 bg-white border border-slate-200 rounded-md text-[10px] font-bold text-slate-550">Minuman</span>
-                      </div>
-                      
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="bg-white border border-slate-200 rounded-xl p-2 text-center shadow-xs">
-                          <span className="text-xl">🍜</span>
-                          <p className="font-extrabold text-[10px] mt-1 truncate">Nasi Goreng</p>
-                          <p className="text-[8px] text-slate-400 font-bold mt-0.5">25k</p>
-                        </div>
-                        <div className="bg-white border border-slate-200 rounded-xl p-2 text-center shadow-xs">
-                          <span className="text-xl">🍗</span>
-                          <p className="font-extrabold text-[10px] mt-1 truncate">Ayam Bakar</p>
-                          <p className="text-[8px] text-slate-400 font-bold mt-0.5">20k</p>
-                        </div>
-                        <div className="bg-white border border-slate-200 rounded-xl p-2 text-center shadow-xs">
-                          <span className="text-xl">☕</span>
-                          <p className="font-extrabold text-[10px] mt-1 truncate">Es Kopi Susu</p>
-                          <p className="text-[8px] text-slate-400 font-bold mt-0.5">15k</p>
-                        </div>
-                        <div className="bg-white border border-slate-200 rounded-xl p-2 text-center shadow-xs">
-                          <span className="text-xl">🍟</span>
-                          <p className="font-extrabold text-[10px] mt-1 truncate">Kentang Goreng</p>
-                          <p className="text-[8px] text-slate-400 font-bold mt-0.5">12k</p>
-                        </div>
-                        <div className="bg-white border border-slate-200 rounded-xl p-2 text-center shadow-xs">
-                          <span className="text-xl">🍹</span>
-                          <p className="font-extrabold text-[10px] mt-1 truncate">Es Lemon Tea</p>
-                          <p className="text-[8px] text-slate-400 font-bold mt-0.5">8k</p>
-                        </div>
-                        <div className="bg-white border border-slate-200 rounded-xl p-2 text-center shadow-xs">
-                          <span className="text-xl">🍌</span>
-                          <p className="font-extrabold text-[10px] mt-1 truncate">Banana Split</p>
-                          <p className="text-[8px] text-slate-400 font-bold mt-0.5">18k</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right: Checkout Bill (4 cols) */}
-                    <div className="col-span-4 bg-white p-3 flex flex-col justify-between h-full">
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 border-b border-slate-100 pb-1.5">
-                          <span>STRUK BARU</span>
-                          <span>#0112</span>
-                        </div>
-                        
-                        <div className="space-y-1.5 max-h-[140px] overflow-y-auto">
-                          <div className="text-[9px] space-y-1">
-                            <div className="flex justify-between">
-                              <span className="font-bold">Nasi Goreng x1</span>
-                              <span className="text-slate-550">25.000</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="font-bold">Es Kopi Susu x2</span>
-                              <span className="text-slate-550">30.000</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="border-t border-slate-100 pt-3 space-y-2">
-                        <div className="flex justify-between items-center text-[10px] font-black text-slate-800">
-                          <span>Total</span>
-                          <span className="text-indigo-600">Rp 55.000</span>
-                        </div>
-                        <button className="w-full bg-indigo-600 text-white font-bold py-2 rounded-lg text-[9px] hover:bg-indigo-500 cursor-default">
-                          Metode Pembayaran
-                        </button>
-                      </div>
-                    </div>
-
-                  </div>
-
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB CONTENT B: Dashboard Owner */}
-          {activeTab === 'analytics' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center animate-fadeIn">
-              {/* Left Column: Graphic Mockup Dashboard */}
-              <div className="bg-slate-50 rounded-3xl border border-slate-200 p-4 sm:p-6 shadow-xl relative overflow-hidden order-2 lg:order-1">
-                <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-inner flex flex-col min-h-[380px] p-4 sm:p-6 space-y-4">
-                  
-                  {/* Header */}
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h5 className="font-black text-sm text-slate-850">Analisis Laba & Omzet</h5>
-                      <p className="text-[10px] text-slate-400 font-bold">Ringkasan performa 3 outlet aktif</p>
-                    </div>
-                    <span className="px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold">
-                      Ekspor Laporan
-                    </span>
-                  </div>
-
-                  {/* 3 outlet bar charts comparison */}
-                  <div className="space-y-3 flex-1 justify-center flex flex-col">
-                    {/* Outlet 1 */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[10px] font-bold text-slate-605">
-                        <span>Cabang Kemang (Jakarta)</span>
-                        <span>Rp 12.4M (Terbesar)</span>
-                      </div>
-                      <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-indigo-600 rounded-full" style={{ width: '85%' }}></div>
-                      </div>
-                    </div>
-
-                    {/* Outlet 2 */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[10px] font-bold text-slate-605">
-                        <span>Cabang Blok M (Jakarta)</span>
-                        <span>Rp 8.2M</span>
-                      </div>
-                      <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-indigo-400 rounded-full" style={{ width: '60%' }}></div>
-                      </div>
-                    </div>
-
-                    {/* Outlet 3 */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[10px] font-bold text-slate-605">
-                        <span>Cabang Braga (Bandung)</span>
-                        <span>Rp 5.1M</span>
-                      </div>
-                      <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-violet-400 rounded-full" style={{ width: '40%' }}></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Best selling item table widget */}
-                  <div className="border-t border-slate-100 pt-3 text-[10px]">
-                    <span className="font-extrabold text-slate-500 tracking-wider block mb-2">PRODUK TERLARIS BULAN INI</span>
-                    <div className="flex justify-between text-[9px] text-slate-400 border-b border-slate-100 pb-1.5 font-bold uppercase">
-                      <span>Nama Menu</span>
-                      <span>Terjual</span>
-                      <span>Pendapatan</span>
-                    </div>
-                    <div className="divide-y divide-slate-100">
-                      <div className="flex justify-between py-1.5">
-                        <span className="font-bold text-slate-700">1. Nasi Goreng Gila</span>
-                        <span className="font-bold text-slate-600">1,245 Porsi</span>
-                        <span className="font-extrabold text-indigo-600">Rp 31.1M</span>
-                      </div>
-                      <div className="flex justify-between py-1.5">
-                        <span className="font-bold text-slate-700">2. Kopi Aren Jumbo</span>
-                        <span className="font-bold text-slate-600">980 Gelas</span>
-                        <span className="font-extrabold text-indigo-600">Rp 14.7M</span>
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-
-              {/* Right Column: Text descriptions */}
-              <div className="space-y-6 lg:pl-8 order-1 lg:order-2">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-50 border border-violet-100 text-violet-750 text-xs font-bold">
-                  <Laptop className="w-3.5 h-3.5" />
-                  Kekuatan Analitik Owner
-                </div>
-                <h4 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                  Pantau Bisnis & Ekspor Laporan Tanpa Hambatan
-                </h4>
-                <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
-                  Semua transaksi kasir diakumulasikan secara otomatis to dashboard pemilik usaha. Dapatkan gambaran performa keuangan yang objektif tanpa rekap manual akhir hari.
-                </p>
-                <ul className="space-y-3.5">
-                  <li className="flex items-start gap-3">
-                    <div className="w-5 h-5 rounded-full bg-violet-100 flex items-center justify-center text-violet-600 shrink-0 mt-0.5">
-                      <Check className="w-3.5 h-3.5 stroke-[3px]" />
-                    </div>
-                    <div>
-                      <h6 className="font-extrabold text-slate-850 text-sm">Analisis Multi-Outlet Terpusat</h6>
-                      <p className="text-xs text-slate-500 mt-0.5">Bandingkan omzet dan laba bersih antar cabang secara real-time dalam satu layar terpadu.</p>
-                    </div>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <div className="w-5 h-5 rounded-full bg-violet-100 flex items-center justify-center text-violet-600 shrink-0 mt-0.5">
-                      <Check className="w-3.5 h-3.5 stroke-[3px]" />
-                    </div>
-                    <div>
-                      <h6 className="font-extrabold text-slate-850 text-sm">Ekspor Laporan File Excel & PDF</h6>
-                      <p className="text-xs text-slate-500 mt-0.5">Unduh data penjualan bulanan atau laporan pajak dalam format yang siap pakai sekali klik.</p>
-                    </div>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <div className="w-5 h-5 rounded-full bg-violet-100 flex items-center justify-center text-violet-600 shrink-0 mt-0.5">
-                      <Check className="w-3.5 h-3.5 stroke-[3px]" />
-                    </div>
-                    <div>
-                      <h6 className="font-extrabold text-slate-850 text-sm">Keamanan Enkripsi Data Transparan</h6>
-                      <p className="text-xs text-slate-500 mt-0.5">Semua data transaksi di-backup aman di cloud Firebase dengan enkripsi tingkat tinggi.</p>
-                    </div>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          )}
-
-        </div>
-      </section>
+      <ShowcaseSection />
 
       {/* FREQUENTLY ASKED QUESTIONS SECTION */}
       <section id="faq" className="py-20 sm:py-28 bg-slate-100 border-t border-slate-200/60 relative z-10">
@@ -1697,9 +1175,9 @@ export default function LandingPageClient() {
                     
                     <div className="relative z-10 space-y-4">
                       <div className="flex justify-between items-center border-b border-slate-850 pb-3">
-                        <h4 className="font-extrabold text-[10px] text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                        <p className="font-extrabold text-[10px] text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                           <Sparkles className="w-3.5 h-3.5 text-indigo-400" /> Hasil Rekomendasi
-                        </h4>
+                        </p>
                       </div>
 
                       {/* Highlight 1: Total HPP */}
@@ -1815,6 +1293,8 @@ export default function LandingPageClient() {
         </div>
       </section>
 
+      </main>
+
       {/* FOOTER */}
       <footer className="bg-slate-900 border-t border-slate-800 text-slate-400 py-12 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1834,7 +1314,7 @@ export default function LandingPageClient() {
 
             {/* Links columns */}
             <div>
-              <h6 className="font-bold text-white text-xs uppercase tracking-wider mb-4">Aplikasi</h6>
+              <div className="font-bold text-white text-xs uppercase tracking-wider mb-4">Aplikasi</div>
               <ul className="space-y-2.5 text-xs">
                 <li><a href="#fitur" className="hover:text-white transition-colors">Fitur POS</a></li>
                 <li><a href="#demo" className="hover:text-white transition-colors">Demo Simulator</a></li>
@@ -1843,7 +1323,7 @@ export default function LandingPageClient() {
             </div>
 
             <div>
-              <h6 className="font-bold text-white text-xs uppercase tracking-wider mb-4">Pengguna</h6>
+              <div className="font-bold text-white text-xs uppercase tracking-wider mb-4">Pengguna</div>
               <ul className="space-y-2.5 text-xs">
                 <li><Link href="/login" className="hover:text-white transition-colors">Login Kasir / Owner</Link></li>
                 <li><Link href="/register" className="hover:text-white transition-colors">Daftar Akun Baru</Link></li>
@@ -1852,7 +1332,7 @@ export default function LandingPageClient() {
             </div>
 
             <div>
-              <h6 className="font-bold text-white text-xs uppercase tracking-wider mb-4">Legalitas</h6>
+              <div className="font-bold text-white text-xs uppercase tracking-wider mb-4">Legalitas</div>
               <ul className="space-y-2.5 text-xs">
                 <li><a href="#" className="hover:text-white transition-colors">Kebijakan Privasi</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Syarat & Ketentuan</a></li>
