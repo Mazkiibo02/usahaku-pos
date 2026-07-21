@@ -6,6 +6,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 
 import { AppShell } from '@/src/components/layout/app-shell';
 import { AuthGuard } from '@/src/features/auth/components/auth-guard';
+import { AuthProvider } from '@/src/features/auth/providers/auth-provider';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useShiftStore } from '@/src/stores/shiftStore';
 import { db } from '@/src/lib/firebase';
@@ -23,7 +24,7 @@ function FullScreenSpinner() {
   );
 }
 
-export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
+function ProtectedLayoutContent({ children }: ProtectedLayoutProps) {
   const router = useRouter();
   const { user, role, tenantId, isLoading } = useAuthStore();
   const { fetchActiveShift } = useShiftStore();
@@ -101,5 +102,13 @@ export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
     <AuthGuard fallback={<FullScreenSpinner />}>
       {isSubscriptionLocked ? <SubscriptionLock /> : <AppShell>{children}</AppShell>}
     </AuthGuard>
+  );
+}
+
+export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
+  return (
+    <AuthProvider>
+      <ProtectedLayoutContent>{children}</ProtectedLayoutContent>
+    </AuthProvider>
   );
 }
