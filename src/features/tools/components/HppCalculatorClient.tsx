@@ -251,7 +251,7 @@ export default function HppCalculatorClient() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 sm:h-20">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-2">
+            <Link prefetch={false} href="/" className="flex items-center gap-2">
               <div className="w-10 h-10 rounded-xl bg-linear-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-500/30">
                 <Store className="w-5 h-5" />
               </div>
@@ -262,14 +262,14 @@ export default function HppCalculatorClient() {
 
             {/* Back Link */}
             <div className="flex items-center gap-4">
-              <Link
+              <Link prefetch={false}
                 href="/"
                 className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors flex items-center gap-1.5"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Kembali ke Beranda
               </Link>
-              <Link
+              <Link prefetch={false}
                 href="/register"
                 className="hidden sm:inline-flex text-xs font-bold text-white bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 px-4 py-2 rounded-lg shadow-md shadow-indigo-500/10 transition-all"
               >
@@ -842,14 +842,14 @@ export default function HppCalculatorClient() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-            <Link
+            <Link prefetch={false}
               href="/register"
               className="w-full sm:w-auto px-8 py-4 bg-linear-to-r from-indigo-500 to-violet-500 hover:from-indigo-400 hover:to-violet-400 text-white font-bold text-sm sm:text-base rounded-2xl shadow-xl shadow-indigo-500/20 transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2 group"
             >
               Mulai 30-Hari Uji Coba Gratis
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
-            <Link
+            <Link prefetch={false}
               href="/"
               className="w-full sm:w-auto px-8 py-4 bg-slate-850 hover:bg-slate-800 text-slate-200 border border-slate-800 hover:border-slate-700 font-bold text-sm sm:text-base rounded-2xl transition-all"
             >
@@ -884,17 +884,17 @@ export default function HppCalculatorClient() {
             <div>
               <h6 className="font-bold text-white text-xs uppercase tracking-wider mb-4">Aplikasi</h6>
               <ul className="space-y-2.5 text-xs">
-                <li><Link href="/#fitur" className="hover:text-white transition-colors">Fitur POS</Link></li>
-                <li><Link href="/#demo" className="hover:text-white transition-colors">Demo Simulator</Link></li>
-                <li><Link href="/#showcase" className="hover:text-white transition-colors">Tampilan Layar</Link></li>
+                <li><Link prefetch={false} href="/#fitur" className="hover:text-white transition-colors">Fitur POS</Link></li>
+                <li><Link prefetch={false} href="/#demo" className="hover:text-white transition-colors">Demo Simulator</Link></li>
+                <li><Link prefetch={false} href="/#showcase" className="hover:text-white transition-colors">Tampilan Layar</Link></li>
               </ul>
             </div>
 
             <div>
               <h6 className="font-bold text-white text-xs uppercase tracking-wider mb-4">Pengguna</h6>
               <ul className="space-y-2.5 text-xs">
-                <li><Link href="/login" className="hover:text-white transition-colors">Login Kasir / Owner</Link></li>
-                <li><Link href="/register" className="hover:text-white transition-colors">Daftar Akun Baru</Link></li>
+                <li><Link prefetch={false} href="/login" className="hover:text-white transition-colors">Login Kasir / Owner</Link></li>
+                <li><Link prefetch={false} href="/register" className="hover:text-white transition-colors">Daftar Akun Baru</Link></li>
                 <li><a href="https://wa.me/6285117821129" className="hover:text-white transition-colors">Bantuan Teknis</a></li>
               </ul>
             </div>

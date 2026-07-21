@@ -118,7 +118,7 @@ export default function LandingPage() {
 
               {/* Dual CTAs */}
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-                <Link
+                <Link prefetch={false}
                   href="/register"
                   className="w-full sm:w-auto px-8 py-4 bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-lg rounded-2xl shadow-xl shadow-indigo-500/30 hover:shadow-2xl hover:shadow-indigo-500/40 transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2"
                 >
@@ -460,7 +460,7 @@ export default function LandingPage() {
                 </p>
                 
                 <div className="pt-2">
-                  <Link
+                  <Link prefetch={false}
                     href="/tools/kalkulator-hpp"
                     className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-base sm:text-lg rounded-2xl shadow-xl shadow-indigo-500/20 hover:shadow-2xl hover:shadow-indigo-500/35 transform hover:-translate-y-1 active:scale-98 transition-all duration-300"
                   >
@@ -519,7 +519,7 @@ export default function LandingPage() {
 
             {/* Dual buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link
+              <Link prefetch={false}
                 href="/register"
                 className="w-full sm:w-auto px-8 py-4 bg-linear-to-r from-indigo-500 to-violet-500 hover:from-indigo-400 hover:to-violet-400 text-white font-bold text-lg rounded-2xl shadow-xl shadow-indigo-500/20 transform hover:-translate-y-0.5 transition-all duration-200"
               >
@@ -566,15 +566,15 @@ export default function LandingPage() {
               <ul className="space-y-2.5 text-xs">
                 <li><a href="#fitur" className="hover:text-white transition-colors">Fitur POS</a></li>
                 <li><a href="#showcase" className="hover:text-white transition-colors">Tampilan Layar</a></li>
-                <li><Link href="/tools/kalkulator-hpp" className="hover:text-white transition-colors">Kalkulator HPP</Link></li>
+                <li><Link prefetch={false} href="/tools/kalkulator-hpp" className="hover:text-white transition-colors">Kalkulator HPP</Link></li>
               </ul>
             </div>
 
             <div>
               <div className="font-bold text-white text-xs uppercase tracking-wider mb-4">Pengguna</div>
               <ul className="space-y-2.5 text-xs">
-                <li><Link href="/login" className="hover:text-white transition-colors">Login Kasir / Owner</Link></li>
-                <li><Link href="/register" className="hover:text-white transition-colors">Daftar Akun Baru</Link></li>
+                <li><Link prefetch={false} href="/login" className="hover:text-white transition-colors">Login Kasir / Owner</Link></li>
+                <li><Link prefetch={false} href="/register" className="hover:text-white transition-colors">Daftar Akun Baru</Link></li>
                 <li><a href="https://wa.me/6285117821129" className="hover:text-white transition-colors">Bantuan Teknis</a></li>
               </ul>
             </div>

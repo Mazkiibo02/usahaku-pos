@@ -32,7 +32,7 @@ export default function Header() {
             <a href="#showcase" className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors">
               Tampilan Layar
             </a>
-            <Link href="/tools/kalkulator-hpp" className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors">
+            <Link prefetch={false} href="/tools/kalkulator-hpp" className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors">
               Kalkulator HPP
             </Link>
             <a href="#faq" className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors">
@@ -42,14 +42,14 @@ export default function Header() {
 
           {/* Desktop CTAs */}
           <div className="hidden md:flex items-center gap-4">
-            <Link
+            <Link prefetch={false}
               href="/login"
               className="text-sm font-bold text-slate-700 hover:text-indigo-600 px-4 py-2 rounded-lg transition-colors flex items-center gap-1"
             >
               <LogIn className="w-4 h-4" />
               Masuk
             </Link>
-            <Link
+            <Link prefetch={false}
               href="/register"
               className="text-sm font-bold text-white bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 px-5 py-2.5 rounded-xl shadow-md shadow-indigo-500/20 hover:shadow-lg hover:shadow-indigo-500/30 transform hover:-translate-y-0.5 transition-all duration-200"
             >
@@ -88,7 +88,7 @@ export default function Header() {
             >
               Tampilan Layar
             </a>
-            <Link
+            <Link prefetch={false}
               href="/tools/kalkulator-hpp"
               onClick={() => setMobileMenuOpen(false)}
               className="block px-3 py-2.5 rounded-lg text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
@@ -104,14 +104,14 @@ export default function Header() {
             </a>
             <hr className="border-slate-100 my-2" />
             <div className="grid grid-cols-2 gap-3 pt-2">
-              <Link
+              <Link prefetch={false}
                 href="/login"
                 className="flex items-center justify-center gap-2 px-4 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
               >
                 <LogIn className="w-4 h-4" />
                 Masuk
               </Link>
-              <Link
+              <Link prefetch={false}
                 href="/register"
                 className="flex items-center justify-center px-4 py-3 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-500 transition-colors text-center shadow-md shadow-indigo-500/10"
               >
