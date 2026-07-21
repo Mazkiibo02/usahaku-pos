@@ -2,7 +2,9 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { Smartphone, Laptop, Check } from 'lucide-react';
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone';
+import Laptop from 'lucide-react/dist/esm/icons/laptop';
+import Check from 'lucide-react/dist/esm/icons/check';
 
 export default function ShowcaseTabs() {
   const [activeTab, setActiveTab] = useState<'checkout' | 'analytics'>('checkout');

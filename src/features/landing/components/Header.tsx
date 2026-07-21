@@ -2,7 +2,10 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Store, LogIn, Menu, X } from 'lucide-react';
+import Store from 'lucide-react/dist/esm/icons/store';
+import LogIn from 'lucide-react/dist/esm/icons/log-in';
+import Menu from 'lucide-react/dist/esm/icons/menu';
+import X from 'lucide-react/dist/esm/icons/x';
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

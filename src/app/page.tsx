@@ -2,19 +2,17 @@ import React from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
-import {
-  ArrowRight,
-  Check,
-  Store,
-  DollarSign,
-  Printer,
-  Receipt,
-  WifiOff,
-  Lock,
-  ShieldCheck,
-  Users,
-  CheckCircle2,
-} from 'lucide-react';
+import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
+import Check from 'lucide-react/dist/esm/icons/check';
+import Store from 'lucide-react/dist/esm/icons/store';
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign';
+import Printer from 'lucide-react/dist/esm/icons/printer';
+import Receipt from 'lucide-react/dist/esm/icons/receipt';
+import WifiOff from 'lucide-react/dist/esm/icons/wifi-off';
+import Lock from 'lucide-react/dist/esm/icons/lock';
+import ShieldCheck from 'lucide-react/dist/esm/icons/shield-check';
+import Users from 'lucide-react/dist/esm/icons/users';
+import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
 import Header from '@/src/features/landing/components/Header';
 import ShowcaseTabs from '@/src/features/landing/components/ShowcaseTabs';
 
@@ -32,6 +30,11 @@ export const metadata: Metadata = {
     "aplikasi kasir murah",
     "pos indonesia"
   ],
+  other: {
+    rel: 'preload',
+    as: 'image',
+    href: ['/images/mockup-dashboard-laptop.webp', '/images/mockup-kasir-hp.webp'],
+  },
   alternates: {
     canonical: "https://usahakupos.my.id",
   },

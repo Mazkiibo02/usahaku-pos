@@ -10,6 +10,9 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
+  },
   serverExternalPackages: ['firebase-admin', 'jwks-rsa', 'jose'],
   async headers() {
     return [
