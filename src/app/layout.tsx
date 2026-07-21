@@ -19,6 +19,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://usahakupos.my.id'),
   title: "Usahaku POS",
   description: "Sistem Kasir Pintar untuk UMKM",
   manifest: "/site.webmanifest",
