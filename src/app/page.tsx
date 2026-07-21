@@ -30,11 +30,6 @@ export const metadata: Metadata = {
     "aplikasi kasir murah",
     "pos indonesia"
   ],
-  other: {
-    rel: 'preload',
-    as: 'image',
-    href: ['/images/mockup-dashboard-laptop.webp', '/images/mockup-kasir-hp.webp'],
-  },
   alternates: {
     canonical: "https://usahakupos.my.id",
   },
