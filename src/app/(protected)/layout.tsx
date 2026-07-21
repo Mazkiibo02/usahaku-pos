@@ -11,6 +11,7 @@ import { useAuthStore } from '@/src/stores/authStore';
 import { useShiftStore } from '@/src/stores/shiftStore';
 import { db } from '@/src/lib/firebase';
 import { SubscriptionLock } from '@/src/components/subscription/SubscriptionLock';
+import PwaRegistry from '@/src/components/pwa-registry';
 
 type ProtectedLayoutProps = {
   children: React.ReactNode;
@@ -108,6 +109,7 @@ function ProtectedLayoutContent({ children }: ProtectedLayoutProps) {
 export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
   return (
     <AuthProvider>
+      <PwaRegistry />
       <ProtectedLayoutContent>{children}</ProtectedLayoutContent>
     </AuthProvider>
   );

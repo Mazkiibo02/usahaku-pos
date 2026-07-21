@@ -14,7 +14,9 @@ import ShieldCheck from 'lucide-react/dist/esm/icons/shield-check';
 import Users from 'lucide-react/dist/esm/icons/users';
 import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
 import Header from '@/src/features/landing/components/Header';
-import ShowcaseTabs from '@/src/features/landing/components/ShowcaseTabs';
+import dynamic from 'next/dynamic';
+
+const ShowcaseTabs = dynamic(() => import('@/src/features/landing/components/ShowcaseTabs'), { ssr: true });
 
 export const metadata: Metadata = {
   title: "Usahaku POS — Aplikasi Kasir Online & Sistem Penjualan UMKM Premium",
