@@ -129,9 +129,9 @@ export default function HppCalculatorClient() {
       id: Math.random().toString(36).substring(2, 9),
       name: '',
       purchasePrice: 0,
-      purchaseQty: 1000,
-      unit: 'g',
-      usedQty: 0
+      purchaseQty: 1,
+      unit: 'pcs',
+      usedQty: 1
     };
     setIngredients([...ingredients, newIng]);
     setActivePreset('custom');
@@ -202,28 +202,28 @@ export default function HppCalculatorClient() {
     if (targetMargin < 30) {
       return {
         text: 'Margin sangat tipis!',
-        desc: 'Berisiko merugi jika bahan baku mendadak naik. Disarankan naikkan ke minimal 40%.',
+        desc: 'Berisiko merugi jika harga modal/komponen naik. Disarankan naikkan ke minimal 40%.',
         color: 'text-rose-600 bg-rose-50 border-rose-100',
         score: 'Rendah'
       };
     } else if (targetMargin >= 30 && targetMargin <= 50) {
       return {
-        text: 'Margin Standar Kuliner',
-        desc: 'Cocok untuk model warung, katering porsi besar, atau fast-moving foods.',
+        text: 'Margin Standar Bisnis',
+        desc: 'Cocok untuk toko kelontong, retail volume tinggi, atau grosir.',
         color: 'text-amber-650 bg-amber-50 border-amber-100',
         score: 'Ideal'
       };
     } else if (targetMargin > 50 && targetMargin <= 70) {
       return {
-        text: 'Margin Sehat & Premium',
-        desc: 'Sangat ideal untuk kafe, coffee shop, & restoran. Aman dari fluktuasi bahan baku.',
+        text: 'Margin Sehat & Ideal',
+        desc: 'Sangat ideal untuk usaha retail, bengkel, jasa kreatif, hingga kuliner. Aman dari fluktuasi modal.',
         color: 'text-emerald-700 bg-emerald-50 border-emerald-100',
         score: 'Sangat Baik'
       };
     } else {
       return {
         text: 'Margin Super Tinggi',
-        desc: 'Pastikan nilai produk (brand value / rasa / ambience) sebanding dengan harga jual premium.',
+        desc: 'Pastikan keunikan produk/jasa (brand value, kualitas service, garansi) sebanding dengan harga jual premium.',
         color: 'text-indigo-700 bg-indigo-50 border-indigo-100',
         score: 'Maksimal'
       };
@@ -289,18 +289,18 @@ export default function HppCalculatorClient() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/25 text-indigo-300 text-xs font-semibold mb-4">
             <Calculator className="w-4 h-4 animate-pulse" />
-            Programmatic SEO / Culinary Pricing Suite
+            Pricing & Profit Margin Suite
           </div>
           
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight mb-4 max-w-4xl mx-auto">
             Kalkulator HPP & Simulasi <br className="hidden sm:inline" />
             <span className="bg-clip-text text-transparent bg-linear-to-r from-indigo-400 via-violet-300 to-indigo-300">
-              Harga Jual Kuliner Gratis
+              Harga Jual Bisnis Gratis
             </span>
           </h1>
           
           <p className="text-sm sm:text-base text-slate-350 max-w-2xl mx-auto mb-8 leading-relaxed font-medium">
-            Kalkulasikan Harga Pokok Penjualan (HPP) resep menu Anda, tambahkan buffer operasional overhead, serta simulasikan harga jual ideal berdasarkan margin target Anda dalam hitungan detik.
+            Kalkulasikan Harga Pokok Penjualan (HPP) produk atau jasa Anda, tambahkan buffer operasional overhead, serta simulasikan harga jual ideal berdasarkan margin target Anda dalam hitungan detik.
           </p>
 
           {/* Preset Selector */}
@@ -363,40 +363,40 @@ export default function HppCalculatorClient() {
                   <div>
                     <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
                       <ChefHat className="w-5 h-5 text-indigo-600" />
-                      Langkah 1: Komposisi Bahan Baku Resep
+                      Langkah 1: Daftar Komponen Biaya / Modal
                     </h3>
-                    <p className="text-xs text-slate-500 mt-1">Masukkan takaran bahan mentah beserta harga pembelian grosirnya.</p>
+                    <p className="text-xs text-slate-500 mt-1">Masukkan harga pembelian grosir/modal beserta kuantitas penggunaannya.</p>
                   </div>
                   <button
                     onClick={handleAddIngredient}
                     className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-50 hover:bg-indigo-150 text-indigo-650 font-bold text-xs sm:text-sm rounded-xl transition-colors shrink-0"
                   >
                     <Plus className="w-4 h-4" />
-                    Tambah Bahan
+                    Tambah Komponen
                   </button>
                 </div>
 
                 {ingredients.length === 0 ? (
                   <div className="text-center py-12 px-4 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
                     <ShoppingBag className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-                    <h5 className="font-bold text-slate-700 text-sm">Resep belum diisi bahan baku</h5>
-                    <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">Mulai dengan menambahkan bahan mentah, atau klik salah satu preset resep makanan/minuman populer di atas.</p>
+                    <h5 className="font-bold text-slate-700 text-sm">Belum ada komponen biaya yang ditambahkan</h5>
+                    <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">Mulai dengan menambahkan komponen biaya/modal, atau pilih salah satu simulasi di atas.</p>
                     <button
                       onClick={handleAddIngredient}
                       className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-colors"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      Tambah Bahan Pertama
+                      Tambah Komponen Pertama
                     </button>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {/* Header Columns labels (Desktop) */}
                     <div className="hidden md:grid grid-cols-12 gap-3 text-[10px] font-black tracking-widest text-slate-400 uppercase px-2 mb-1">
-                      <div className="col-span-4">Nama Bahan Baku</div>
+                      <div className="col-span-4">Nama Komponen</div>
                       <div className="col-span-3">Harga Beli Grosir</div>
-                      <div className="col-span-2">Takaran Beli</div>
-                      <div className="col-span-2">Dipakai Resep</div>
+                      <div className="col-span-2">Kuantitas Beli</div>
+                      <div className="col-span-2">Kuantitas Terpakai</div>
                       <div className="col-span-1 text-right">Biaya</div>
                     </div>
 
@@ -411,10 +411,10 @@ export default function HppCalculatorClient() {
                           >
                             {/* 1. Name */}
                             <div className="col-span-1 md:col-span-4">
-                              <label className="block md:hidden text-[10px] font-black text-slate-400 uppercase mb-1">Nama Bahan</label>
+                              <label className="block md:hidden text-[10px] font-black text-slate-400 uppercase mb-1">Nama Komponen</label>
                               <input
                                 type="text"
-                                placeholder="Contoh: Nasi Putih"
+                                placeholder="Contoh: Nasi / Ban"
                                 value={ing.name}
                                 onChange={(e) => handleUpdateIngredient(ing.id, 'name', e.target.value)}
                                 className="w-full bg-white border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold transition-colors"
@@ -439,11 +439,11 @@ export default function HppCalculatorClient() {
 
                             {/* 3. Purchase Qty & Unit */}
                             <div className="col-span-1 md:col-span-2">
-                              <label className="block md:hidden text-[10px] font-black text-slate-400 uppercase mb-1">Takaran Beli</label>
+                              <label className="block md:hidden text-[10px] font-black text-slate-400 uppercase mb-1">Kuantitas Beli</label>
                               <div className="flex gap-1">
                                 <input
                                   type="number"
-                                  placeholder="1000"
+                                  placeholder="1"
                                   min="1"
                                   value={ing.purchaseQty || ''}
                                   onChange={(e) => handleUpdateIngredient(ing.id, 'purchaseQty', Math.max(1, parseFloat(e.target.value) || 1))}
@@ -463,11 +463,11 @@ export default function HppCalculatorClient() {
 
                             {/* 4. Used Qty */}
                             <div className="col-span-1 md:col-span-2">
-                              <label className="block md:hidden text-[10px] font-black text-slate-400 uppercase mb-1">Dipakai Resep ({ing.unit})</label>
+                              <label className="block md:hidden text-[10px] font-black text-slate-400 uppercase mb-1">Kuantitas Terpakai ({ing.unit})</label>
                               <div className="relative">
                                 <input
                                   type="number"
-                                  placeholder="50"
+                                  placeholder="1"
                                   min="0"
                                   value={ing.usedQty || ''}
                                   onChange={(e) => handleUpdateIngredient(ing.id, 'usedQty', Math.max(0, parseFloat(e.target.value) || 0))}
@@ -484,7 +484,7 @@ export default function HppCalculatorClient() {
                               <button
                                 onClick={() => handleRemoveIngredient(ing.id)}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors"
-                                title="Hapus bahan"
+                                title="Hapus komponen"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -571,7 +571,7 @@ export default function HppCalculatorClient() {
                   <Info className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
                   <div>
                     <span className="font-extrabold text-slate-700">Tips Operasional: </span>
-                    Jika Anda berjualan online (Gofood/Grabfood/Shopeefood), Anda bisa menyuntikkan komisi aplikasi (biasanya 20%) di bagian overhead ini untuk mensimulasikan margin bersih sesungguhnya!
+                    Anda bisa memasukkan biaya kemasan, ongkir, komisi marketplace/channel penjualan, hingga biaya operasional/bensin ke dalam overhead ini untuk mensimulasikan margin bersih sesungguhnya!
                   </div>
                 </div>
               </div>
@@ -775,10 +775,10 @@ export default function HppCalculatorClient() {
                   <Calculator className="w-4 h-4 text-indigo-600" /> Rumus Kalkulasi Yang Digunakan
                 </h5>
                 <p>
-                  HPP per porsi dihitung dengan menjumlahkan seluruh biaya bahan baku dikalikan volume resep, kemudian ditambah biaya operasional overhead (kemasan/gas).
+                  HPP dihitung dengan menjumlahkan seluruh biaya modal komponen dikalikan kuantitas terpakai, kemudian ditambah biaya operasional overhead (kemasan/opsional).
                 </p>
                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/50 font-mono text-[9px] text-slate-800 space-y-1">
-                  <div>• HPP = Total Bahan Baku + Biaya Overhead</div>
+                  <div>• HPP = Total Biaya Komponen + Biaya Overhead</div>
                   <div>• Harga Jual = HPP / (1 - Target Margin %)</div>
                   <div>• Laba Kotor = Harga Jual - HPP</div>
                 </div>
@@ -799,28 +799,28 @@ export default function HppCalculatorClient() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
             <h2 className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-2">Edukasi Bisnis</h2>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Pertanyaan Populer Tentang HPP Kuliner</h3>
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Pertanyaan Populer Tentang HPP & Margin Bisnis</h3>
           </div>
 
           <div className="space-y-6">
             <div className="bg-white p-5 rounded-2xl border border-slate-200/70 shadow-xs">
               <h5 className="font-bold text-slate-850 text-sm mb-1.5">Apa bedanya HPP (COGS) dan Harga Jual?</h5>
               <p className="text-xs text-slate-550 leading-relaxed font-semibold">
-                HPP adalah total modal bersih (bahan baku, bumbu, kemasan) untuk membuat 1 porsi menu. Sedangkan Harga Jual adalah HPP yang sudah ditambahkan target persentase keuntungan (margin profit) agar Anda mendapatkan keuntungan kotor saat bertransaksi.
+                HPP adalah total modal bersih (bahan baku, sparepart, biaya modal unit, kemasan) untuk membuat 1 produk atau menyelesaikan 1 unit jasa. Sedangkan Harga Jual adalah HPP yang sudah ditambahkan target persentase keuntungan (margin profit) agar Anda mendapatkan keuntungan kotor saat bertransaksi.
               </p>
             </div>
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200/70 shadow-xs">
-              <h5 className="font-bold text-slate-850 text-sm mb-1.5">Berapa target margin keuntungan yang ideal untuk restoran atau cafe?</h5>
+              <h5 className="font-bold text-slate-850 text-sm mb-1.5">Berapa target margin keuntungan yang ideal untuk bisnis?</h5>
               <p className="text-xs text-slate-550 leading-relaxed font-semibold">
-                Umumnya bisnis kuliner di Indonesia menggunakan target gross profit margin sebesar 50% hingga 70%. Untuk warung makan atau katering partai besar, margin 30% hingga 40% sudah sangat ideal. Margin ini penting untuk menutup biaya operasional lain seperti sewa tempat, gaji staf, dan marketing.
+                Umumnya bisnis retail, jasa, dan kuliner menggunakan target gross profit margin sebesar 30% hingga 70%. Untuk grosir atau retail volume besar, margin 20% - 40% sudah sangat baik, sedangkan jasa/bengkel dan kafe bisa mencapai 50% - 70%. Margin ini penting untuk menutup biaya operasional seperti sewa tempat, gaji staf, dan operasional.
               </p>
             </div>
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200/70 shadow-xs">
               <h5 className="font-bold text-slate-850 text-sm mb-1.5">Mengapa saya harus menghitung HPP secara berkala?</h5>
               <p className="text-xs text-slate-550 leading-relaxed font-semibold">
-                Harga bahan baku di pasar seperti minyak, telur, cabai, atau daging sangat fluktuatif. Jika harga beli naik namun harga jual menu Anda tetap sama, margin profit Anda akan tergerus habis (boncos). Usahaku POS mempermudah ini dengan melacak pergerakan HPP secara otomatis berbasis Stock Ledger.
+                Harga barang modal dan komponen suku cadang/bahan baku pasar sangat fluktuatif. Jika modal naik namun harga jual Anda tetap sama, margin profit Anda akan tergerus habis. Usahaku POS mempermudah ini dengan melacak pergerakan HPP secara otomatis berbasis Stock Ledger.
               </p>
             </div>
           </div>
@@ -834,11 +834,11 @@ export default function HppCalculatorClient() {
 
         <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10 space-y-8">
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight leading-tight max-w-2xl mx-auto">
-            Pantau Naik-Turun HPP Resep Secara Otomatis
+            Pantau Naik-Turun HPP Produk & Jasa Secara Otomatis
           </h2>
           
           <p className="text-sm sm:text-base text-slate-300 max-w-3xl mx-auto leading-relaxed font-semibold">
-            Capek hitung HPP resep manual setiap harga bahan baku naik? Di Usahaku POS, semua pergerakan HPP, manajemen stok bahan baku (Stock Ledger), dan laporan laba-rugi otomatis rapi tanpa ribet Excel! Coba Gratis 30 Hari Tanpa Kartu Kredit.
+            Capek hitung HPP manual setiap harga modal atau sparepart naik? Di Usahaku POS, semua pergerakan HPP, manajemen stok barang (Stock Ledger), dan laporan laba-rugi otomatis rapi tanpa ribet Excel! Coba Gratis 30 Hari Tanpa Kartu Kredit.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">

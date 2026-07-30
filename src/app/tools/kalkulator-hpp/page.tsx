@@ -2,18 +2,19 @@ import { Metadata } from 'next';
 import HppCalculatorClient from '@/src/features/tools/components/HppCalculatorClient';
 
 export const metadata: Metadata = {
-  title: "Kalkulator HPP Makanan & Simulasi Harga Jual Gratis | Usahaku POS",
-  description: "Hitung Harga Pokok Penjualan (HPP) menu kuliner, kafe, dan restoran Anda secara akurat. Tentukan harga jual ideal dengan margin profit maksimal tanpa takut boncos.",
+  title: "Kalkulator HPP & Simulasi Harga Jual Bisnis Gratis | Usahaku POS",
+  description: "Hitung Harga Pokok Penjualan (HPP) produk retail, jasa, bengkel, dan kuliner Anda secara akurat. Tentukan harga jual ideal dengan margin profit maksimal tanpa takut rugi.",
   keywords: [
-    "kalkulator hpp makanan",
-    "cara hitung hpp cafe",
-    "hitung harga jual makanan",
-    "rumus hpp produk kuliner",
-    "kalkulator keuntungan resto"
+    "kalkulator hpp bisnis",
+    "kalkulator hpp retail dan jasa",
+    "cara hitung hpp usaha",
+    "hitung harga jual produk",
+    "rumus hpp modal usaha",
+    "kalkulator keuntungan umkm"
   ],
   openGraph: {
-    title: "Kalkulator HPP Makanan & Simulasi Harga Jual Gratis | Usahaku POS",
-    description: "Hitung Harga Pokok Penjualan (HPP) menu kuliner, kafe, dan restoran Anda secara akurat. Tentukan harga jual ideal dengan margin profit maksimal tanpa takut boncos.",
+    title: "Kalkulator HPP & Simulasi Harga Jual Bisnis Gratis | Usahaku POS",
+    description: "Hitung Harga Pokok Penjualan (HPP) produk retail, jasa, bengkel, dan kuliner Anda secara akurat. Tentukan harga jual ideal dengan margin profit maksimal tanpa takut rugi.",
     url: "https://usahakupos.my.id/tools/kalkulator-hpp",
     siteName: "Usahaku POS",
     locale: "id_ID",
