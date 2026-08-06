@@ -145,33 +145,33 @@ export default function LandingPage() {
             </div>
 
             {/* DUAL DEVICE MOCKUP AREA */}
-            <div className="relative max-w-5xl mx-auto mt-8 sm:mt-12">
+            <div className="relative max-w-5xl mx-auto mt-8 lg:mt-12">
               {/* Ambient Background Glow for mockups */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="w-[80%] aspect-video rounded-full bg-indigo-500/10 blur-[80px]" />
               </div>
 
-              <div className="relative max-w-4xl mx-auto px-4 sm:px-0">
+              <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-0">
                 <Image
                   src="/images/mockup-dashboard-laptop.webp"
                   alt="Dashboard Usahaku POS"
                   width={1200}
                   height={800}
-                  className="w-full h-auto object-contain rounded-xl drop-shadow-2xl hidden sm:block"
+                  className="w-full h-auto object-contain rounded-xl drop-shadow-2xl hidden lg:block"
                   priority={false}
                   loading="lazy"
-                  sizes="(max-width: 768px) 100vw, 50vw"
+                  sizes="(max-width: 1024px) 100vw, 50vw"
                 />
                 <Image
                   src="/images/mockup-kasir-hp.webp"
                   alt="Simulator Kasir HP"
                   width={400}
                   height={800}
-                  className="relative mx-auto w-full max-w-70 sm:absolute sm:-bottom-10 sm:-left-10 sm:w-2/3 sm:max-w-85 h-auto z-10 drop-shadow-2xl"
+                  className="relative mx-auto w-full max-w-70 sm:max-w-80 lg:absolute lg:-bottom-10 lg:-left-10 lg:w-1/3 lg:max-w-85 h-auto z-10 drop-shadow-2xl"
                   priority={true}
                   fetchPriority="high"
                   loading="eager"
-                  sizes="(max-width: 768px) 280px, 340px"
+                  sizes="(max-width: 1024px) 320px, 340px"
                 />
               </div>
             </div>
