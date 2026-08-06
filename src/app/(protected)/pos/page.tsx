@@ -560,7 +560,7 @@ export default function PosPage() {
               </div>
               <div className="text-left font-sans">
                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Printer Bluetooth</p>
-                <p className="text-xs font-bold text-slate-800 truncate max-w-[120px]" title={connectedDevice ? connectedDevice.name || 'Bluetooth Printer' : 'Belum Terhubung'}>
+                <p className="text-xs font-bold text-slate-800 truncate max-w-30" title={connectedDevice ? connectedDevice.name || 'Bluetooth Printer' : 'Belum Terhubung'}>
                   {connectedDevice ? connectedDevice.name || 'Bluetooth Printer' : 'Belum Terhubung'}
                 </p>
               </div>
@@ -702,7 +702,7 @@ export default function PosPage() {
               <div className="flex h-48 flex-col items-center justify-center py-6 text-center">
                 <ShoppingCart className="h-10 w-10 text-slate-300" />
                 <p className="mt-3 text-sm font-medium text-slate-500">Keranjang belanja kosong.</p>
-                <p className="text-xs text-slate-400 mt-1 max-w-[200px]">
+                <p className="text-xs text-slate-400 mt-1 max-w-50">
                   Pilih produk dari katalog untuk menambahkan ke keranjang.
                 </p>
               </div>
@@ -1223,7 +1223,7 @@ export default function PosPage() {
               initial={{ opacity: 0, y: -20, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-              className={`flex items-center gap-3 rounded-xl border px-4 py-3 shadow-lg backdrop-blur-md min-w-[280px] max-w-sm ${
+              className={`flex items-center gap-3 rounded-xl border px-4 py-3 shadow-lg backdrop-blur-md min-w-70 max-w-sm ${
                 toast.type === 'success' 
                   ? 'border-emerald-200/50 bg-emerald-50/90 text-emerald-800' 
                   : toast.type === 'error'

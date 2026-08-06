@@ -196,7 +196,7 @@ export function LoginForm() {
               initial={{ opacity: 0, y: -20, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-              className={`flex items-center gap-3 rounded-xl border px-4 py-3 shadow-lg backdrop-blur-md min-w-[280px] max-w-sm pointer-events-auto ${
+              className={`flex items-center gap-3 rounded-xl border px-4 py-3 shadow-lg backdrop-blur-md min-w-70 max-w-sm pointer-events-auto ${
                 toast.type === 'success'
                   ? 'border-emerald-200/50 bg-emerald-50/90 text-emerald-800'
                   : toast.type === 'error'

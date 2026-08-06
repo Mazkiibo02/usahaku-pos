@@ -707,7 +707,7 @@ export default function HppCalculatorClient() {
                       {percentages.ingredients > 0 && (
                         <div
                           style={{ width: `${percentages.ingredients}%` }}
-                          className="bg-indigo-600 flex items-center justify-center min-w-[20px]"
+                          className="bg-indigo-600 flex items-center justify-center min-w-5"
                           title={`Bahan Baku: ${percentages.ingredients}%`}
                         >
                           {percentages.ingredients}%
@@ -716,7 +716,7 @@ export default function HppCalculatorClient() {
                       {percentages.overhead > 0 && (
                         <div
                           style={{ width: `${percentages.overhead}%` }}
-                          className="bg-violet-400 flex items-center justify-center min-w-[15px]"
+                          className="bg-violet-400 flex items-center justify-center min-w-3.75"
                           title={`Overhead: ${percentages.overhead}%`}
                         >
                           {percentages.overhead}%
@@ -725,7 +725,7 @@ export default function HppCalculatorClient() {
                       {percentages.profit > 0 && (
                         <div
                           style={{ width: `${percentages.profit}%` }}
-                          className="bg-emerald-500 flex items-center justify-center min-w-[20px]"
+                          className="bg-emerald-500 flex items-center justify-center min-w-5"
                           title={`Laba: ${percentages.profit}%`}
                         >
                           {percentages.profit}%

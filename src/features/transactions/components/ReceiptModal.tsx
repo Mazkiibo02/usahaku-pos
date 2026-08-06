@@ -252,11 +252,11 @@ export function ReceiptModal({
                   </div>
                   <div className="flex justify-between">
                     <span>KASIR:</span>
-                    <span className="text-slate-900 font-semibold truncate max-w-[150px]">{transaction.cashierName || 'Kasir'}</span>
+                    <span className="text-slate-900 font-semibold truncate max-w-37.5">{transaction.cashierName || 'Kasir'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>PELANGGAN:</span>
-                    <span className="text-slate-900 font-extrabold truncate max-w-[150px]">{transaction.customerName || 'UMUM'}</span>
+                    <span className="text-slate-900 font-extrabold truncate max-w-37.5">{transaction.customerName || 'UMUM'}</span>
                   </div>
                 </div>
 

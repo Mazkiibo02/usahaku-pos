@@ -6,7 +6,7 @@ import { ArrowRight, Check, Store, DollarSign, Printer, Receipt, WifiOff, Lock, 
 import Header from '@/src/features/landing/components/Header';
 import dynamic from 'next/dynamic';
 
-const ShowcaseTabs = dynamic(() => import('@/src/features/landing/components/ShowcaseTabs'), { ssr: true });
+const ShowcaseTabs = dynamic(() => import('@/src/features/landing/components/ShowcaseTabs'));
 
 export const metadata: Metadata = {
   title: "Usahaku POS — Aplikasi Kasir Online & Sistem Penjualan UMKM Premium",
@@ -73,7 +73,7 @@ export default function LandingPage() {
       />
 
       {/* BACKGROUND DECORATIONS */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[600px] pointer-events-none overflow-hidden z-0">
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-150 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-[-20%] left-[-10%] w-[50%] aspect-square rounded-full bg-linear-to-tr from-indigo-300/30 to-purple-400/20 blur-[120px]" />
         <div className="absolute top-[20%] right-[-10%] w-[45%] aspect-square rounded-full bg-linear-to-br from-blue-300/20 to-violet-300/30 blur-[100px]" />
       </div>
@@ -145,22 +145,21 @@ export default function LandingPage() {
             </div>
 
             {/* DUAL DEVICE MOCKUP AREA */}
-            <div className="relative max-w-5xl mx-auto mt-6">
+            <div className="relative max-w-5xl mx-auto mt-8 sm:mt-12">
               {/* Ambient Background Glow for mockups */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="w-[80%] aspect-video rounded-full bg-indigo-500/10 blur-[80px]" />
               </div>
 
-              <div className="relative max-w-4xl mx-auto">
+              <div className="relative max-w-4xl mx-auto px-4 sm:px-0">
                 <Image
                   src="/images/mockup-dashboard-laptop.webp"
                   alt="Dashboard Usahaku POS"
                   width={1200}
                   height={800}
-                  className="w-full h-auto object-contain rounded-xl drop-shadow-2xl"
-                  priority={true}
-                  fetchPriority="high"
-                  loading="eager"
+                  className="w-full h-auto object-contain rounded-xl drop-shadow-2xl hidden sm:block"
+                  priority={false}
+                  loading="lazy"
                   sizes="(max-width: 768px) 100vw, 50vw"
                 />
                 <Image
@@ -168,11 +167,11 @@ export default function LandingPage() {
                   alt="Simulator Kasir HP"
                   width={400}
                   height={800}
-                  className="absolute -bottom-10 -left-10 w-2/3 max-w-[280px] sm:max-w-[340px] h-auto z-10 drop-shadow-2xl"
+                  className="relative mx-auto w-full max-w-70 sm:absolute sm:-bottom-10 sm:-left-10 sm:w-2/3 sm:max-w-85 h-auto z-10 drop-shadow-2xl"
                   priority={true}
                   fetchPriority="high"
                   loading="eager"
-                  sizes="(max-width: 768px) 66vw, 340px"
+                  sizes="(max-width: 768px) 280px, 340px"
                 />
               </div>
             </div>
@@ -228,7 +227,7 @@ export default function LandingPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               
               {/* Box 1 (Large Box - 2 cols): Sistem Pembayaran Digital Otomatis */}
-              <div className="md:col-span-2 bg-linear-to-br from-indigo-600 via-indigo-700 to-violet-800 text-white rounded-3xl p-6 sm:p-8 flex flex-col justify-between overflow-hidden relative shadow-lg group hover:-translate-y-1 transition-all duration-300 min-h-[320px]">
+              <div className="md:col-span-2 bg-linear-to-br from-indigo-600 via-indigo-700 to-violet-800 text-white rounded-3xl p-6 sm:p-8 flex flex-col justify-between overflow-hidden relative shadow-lg group hover:-translate-y-1 transition-all duration-300 min-h-80">
                 <div className="absolute -bottom-8 -right-8 w-64 h-64 rounded-full bg-white/5 blur-2xl group-hover:bg-white/10 transition-colors duration-300" />
                 
                 <div className="relative z-10 flex flex-col h-full justify-between">
@@ -252,7 +251,7 @@ export default function LandingPage() {
               </div>
 
               {/* Box 2 (Standard Box - 1 col): Dukungan Printer Thermal Universal */}
-              <div className="bg-sky-50 border border-sky-100 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-xs group hover:-translate-y-1 transition-all duration-300 min-h-[320px]">
+              <div className="bg-sky-50 border border-sky-100 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-xs group hover:-translate-y-1 transition-all duration-300 min-h-80">
                 <div>
                   <div className="w-12 h-12 rounded-2xl bg-sky-500/10 flex items-center justify-center mb-6 text-sky-600">
                     <Printer className="w-6 h-6" />
@@ -274,7 +273,7 @@ export default function LandingPage() {
               </div>
 
               {/* Box 3 (Standard Box - 1 col): Kirim Struk Digital */}
-              <div className="bg-emerald-50 border border-emerald-100 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-xs group hover:-translate-y-1 transition-all duration-300 min-h-[320px]">
+              <div className="bg-emerald-50 border border-emerald-100 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-xs group hover:-translate-y-1 transition-all duration-300 min-h-80">
                 <div>
                   <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-6 text-emerald-600">
                     <Receipt className="w-6 h-6" />
@@ -296,7 +295,7 @@ export default function LandingPage() {
               </div>
 
               {/* Box 4 (Large Box - 2 cols): PWA Offline Mode */}
-              <div className="md:col-span-2 bg-slate-900 border border-slate-800 text-white rounded-3xl p-6 sm:p-8 flex flex-col justify-between overflow-hidden relative shadow-lg group hover:-translate-y-1 transition-all duration-300 min-h-[320px]">
+              <div className="md:col-span-2 bg-slate-900 border border-slate-800 text-white rounded-3xl p-6 sm:p-8 flex flex-col justify-between overflow-hidden relative shadow-lg group hover:-translate-y-1 transition-all duration-300 min-h-80">
                 <div className="absolute -bottom-8 -right-8 w-64 h-64 rounded-full bg-white/5 blur-2xl group-hover:bg-white/10 transition-colors duration-300" />
                 
                 <div className="relative z-10 flex flex-col h-full justify-between">
@@ -320,7 +319,7 @@ export default function LandingPage() {
               </div>
 
               {/* Box 5 (Standard Box - 1 col): Manajemen Shift */}
-              <div className="bg-amber-50 border border-amber-100 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-xs group hover:-translate-y-1 transition-all duration-300 min-h-[320px]">
+              <div className="bg-amber-50 border border-amber-100 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-xs group hover:-translate-y-1 transition-all duration-300 min-h-80">
                 <div>
                   <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-6 text-amber-600">
                     <Lock className="w-6 h-6" />
@@ -341,7 +340,7 @@ export default function LandingPage() {
               </div>
 
               {/* Box 6 (Large Box - 2 cols): Multi-Cabang & Multi-User */}
-              <div className="md:col-span-2 bg-indigo-50 border border-indigo-100 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-xs group hover:-translate-y-1 transition-all duration-300 min-h-[320px] relative overflow-hidden">
+              <div className="md:col-span-2 bg-indigo-50 border border-indigo-100 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-xs group hover:-translate-y-1 transition-all duration-300 min-h-80 relative overflow-hidden">
                 <div className="absolute right-0 bottom-0 w-1/2 opacity-25 group-hover:opacity-40 transition-opacity duration-300 hidden sm:block">
                   <svg className="w-full h-auto text-indigo-300" viewBox="0 0 200 100">
                     <rect x="10" y="40" width="20" height="50" rx="3" fill="currentColor" />

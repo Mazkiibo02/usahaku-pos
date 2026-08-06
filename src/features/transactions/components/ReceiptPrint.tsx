@@ -270,7 +270,7 @@ export function ReceiptPrint({
                 <Bluetooth className={`h-4.5 w-4.5 ${connectedDevice ? 'text-emerald-600 animate-pulse' : 'text-slate-400'}`} />
                 <div className="text-left font-sans">
                   <span className="font-semibold text-slate-700 block text-xs">Printer Bluetooth:</span>
-                  <span className="text-[10px] text-slate-500 font-semibold block truncate max-w-[140px]">
+                  <span className="text-[10px] text-slate-500 font-semibold block truncate max-w-35">
                     {connectedDevice ? connectedDevice.name || 'Terhubung' : 'Terputus'}
                   </span>
                 </div>
@@ -321,7 +321,7 @@ export function ReceiptPrint({
                         WebUSB Terhubung
                       </span>
                     ) : (
-                      <span className="text-[10px] text-slate-500 font-semibold block truncate max-w-[140px]">
+                      <span className="text-[10px] text-slate-500 font-semibold block truncate max-w-35">
                         Terputus
                     </span>
                     )}
@@ -433,12 +433,12 @@ export function ReceiptPrint({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">KASIR:</span>
-                    <span className="text-black truncate max-w-[120px]">{cashierName}</span>
+                    <span className="text-black truncate max-w-30">{cashierName}</span>
                   </div>
                   {transaction.customerName && (
                     <div className="flex justify-between">
                       <span className="text-slate-500">PELANGGAN:</span>
-                      <span className="text-black truncate max-w-[120px] font-bold">{transaction.customerName}</span>
+                      <span className="text-black truncate max-w-30 font-bold">{transaction.customerName}</span>
                     </div>
                   )}
                 </div>
