@@ -1,29 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, AlertTriangle, Info, Loader2, Eye, EyeOff } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Info, Loader2 } from 'lucide-react';
 
-import { useAuth } from '@/src/features/auth/hooks/use-auth';
-import { auth, db, functions } from '@/src/lib/firebase';
-import { sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, type User } from 'firebase/auth';
+import { auth, db } from '@/src/lib/firebase';
+import { GoogleAuthProvider, signInWithPopup, type User } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useRouter } from 'next/navigation';
 import { OnboardingModal } from './onboarding-modal';
-
-const loginSchema = z.object({
-  email: z.email('Please enter a valid email address.'),
-  password: z
-    .string()
-    .min(6, 'Password must be at least 6 characters long.'),
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
 
 interface ToastNotification {
   id: string;
@@ -31,31 +17,13 @@ interface ToastNotification {
   message: string;
 }
 
-function getAuthErrorMessage(error: unknown) {
-  if (!(error instanceof Error)) {
-    return 'Sign in failed. Please try again.';
-  }
-
-  switch (error.message) {
-    case 'Firebase: Error (auth/invalid-credential).':
-      return 'Invalid email or password.';
-    case 'Firebase: Error (auth/too-many-requests).':
-      return 'Too many attempts. Please try again later.';
-    default:
-      return error.message || 'Sign in failed. Please try again.';
-  }
-}
-
 export function LoginForm() {
-  const { signInWithEmail } = useAuth();
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [googleUser, setGoogleUser] = useState<User | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
@@ -118,73 +86,6 @@ export function LoginForm() {
     }, 4000);
   };
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-    getValues,
-    trigger,
-    setError,
-  } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
-    mode: 'onSubmit',
-  });
-
-  const onSubmit = async (values: LoginFormValues) => {
-    setSubmitError(null);
-
-    try {
-      await signInWithEmail(values.email, values.password);
-    } catch (error) {
-      setSubmitError(getAuthErrorMessage(error));
-    }
-  };
-
-  const handleForgotPassword = async () => {
-    const email = getValues('email');
-    if (!email || email.trim() === '') {
-      showToast('Silakan masukkan email Anda terlebih dahulu di kolom input Email.', 'warning');
-      setError('email', {
-        type: 'manual',
-        message: 'Masukkan email Anda di sini untuk reset password.',
-      });
-      return;
-    }
-
-    const isValid = await trigger('email');
-    if (!isValid) {
-      showToast('Format email salah. Silakan periksa kembali email Anda.', 'error');
-      return;
-    }
-
-    setIsResettingPassword(true);
-    try {
-      await sendPasswordResetEmail(auth, email);
-      showToast(
-        'Email reset password telah dikirim! Silakan periksa kotak masuk atau folder spam Anda.',
-        'success'
-      );
-    } catch (error: unknown) {
-      console.error('Password reset failed:', error);
-      let errorMsg = 'Gagal mengirim email reset password. Silakan coba lagi.';
-      const firebaseError = error as { code?: string; message?: string };
-      if (firebaseError.code === 'auth/user-not-found' || firebaseError.message?.includes('user-not-found')) {
-        errorMsg = 'Email tidak terdaftar.';
-      } else if (firebaseError.code === 'auth/invalid-email' || firebaseError.message?.includes('invalid-email')) {
-        errorMsg = 'Format email salah.';
-      } else if (firebaseError.code === 'auth/too-many-requests' || firebaseError.message?.includes('too-many-requests')) {
-        errorMsg = 'Terlalu banyak permintaan. Silakan coba lagi nanti.';
-      }
-      showToast(errorMsg, 'error');
-    } finally {
-      setIsResettingPassword(false);
-    }
-  };
-
   return (
     <>
       {/* Floating Animated Toast Banner */}
@@ -216,69 +117,7 @@ export function LoginForm() {
         </AnimatePresence>
       </div>
 
-      <form className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
-        <div className="space-y-2">
-          <label htmlFor="email" className="block text-sm font-medium text-slate-700">
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            {...register('email')}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
-            placeholder="you@business.com"
-            disabled={isSubmitting || isResettingPassword || isGoogleLoading}
-          />
-          {errors.email ? <p className="text-xs text-rose-600">{errors.email.message}</p> : null}
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label htmlFor="password" className="block text-sm font-medium text-slate-700">
-              Password
-            </label>
-            <button
-              type="button"
-              onClick={handleForgotPassword}
-              disabled={isSubmitting || isResettingPassword || isGoogleLoading}
-              className="text-xs font-semibold text-slate-600 transition hover:text-slate-900 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isResettingPassword ? (
-                <span className="flex items-center gap-1">
-                  <Loader2 className="h-3 w-3 animate-spin" /> Sending...
-                </span>
-              ) : (
-                'Lupa Password?'
-              )}
-            </button>
-          </div>
-          <div className="relative w-full">
-            <input
-              id="password"
-              type={showPassword ? 'text' : 'password'}
-              autoComplete="current-password"
-              {...register('password')}
-              className="w-full rounded-lg border border-slate-300 bg-white pl-3 pr-10 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
-              placeholder="Enter your password"
-              disabled={isSubmitting || isResettingPassword || isGoogleLoading}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((prev) => !prev)}
-              disabled={isSubmitting || isResettingPassword || isGoogleLoading}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {showPassword ? (
-                <EyeOff className="h-5 w-5" />
-              ) : (
-                <Eye className="h-5 w-5" />
-              )}
-            </button>
-          </div>
-          {errors.password ? <p className="text-xs text-rose-600">{errors.password.message}</p> : null}
-        </div>
-
+      <div className="space-y-4">
         {submitError ? (
           <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
             {submitError}
@@ -286,24 +125,10 @@ export function LoginForm() {
         ) : null}
 
         <button
-          type="submit"
-          className="w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={isSubmitting || isResettingPassword || isGoogleLoading}
-        >
-          {isSubmitting ? 'Signing in...' : 'Sign In'}
-        </button>
-
-        <div className="my-5 flex items-center gap-3">
-          <div className="h-px flex-1 bg-slate-200" />
-          <span className="text-xs font-medium uppercase tracking-wider text-slate-400">atau</span>
-          <div className="h-px flex-1 bg-slate-200" />
-        </div>
-
-        <button
           type="button"
           onClick={handleGoogleSignIn}
-          disabled={isSubmitting || isResettingPassword || isGoogleLoading}
-          className="w-full flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+          disabled={isGoogleLoading}
+          className="w-full flex items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
         >
           {isGoogleLoading ? (
             <Loader2 className="h-5 w-5 animate-spin text-slate-500" />
@@ -317,7 +142,7 @@ export function LoginForm() {
           )}
           {isGoogleLoading ? 'Menghubungkan ke Google...' : 'Masuk dengan Google'}
         </button>
-      </form>
+      </div>
 
       <OnboardingModal
         isOpen={showOnboardingModal}

@@ -66,6 +66,16 @@ export function OnboardingModal({ isOpen, firebaseUser, onCancel }: OnboardingMo
         name: firebaseUser.displayName || undefined
       });
 
+      // 1b. Call send-welcome-email API without blocking (fire and forget)
+      fetch('/api/send-welcome-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: firebaseUser.email,
+          name: firebaseUser.displayName || values.tenantName,
+        }),
+      }).catch(err => console.error('[sendWelcomeEmail] error', err));
+
       // 2. Force token refresh and sync auth states
       await refresh();
       
@@ -160,9 +170,10 @@ export function OnboardingModal({ isOpen, firebaseUser, onCancel }: OnboardingMo
                       <span>Menyiapkan Toko...</span>
                     </>
                   ) : (
-                    <span>Aktifkan Free Trial 30 Hari</span>
+                    <span>Mulai Kelola Bisnis</span>
                   )}
                 </button>
+
                 <button
                   type="button"
                   onClick={handleCancel}
