@@ -238,8 +238,8 @@ export default function DashboardPage() {
 
       {/* Main Content Grid Skeleton */}
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 h-[400px] animate-pulse rounded-2xl border border-slate-200/60 bg-slate-100/50" />
-        <div className="h-[400px] animate-pulse rounded-2xl border border-slate-200/60 bg-slate-100/50" />
+        <div className="lg:col-span-2 h-100 animate-pulse rounded-2xl border border-slate-200/60 bg-slate-100/50" />
+        <div className="h-100 animate-pulse rounded-2xl border border-slate-200/60 bg-slate-100/50" />
       </div>
     </div>
   );
@@ -438,7 +438,7 @@ export default function DashboardPage() {
             </span>
           </div>
 
-          <div className="h-[300px] w-full pt-4">
+          <div className="h-75 w-full pt-4">
             {stats && stats.chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
@@ -563,7 +563,7 @@ export default function DashboardPage() {
                 );
               })
             ) : (
-              <div className="flex h-[200px] items-center justify-center text-sm text-slate-400">
+              <div className="flex h-50 items-center justify-center text-sm text-slate-400">
                 Belum ada transaksi produk terdaftar
               </div>
             )}
@@ -587,7 +587,7 @@ export default function DashboardPage() {
 
         <div className="mt-4 overflow-x-auto">
           {resolvedTransactions.length === 0 ? (
-            <div className="flex h-[150px] items-center justify-center text-sm text-slate-400">
+            <div className="flex h-37.5 items-center justify-center text-sm text-slate-400">
               Belum ada riwayat transaksi dalam rentang tanggal terpilih
             </div>
           ) : (

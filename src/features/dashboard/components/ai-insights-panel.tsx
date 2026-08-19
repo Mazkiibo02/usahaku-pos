@@ -22,7 +22,7 @@ export function AiInsightsPanel({ isPaidTier }: AiInsightsPanelProps) {
 
   if (!isPaidTier) {
     return (
-      <div className="relative overflow-hidden rounded-2xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 p-6 shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl border border-indigo-200/60 bg-linear-to-br from-indigo-50/50 to-purple-50/50 p-6 shadow-sm">
         <div className="flex items-center gap-3 pb-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/20">
             <Sparkles className="h-5 w-5" />
@@ -37,7 +37,7 @@ export function AiInsightsPanel({ isPaidTier }: AiInsightsPanelProps) {
         </div>
 
         <div className="relative mt-2 flex flex-col items-center justify-center rounded-xl border border-slate-200/60 bg-white/60 p-8 text-center backdrop-blur-sm">
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-white/90 rounded-xl" />
+          <div className="absolute inset-0 bg-linear-to-b from-transparent to-white/90 rounded-xl" />
           <div className="relative z-10 flex flex-col items-center">
             <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
               <Lock className="h-6 w-6" />
@@ -59,7 +59,7 @@ export function AiInsightsPanel({ isPaidTier }: AiInsightsPanelProps) {
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 p-6 shadow-sm">
+    <div className="relative overflow-hidden rounded-2xl border border-indigo-200/60 bg-linear-to-br from-indigo-50/50 to-purple-50/50 p-6 shadow-sm">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-indigo-100/50">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/20">
