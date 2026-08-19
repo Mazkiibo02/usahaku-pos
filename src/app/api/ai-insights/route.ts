@@ -4,7 +4,7 @@ import { GoogleGenAI } from '@google/genai';
 
 // Initialize Gemini client. It uses process.env.GEMINI_API_KEY automatically.
 // Make sure to add GEMINI_API_KEY to your .env.local
-const ai = new GoogleGenAI();
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function POST(request: Request) {
   try {

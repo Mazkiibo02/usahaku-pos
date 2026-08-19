@@ -1,6 +1,6 @@
 allowBuilds:
   '@firebase/util': true
-  '@google/genai': set this to true or false
+  '@google/genai': true
   protobufjs: true
   sharp: true
   unrs-resolver: true

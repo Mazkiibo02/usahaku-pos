@@ -415,6 +415,7 @@ export default function DashboardPage() {
             <p className="mt-1 text-xs text-slate-500 font-medium">
               Nilai belanja rata-rata per transaksi
             </p>
+          </div>
         </div>
       </div>
 
