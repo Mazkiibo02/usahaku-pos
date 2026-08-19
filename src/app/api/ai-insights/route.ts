@@ -1,0 +1,143 @@
+import { NextResponse } from 'next/server';
+import { adminAuth, adminDb } from '@/src/lib/firebase/admin';
+import { GoogleGenAI } from '@google/genai';
+
+// Initialize Gemini client. It uses process.env.GEMINI_API_KEY automatically.
+// Make sure to add GEMINI_API_KEY to your .env.local
+const ai = new GoogleGenAI();
+
+export async function POST(request: Request) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    let decodedToken;
+    try {
+      decodedToken = await adminAuth.verifyIdToken(token);
+    } catch (error) {
+      console.error('[AI Insights] Token verification failed:', error);
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    const { role, tenantId } = decodedToken;
+
+    // 1. RBAC Check: Cashiers are strictly blocked
+    if (role === 'cashier') {
+      return NextResponse.json({ error: 'Forbidden: Insufficient privileges.' }, { status: 403 });
+    }
+
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID not found.' }, { status: 400 });
+    }
+
+    // 2. Monetization Gate: Check Subscription Tier
+    const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
+    if (!tenantDoc.exists) {
+      return NextResponse.json({ error: 'Tenant not found.' }, { status: 404 });
+    }
+
+    const tenantData = tenantDoc.data();
+    const subscription = tenantData?.subscription;
+
+    // If there is no subscription, they are on Freemium.
+    if (!subscription) {
+      return NextResponse.json(
+        { error: 'Fitur AI Analyst hanya tersedia untuk pelanggan berbayar (Paket 1 Outlet atau lebih).' },
+        { status: 403 }
+      );
+    }
+
+    // If there is a subscription, check if it's expired
+    const isExpiredStatus = subscription.status === 'EXPIRED';
+    let isExpiredDate = false;
+    if (subscription.currentPeriodEnd) {
+      // Handle both Firestore Timestamp and Date objects
+      const endDate = subscription.currentPeriodEnd.toDate ? subscription.currentPeriodEnd.toDate() : new Date(subscription.currentPeriodEnd);
+      isExpiredDate = endDate.getTime() < Date.now();
+    }
+
+    if (isExpiredStatus || isExpiredDate) {
+      return NextResponse.json(
+        { error: 'Masa berlangganan Anda telah berakhir. Silakan perbarui langganan untuk menggunakan fitur AI.' },
+        { status: 403 }
+      );
+    }
+
+    // 3. Data Retrieval: Fetch recent invoices for the tenant
+    // We limit to 100 recent invoices to keep prompt size manageable and fast
+    const invoicesSnapshot = await adminDb
+      .collection('invoices')
+      .where('tenantId', '==', tenantId)
+      .orderBy('createdAt', 'desc')
+      .limit(100)
+      .get();
+
+    if (invoicesSnapshot.empty) {
+      return NextResponse.json({
+        insights: 'Belum ada data transaksi yang cukup untuk dianalisis oleh AI. Silakan catat beberapa transaksi terlebih dahulu.',
+      });
+    }
+
+    // 4. Data Processing: Aggregate metrics
+    let totalRevenue = 0;
+    let totalItemsSold = 0;
+    const itemsCountMap: Record<string, number> = {};
+
+    invoicesSnapshot.forEach((doc) => {
+      const data = doc.data();
+      totalRevenue += data.totalAmount || 0;
+      
+      if (Array.isArray(data.items)) {
+        data.items.forEach((item: any) => {
+          totalItemsSold += item.quantity || 0;
+          if (item.name) {
+            itemsCountMap[item.name] = (itemsCountMap[item.name] || 0) + (item.quantity || 1);
+          }
+        });
+      }
+    });
+
+    const averageOrderValue = Math.round(totalRevenue / invoicesSnapshot.size);
+    
+    // Get top 5 selling products
+    const topProducts = Object.entries(itemsCountMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, qty]) => `${name} (${qty} terjual)`);
+
+    // 5. Generate Insights using Gemini API
+    const prompt = `
+Anda adalah Business Analyst AI profesional untuk sebuah toko/UMKM.
+Berdasarkan data penjualan dari ${invoicesSnapshot.size} transaksi terakhir berikut, berikan analisis singkat, padat, dan actionable (saran tindakan yang bisa dilakukan owner).
+Gunakan bahasa Indonesia yang profesional namun mudah dipahami. Jangan gunakan format yang terlalu rumit, cukup gunakan paragraf dan bullet points markdown standar.
+
+DATA PENJUALAN TERBARU:
+- Total Pendapatan: Rp ${totalRevenue.toLocaleString('id-ID')}
+- Rata-rata Nilai Transaksi (AOV): Rp ${averageOrderValue.toLocaleString('id-ID')}
+- Total Item Terjual: ${totalItemsSold} item
+- 5 Produk Paling Laris: ${topProducts.length > 0 ? topProducts.join(', ') : 'Belum ada data produk detail'}
+
+BERIKAN:
+1. Ringkasan Performa Singkat (1 paragraf)
+2. Insight / Pola Menarik (2-3 bullet points)
+3. Rekomendasi Strategi Bisnis (2-3 bullet points actionable)
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
+
+    return NextResponse.json({ insights: response.text });
+
+  } catch (error: any) {
+    console.error('[AI Insights] Server error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error processing AI Insights.', details: error?.message },
+      { status: 500 }
+    );
+  }
+}

@@ -6,7 +6,7 @@
 * **State Management & Data Visualization:** Zustand Stores, Recharts Canvas, Lucide React Icons.
 * **Receipt Processing Extensions:** `html-to-image` / `html2canvas` (DOM-to-Raster Pipeline).
 * **Progressive Web App (PWA) Engine:** `@ducanh2912/next-pwa` Service Worker wrapper.
-* **Backend-as-a-Service (BaaS):** Firebase Core Ecosystem (Auth, Firestore DB, Cloud Storage).
+* **Backend-as-a-Service (BaaS):** Firebase Core Ecosystem (Auth, Firestore DB, Cloud Storage), Resend (Email Delivery API).
 * **Serverless Compute Layer:** Firebase Cloud Functions (2nd Generation, Node.js 22 Runtime), Next.js API Routes.
 * **Server Admin Context:** `firebase-admin/app` (Explicit App Initialization Wrapper).
 * **Payment Processing & Printing Hooks:** Midtrans Core API & Snap JS SDK, RawBT Mobile Print Protocol.
@@ -54,3 +54,7 @@
 * **Security Control Rule Enclosure:** The `firestore.rules` configuration file utilizes multi-layered custom claims evaluations. Document creation inside `/invoices/{invoiceId}` is permitted if and only if the request context is fully authenticated, the inbound write payload parameter `request.resource.data.tenantId` matches the session token's `request.auth.token.tenantId`, and the operational staff role claims equal either `'owner'` or `'cashier'`.
 * **Read Query Isolation Strategy:** To prevent auxiliary cashier accounts from pulling and calculating the total global financial profits of an owner's multi-branch ecosystem, the `allow read` clause requires incoming frontend list queries to strictly supply matching compound filter parameters: `where('tenantId', '==', tenantId)` combined with `where('outletId', '==', outletId)`. This locks down relational records directly at the database engine layer.
 * **CEL Compilation Optimization for Read Queries:** To avoid static engine rejections from the Firestore Query Optimizer during collective list fetches (like loading a product catalog via `getDocs`), helper functions evaluating `request.resource` (write payloads) are strictly isolated from read evaluation paths. Read queries under `/products/{productId}` utilize a dedicated `isSameTenant()` helper that cleanly reads existing document metadata (`resource.data.tenantId`), while `isWritingToMyTenant()` is cleaned of invalid non-CEL ternary branches (`? :`) to maintain flawless rule execution.
+
+### 10. Spam Prevention via Google-Only Auth & Resend Integration
+* **Context & Decision:** Email/Password registration was completely removed in favor of **Google Sign-In Only** to eliminate bot spam registrations and prevent users from easily abusing the Freemium tier by creating infinite fake emails. 
+* **Welcome Email Architecture:** Upon successful tenant creation, the client-side onboarding modal asynchronously fires a POST request to a custom Next.js API route (`/api/send-welcome-email`). This route securely calls the **Resend API** to dispatch an automated "Welcome to Freemium (50 transactions/month limit)" email, entirely bypassing the need for paid Firebase Extensions or Blaze Plan requirements.

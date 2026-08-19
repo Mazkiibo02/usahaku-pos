@@ -2,6 +2,7 @@
 
 import { initializeApp, getApps, getApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 
 // Check if emulator mode is enabled
 if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
@@ -43,5 +44,6 @@ if (!getApps().length) {
 }
 
 const adminDb = getFirestore(app);
+const adminAuth = getAuth(app);
 
-export { adminDb };
+export { adminDb, adminAuth };

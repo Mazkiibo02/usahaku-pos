@@ -38,12 +38,14 @@ import { cashierService } from '@/src/features/cashiers/api/cashier-service';
 import type { Transaction } from '@/src/features/transactions/types';
 import type { Outlet } from '@/src/features/outlets/types';
 import type { Cashier } from '@/src/features/cashiers/types';
+import { AiInsightsPanel } from '@/src/features/dashboard/components/ai-insights-panel';
 
 export default function DashboardPage() {
   const { tenantId, user, role } = useAuthStore();
   const router = useRouter();
   const [storeName, setStoreName] = useState<string>('Usahaku POS');
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [isPaidTier, setIsPaidTier] = useState<boolean>(false);
 
   // Redirect cashier users
   useEffect(() => {
@@ -64,6 +66,19 @@ export default function DashboardPage() {
           setStoreName(data.name || 'Usahaku POS');
           if (data.logoUrl) {
             setLogoUrl(data.logoUrl);
+          }
+          
+          const subscription = data.subscription;
+          if (subscription) {
+            const status = subscription.status;
+            let isExpiredDate = false;
+            if (subscription.currentPeriodEnd) {
+              const endDate = subscription.currentPeriodEnd.toDate ? subscription.currentPeriodEnd.toDate() : new Date(subscription.currentPeriodEnd);
+              isExpiredDate = endDate.getTime() < Date.now();
+            }
+            if (status !== 'EXPIRED' && !isExpiredDate) {
+              setIsPaidTier(true);
+            }
           }
         }
       } catch (err) {
@@ -400,9 +415,11 @@ export default function DashboardPage() {
             <p className="mt-1 text-xs text-slate-500 font-medium">
               Nilai belanja rata-rata per transaksi
             </p>
-          </div>
         </div>
       </div>
+
+      {/* AI Insights Component */}
+      <AiInsightsPanel isPaidTier={isPaidTier} />
 
       {/* 3. Charts & Top Selling List Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
