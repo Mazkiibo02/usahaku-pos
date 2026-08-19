@@ -4,13 +4,11 @@ import { GoogleGenAI } from '@google/genai';
 
 // Initialize Gemini client. It uses process.env.GEMINI_API_KEY automatically.
 // Make sure to add GEMINI_API_KEY to your .env.local
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
 export async function POST(request: Request) {
   try {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Tidak ada akses (Unauthorized)' }, { status: 401 });
     }
 
     const token = authHeader.split('Bearer ')[1];
@@ -19,24 +17,24 @@ export async function POST(request: Request) {
       decodedToken = await adminAuth.verifyIdToken(token);
     } catch (error) {
       console.error('[AI Insights] Token verification failed:', error);
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+      return NextResponse.json({ error: 'Token tidak valid' }, { status: 401 });
     }
 
     const { role, tenantId } = decodedToken;
 
     // 1. RBAC Check: Cashiers are strictly blocked
     if (role === 'cashier') {
-      return NextResponse.json({ error: 'Forbidden: Insufficient privileges.' }, { status: 403 });
+      return NextResponse.json({ error: 'Akses Ditolak: Hak akses tidak mencukupi.' }, { status: 403 });
     }
 
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID not found.' }, { status: 400 });
+      return NextResponse.json({ error: 'ID Tenant tidak ditemukan.' }, { status: 400 });
     }
 
     // 2. Monetization Gate: Check Subscription Tier
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
     if (!tenantDoc.exists) {
-      return NextResponse.json({ error: 'Tenant not found.' }, { status: 404 });
+      return NextResponse.json({ error: 'Tenant tidak ditemukan.' }, { status: 404 });
     }
 
     const tenantData = tenantDoc.data();
@@ -126,6 +124,12 @@ BERIKAN:
 3. Rekomendasi Strategi Bisnis (2-3 bullet points actionable)
     `;
 
+    // Initialize Gemini client inside try-catch to avoid top-level crashes
+    if (!process.env.GEMINI_API_KEY) {
+      return NextResponse.json({ error: 'Kunci API Gemini belum diatur di server.' }, { status: 500 });
+    }
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
@@ -136,7 +140,7 @@ BERIKAN:
   } catch (error: any) {
     console.error('[AI Insights] Server error:', error);
     return NextResponse.json(
-      { error: 'Internal server error processing AI Insights.', details: error?.message },
+      { error: 'Terjadi kesalahan server saat memproses Analisis AI.', details: error?.message },
       { status: 500 }
     );
   }
