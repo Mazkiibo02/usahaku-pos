@@ -60,3 +60,4 @@ ui-debug.log
 
 # Local Firestore schemas and secret notes
 firestore-docs/
+.docs

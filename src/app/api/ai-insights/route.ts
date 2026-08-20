@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/src/lib/firebase/admin';
 import { GoogleGenAI } from '@google/genai';
 
-// Initialize Gemini client. It uses process.env.GEMINI_API_KEY automatically.
-// Make sure to add GEMINI_API_KEY to your .env.local
+// Vercel Hobby limit is 10s by default. We extend it to 60s for AI generation.
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     const authHeader = request.headers.get('Authorization');
