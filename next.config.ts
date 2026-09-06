@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react'],
   },
-  serverExternalPackages: ['firebase-admin', 'jwks-rsa', 'jose'],
+  serverExternalPackages: ['firebase-admin'],
   async headers() {
     return [
       {

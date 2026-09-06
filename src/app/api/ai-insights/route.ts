@@ -109,20 +109,18 @@ export async function POST(request: Request) {
 
     // 5. Generate Insights using Gemini API
     const prompt = `
-Anda adalah Business Analyst AI profesional untuk sebuah toko/UMKM.
-Berdasarkan data penjualan dari ${invoicesSnapshot.size} transaksi terakhir berikut, berikan analisis singkat, padat, dan actionable (saran tindakan yang bisa dilakukan owner).
-Gunakan bahasa Indonesia yang profesional namun mudah dipahami. Jangan gunakan format yang terlalu rumit, cukup gunakan paragraf dan bullet points markdown standar.
+Anda adalah Business Analyst AI cerdas untuk UMKM. Tugas Anda memberikan 4 poin analisis yang SANGAT SINGKAT, tajam, dan *to the point* (maksimal total 50-70 kata).
+Gunakan Markdown (bold) untuk penekanan dan jangan gunakan basa-basi atau kalimat pembuka/penutup. Wajib gunakan format emoji persis seperti di bawah ini:
 
-DATA PENJUALAN TERBARU:
-- Total Pendapatan: Rp ${totalRevenue.toLocaleString('id-ID')}
+📈 **Performa:** [1 kalimat evaluasi tren penjualan & AOV]
+📦 **Prioritas Restock:** [Sebutkan 1-2 produk terlaris spesifik yang wajib di-stok ulang karena perputarannya cepat]
+🎯 **Ide Bundling:** [1 ide paket penawaran gabungan produk terlaris untuk menaikkan nilai transaksi]
+📢 **Strategi Promo:** [1 ide diskon/pemasaran taktis untuk produk terlaris]
+
+DATA PENJUALAN TERBARU (${invoicesSnapshot.size} transaksi terakhir):
+- Pendapatan: Rp ${totalRevenue.toLocaleString('id-ID')}
 - Rata-rata Nilai Transaksi (AOV): Rp ${averageOrderValue.toLocaleString('id-ID')}
-- Total Item Terjual: ${totalItemsSold} item
-- 5 Produk Paling Laris: ${topProducts.length > 0 ? topProducts.join(', ') : 'Belum ada data produk detail'}
-
-BERIKAN:
-1. Ringkasan Performa Singkat (1 paragraf)
-2. Insight / Pola Menarik (2-3 bullet points)
-3. Rekomendasi Strategi Bisnis (2-3 bullet points actionable)
+- Produk Terlaris: ${topProducts.length > 0 ? topProducts.join(', ') : 'Belum ada'}
     `;
 
     // Initialize Gemini client inside try-catch to avoid top-level crashes
@@ -132,7 +130,7 @@ BERIKAN:
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.6-flash',
       contents: prompt,
     });
 
