@@ -43,5 +43,16 @@
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "resolutions": {
+    "jose": "5.10.0"
+  },
+  "overrides": {
+    "jose": "5.10.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "jose": "5.10.0"
+    }
   }
 }
