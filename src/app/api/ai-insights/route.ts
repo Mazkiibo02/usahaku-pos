@@ -128,18 +128,28 @@ DATA PENJUALAN TERBARU (${invoicesSnapshot.size} transaksi terakhir):
       return NextResponse.json({ error: 'Kunci API Gemini belum diatur di server.' }, { status: 500 });
     }
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    let responseText = '';
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+      });
+      responseText = response.text || '';
+    } catch (modelError: any) {
+      console.warn('[AI Insights] gemini-2.5-flash failed, trying gemini-1.5-flash:', modelError?.message);
+      const fallbackResponse = await ai.models.generateContent({
+        model: 'gemini-1.5-flash',
+        contents: prompt,
+      });
+      responseText = fallbackResponse.text || '';
+    }
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
-      contents: prompt,
-    });
-
-    return NextResponse.json({ insights: response.text });
+    return NextResponse.json({ insights: responseText });
 
   } catch (error: any) {
     console.error('[AI Insights] Server error:', error);
     return NextResponse.json(
-      { error: 'Terjadi kesalahan server saat memproses Analisis AI.', details: error?.message },
+      { error: `Terjadi kesalahan server saat memproses Analisis AI: ${error?.message || 'Error tidak diketahui'}` },
       { status: 500 }
     );
   }
